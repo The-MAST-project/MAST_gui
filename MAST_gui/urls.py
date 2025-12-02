@@ -4,16 +4,22 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from . import views
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/', include('allauth.urls')),
-    path('accounts/', include('accounts.urls', namespace='accounts')),
-    path('', include('dashboard.urls')),
-    path('mast/api/v1/units/', include('units.urls')),
-    path('mast/api/v1/specs/', include('specs.urls')),
-    path('mast/api/v1/safety/', include('mast_safety.urls')),
-    path('mast/api/v1/assignments/', include('assignments.urls')),
-    path('mast/api/v1/plans/', include('plans.urls')),
+    # path('accounts/', include('allauth.urls')),
+    # path('accounts/', include('accounts.urls', namespace='accounts')),
+    path('', views.dashboard, name='dashboard'),
+    path('select-site/', views.select_site, name='select_site'),
+    path('admin/users/', views.admin_users, name='admin_users'),
+    path('admin/resources/', views.admin_resources, name='admin_resources'),
+    # path('', include('dashboard.urls')),
+    # path('mast/api/v1/units/', include('units.urls')),
+    # path('mast/api/v1/specs/', include('specs.urls')),
+    # path('mast/api/v1/safety/', include('mast_safety.urls')),
+    # path('mast/api/v1/assignments/', include('assignments.urls')),
+    # path('mast/api/v1/plans/', include('plans.urls')),
 ]
 
 if settings.DEBUG:

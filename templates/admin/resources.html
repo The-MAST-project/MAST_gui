@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}System Resources - MAST GUI{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+    <li class="breadcrumb-item">Admin</li>
+    <li class="breadcrumb-item active">Resources</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>System Resources Monitoring</h2>
+        <p class="text-muted">Real-time system metrics from Netdata</p>
+        
+        <div class="card mt-3">
+            <div class="card-body p-0">
+                <iframe 
+                    src="{{ netdata_url }}" 
+                    style="width: 100%; height: calc(100vh - 300px); border: none;"
+                    title="Netdata System Monitoring"
+                ></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

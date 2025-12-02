@@ -1,0 +1,23 @@
+<!-- filepath: /home/mast/PycharmProjects/MAST_gui/static/img/mast-logo.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 60">
+  <defs>
+    <linearGradient id="mastGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Grid of circles representing telescope array -->
+  <circle cx="20" cy="15" r="3" fill="url(#mastGradient)"/>
+  <circle cx="35" cy="15" r="3" fill="url(#mastGradient)"/>
+  <circle cx="50" cy="15" r="3" fill="url(#mastGradient)"/>
+  <circle cx="20" cy="30" r="3" fill="url(#mastGradient)"/>
+  <circle cx="35" cy="30" r="3" fill="url(#mastGradient)"/>
+  <circle cx="50" cy="30" r="3" fill="url(#mastGradient)"/>
+  <circle cx="20" cy="45" r="3" fill="url(#mastGradient)"/>
+  <circle cx="35" cy="45" r="3" fill="url(#mastGradient)"/>
+  <circle cx="50" cy="45" r="3" fill="url(#mastGradient)"/>
+  
+  <!-- MAST text -->
+  <text x="70" y="40" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="url(#mastGradient)">MAST</text>
+</svg>

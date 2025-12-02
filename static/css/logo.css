@@ -1,0 +1,13 @@
+.mast-text-logo {
+    font-family: 'Arial Black', sans-serif;
+    font-size: 2rem;
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    letter-spacing: 2px;
+}
+
+.mast-text-logo .m { color: #FF6B6B; }
+.mast-text-logo .a { color: #4ECDC4; }
+.mast-text-logo .s { color: #45B7D1; }
+.mast-text-logo .t { color: #FFA07A; }

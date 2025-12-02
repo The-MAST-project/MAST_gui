@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}User Management - MAST GUI{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+    <li class="breadcrumb-item">Admin</li>
+    <li class="breadcrumb-item active">User Management</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>User Management</h2>
+        
+        <!-- Sign-up Requests Tab -->
+        <ul class="nav nav-tabs mt-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#signup-requests" type="button">
+                    Sign-up Requests
+                    <span class="badge bg-danger">3</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#users" type="button">
+                    Users
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#groups" type="button">
+                    Groups
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content mt-3">
+            <!-- Sign-up Requests -->
+            <div class="tab-pane fade show active" id="signup-requests">
+                <div class="card">
+                    <div class="card-body">
+                        <p class="text-muted">Pending user sign-up requests</p>
+                        <!-- TODO: List sign-up requests -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Users -->
+            <div class="tab-pane fade" id="users">
+                <div class="card">
+                    <div class="card-body">
+                        <p class="text-muted">Manage existing users</p>
+                        <!-- TODO: List users -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Groups -->
+            <div class="tab-pane fade" id="groups">
+                <div class="card">
+                    <div class="card-body">
+                        <p class="text-muted">Manage user groups and capabilities</p>
+                        <!-- TODO: List groups -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

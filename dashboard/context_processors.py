@@ -40,6 +40,6 @@ def site_context(request):
                 context['user_capabilities'] = mongo_user.capabilities
     
     except Exception as e:
-        logger.error(f"Error loading site context: {e}")
+        logger.error(f"Error loading site context: {e}", exc_info=True)
     
     return context

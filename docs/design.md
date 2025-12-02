@@ -123,9 +123,16 @@ ControlApi (FastAPI on mast-*-control)
 
 - **Height**: Fixed, 80px
 - **Position**: Top of page, does not scroll
-- **Left side**: Weizmann Institute logo
-- **Right side**: MAST logo + “MASTers of Spectra” motto
+- **Left side**: Weizmann Institute logo, followed by search, site selector, breadcrumb, and user menu
+- **Right side**: MAST logo + "MASTers of Spectra" motto
 - **Background**: Gradient (gray)
+- **Components** (left to right):
+  1. Weizmann Institute logo
+  2. Search field
+  3. Site selector with "Site:" label
+  4. Breadcrumb navigation
+  5. User menu dropdown
+  6. MAST logo and motto
 
 ### Toolbar (Fixed, Below Banner)
 
@@ -145,25 +152,38 @@ ControlApi (FastAPI on mast-*-control)
 
 ### Sidebar (Collapsible, Fixed)
 
-- **Width**: 260px (expanded), 70px (collapsed)
+- **Width**: 300px (expanded), 70px (collapsed)
 - **Position**: Left side, always present on all pages
-- **Color**: Dark background (#1e1e2d)
+- **Color**: Light background (#f8f9fa) with dark text
+- **Border**: Right border to separate from content
 - **Behavior**:
-  - Collapsible via toggle button
+  - Collapsible via toggle button at top of sidebar
   - State persists during navigation
   - Sub-items collapse when sidebar collapses
+  - Collapse indicators: chevron points down when collapsed, up when expanded
 
 #### Sidebar Menu Structure
 
 1. **Units**
 1. **Specs**
 1. **Safety** (collapsible)
-- Graphs (Grafana iframe)
-- Data (API queries → collapsible JSON trees)
+   - Graphs (Grafana iframe)
+   - Data (API queries → collapsible JSON trees)
 1. **Assignments**
 1. **Plans**
+1. **Admin** (collapsible, requires `canChangeUsers`)
+   - User Management
+     - Sign-up requests
+     - User changes/approvals
+     - Group management
+   - Resources (Netdata monitoring)
+     - iframe: `http://mast-wis-control:19999`
 
 **Note**: All sidebar entries with sub-entries appear initially as collapsed
+
+**Permissions**:
+- Admin menu visible only to users with `canChangeUsers` capability
+- Resources page accessible with `canView` capability
 
 ### Main Content Area
 
@@ -1087,6 +1107,7 @@ class CanonicalResponse(BaseModel):
 ### Backend
 
 - **Framework**: Django 4.2+
+- **Development Server**: Port 8010 (default)
 - **Dynamic updates**: HTMX (no page reloads)
 - **Real-time**: WebSocket (Django Channels)
 - **Database**: MongoDB (configuration) + SQLite (Django internal)
