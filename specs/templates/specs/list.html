@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Spectrographs - MAST{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Specs</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Spectrographs</h2>
+    
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% else %}
+    
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">DeepSpec</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">DeepSpec status and controls</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">WideSpec</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">WideSpec status and controls</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% endif %}
+</div>
+{% endblock %}

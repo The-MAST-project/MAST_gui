@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}MAST Dashboard{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">MAST Control Dashboard</h2>
+    
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    
+    <div class="row">
+        <!-- Units Status -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Units Status</h5>
+                </div>
+                <div class="card-body" 
+                     hx-get="/mast/api/v1/units/status" 
+                     hx-trigger="load, every 5s"
+                     hx-swap="innerHTML">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Specs and Safety -->
+        <div class="col-lg-4 mb-4">
+            <!-- Specs Status -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Spectrographs</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Specs status placeholder</p>
+                </div>
+            </div>
+            
+            <!-- Safety Status -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Safety Status</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Safety status placeholder</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Plans Summary -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Observation Plans</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col">
+                            <h3 class="text-primary">0</h3>
+                            <small class="text-muted">Submitted</small>
+                        </div>
+                        <div class="col">
+                            <h3 class="text-warning">0</h3>
+                            <small class="text-muted">Pending</small>
+                        </div>
+                        <div class="col">
+                            <h3 class="text-success">0</h3>
+                            <small class="text-muted">Running</small>
+                        </div>
+                        <div class="col">
+                            <h3 class="text-secondary">0</h3>
+                            <small class="text-muted">Completed</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

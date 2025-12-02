@@ -1,0 +1,15 @@
+[[endpoint]]
+service = "control"
+path = "/status"
+method = "GET"
+capability = "canView"
+description = "Get overall system status"
+
+[[endpoint]]
+service = "control"
+path = "/unit/{unit_name}/status"
+method = "GET"
+capability = "canView"
+description = "Get unit status"
+
+# ... more endpoints

@@ -1,0 +1,49 @@
+{% load static %}
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <button class="sidebar-toggle" id="sidebar-toggle">
+            <i class="bi bi-list"></i>
+        </button>
+    </div>
+    
+    <div class="sidebar-menu">
+        <!-- Units -->
+        <a href="{% url 'units:list' %}" class="sidebar-item {% if request.resolver_match.app_name == 'units' %}active{% endif %}">
+            <i class="bi bi-gear"></i>
+            <span class="sidebar-item-text">Units</span>
+        </a>
+        
+        <!-- Specs -->
+        <a href="{% url 'specs:list' %}" class="sidebar-item {% if request.resolver_match.app_name == 'specs' %}active{% endif %}">
+            <i class="bi bi-box"></i>
+            <span class="sidebar-item-text">Specs</span>
+        </a>
+        
+        <!-- Safety (with submenu) -->
+        <div class="sidebar-item" data-submenu="safety-submenu">
+            <i class="bi bi-shield-check"></i>
+            <span class="sidebar-item-text">Safety</span>
+            <i class="bi bi-chevron-right sidebar-item-arrow"></i>
+        </div>
+        <div class="sidebar-submenu" id="safety-submenu">
+            <a href="{% url 'safety:graphs' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'graphs' %}active{% endif %}">
+                Graphs
+            </a>
+            <a href="{% url 'safety:data' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'data' %}active{% endif %}">
+                Data
+            </a>
+        </div>
+        
+        <!-- Assignments -->
+        <a href="{% url 'assignments:list' %}" class="sidebar-item {% if request.resolver_match.app_name == 'assignments' %}active{% endif %}">
+            <i class="bi bi-clipboard-check"></i>
+            <span class="sidebar-item-text">Assignments</span>
+        </a>
+        
+        <!-- Plans -->
+        <a href="{% url 'plans:list' %}" class="sidebar-item {% if request.resolver_match.app_name == 'plans' %}active{% endif %}">
+            <i class="bi bi-calendar-event"></i>
+            <span class="sidebar-item-text">Plans</span>
+        </a>
+    </div>
+</div>

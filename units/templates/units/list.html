@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Units - MAST{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Units</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Units</h2>
+    
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    
+    <!-- Unit Selector -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                {% for unit in units %}
+                <div class="col-md-2 col-sm-4 mb-3">
+                    <a href="{% url 'units:detail' unit.name %}" 
+                       class="text-decoration-none">
+                        <div class="card text-center {% if unit.status == 'deployed' %}border-success{% elif unit.status == 'planned' %}border-secondary{% else %}border-warning{% endif %}">
+                            <div class="card-body">
+                                <h5>{{ unit.name }}</h5>
+                                {% if unit.status == 'deployed' %}
+                                <span class="badge bg-success">Deployed</span>
+                                {% elif unit.status == 'planned' %}
+                                <span class="badge bg-secondary">Planned</span>
+                                {% else %}
+                                <span class="badge bg-warning">Maintenance</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                {% empty %}
+                <p class="text-muted">No units configured for this site.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

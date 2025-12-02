@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Safety - Data - MAST{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item">Safety</li>
+<li class="breadcrumb-item active">Data</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Safety - Stations & Sensors</h2>
+    
+    <div class="card">
+        <div class="card-body" 
+             hx-get="/mast/api/v1/safety/stations" 
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

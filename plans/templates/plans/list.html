@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Observation Plans - MAST{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Plans</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Observation Plans</h2>
+    
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">All Plans</h5>
+            {% if 'canChangeConfiguration' in user_capabilities %}
+            <button class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle"></i> New Plan
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <div class="accordion" id="plansAccordion">
+                {% for plan in plans %}
+                <!-- Plan accordion items will go here -->
+                {% empty %}
+                <p class="text-muted">No observation plans yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% load static %}
+<div class="toolbar">
+    <!-- Search -->
+    <div class="toolbar-search">
+        <input type="text" class="form-control" placeholder="Search..." id="global-search">
+    </div>
+    
+    <!-- Site Selector -->
+    <div class="toolbar-site-selector">
+        <select class="form-select" id="site-selector">
+            {% for site in all_sites %}
+            <option value="{{ site.name }}" {% if site.local %}selected{% endif %}>
+                {{ site.name|upper }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <!-- Breadcrumb -->
+    <div class="toolbar-breadcrumb">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Home</a></li>
+                {% block breadcrumb %}{% endblock %}
+            </ol>
+        </nav>
+    </div>
+    
+    <!-- User -->
+    <div class="toolbar-user dropdown">
+        <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" 
+           data-bs-toggle="dropdown" aria-expanded="false">
+            <div class="user-avatar">
+                {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+            </div>
+            <span class="ms-2">{{ user.get_full_name|default:user.email }}</span>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
+                <i class="bi bi-person"></i> Profile
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'account_logout' %}">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a></li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // Site selector change handler
+    document.getElementById('site-selector').addEventListener('change', function(e) {
+        // TODO: Implement site switching logic
+        console.log('Switched to site:', e.target.value);
+    });
+</script>
