@@ -34,9 +34,10 @@ INSTALLED_APPS = [
     # 'allauth.socialaccount',
     
     # MAST apps - comment out until they exist
-    # 'accounts',
+    'accounts',  # Make sure this is here
+    'units',  # Add this
+    'mast_safety',  # Changed from 'safety'
     # 'dashboard',
-    # 'units',
     # 'specs',
     # 'mast_safety',
     # 'assignments',
@@ -67,10 +68,10 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',  # Make sure this is here
+                'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'dashboard.context_processors.site_context',
-                'MAST_gui.context_processors.site_data',  # Add this line
+                'MAST_gui.context_processors.site_data',
+                # 'accounts.context_processors.user_capabilities',  # Comment this out
             ],
         },
     },
@@ -96,10 +97,13 @@ CHANNEL_LAYERS = {
 
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    # Comment out allauth backend until we need it
-    # 'allauth.account.auth_backends.AuthenticationBackend',
+    'django.contrib.auth.backends.ModelBackend',  # Use Django's default
 ]
+
+# Login URLs
+LOGIN_URL = '/admin/login/'  # Use Django admin login for now
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/admin/login/'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -201,3 +205,30 @@ LOGGING = {
 # Development server configuration
 # Run with: python manage.py runserver 8010
 # Default port: 8010 (to avoid conflicts with other MAST services)
+
+# Proxy settings for internal network access
+# Bypass proxy for MAST internal hosts
+import os
+no_proxy = os.environ.get('NO_PROXY', '')
+
+# Add MAST internal network ranges and hosts
+mast_networks = [
+    'localhost',
+    '127.0.0.1',
+    '10.23.1.0/24',  # MAST network 1
+    '10.23.2.0/24',  # MAST network 2
+    '10.23.3.0/24',  # MAST network 3
+    '10.23.4.0/24',  # MAST network 4
+    'mast-wis-control',
+    'mast-ns-control',
+    '*.weizmann.ac.il',
+]
+
+if no_proxy:
+    # Append MAST networks to existing NO_PROXY
+    no_proxy = no_proxy + ',' + ','.join(mast_networks)
+else:
+    no_proxy = ','.join(mast_networks)
+
+os.environ['NO_PROXY'] = no_proxy
+os.environ['no_proxy'] = no_proxy  # Some libraries check lowercase

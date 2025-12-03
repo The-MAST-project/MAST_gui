@@ -1,0 +1,38 @@
+<tr id="user-{{ user.id }}">
+    <td>
+        {{ user.username }}
+        {% if user.is_superuser %}<span class="badge bg-danger">Admin</span>{% endif %}
+    </td>
+    <td>{{ user.email }}</td>
+    <td>
+        {% for group in user.groups.all %}
+            <span class="badge bg-info">{{ group.name }}</span>
+        {% empty %}
+            <span class="text-muted">None</span>
+        {% endfor %}
+    </td>
+    <td>
+        {% if user.is_active %}
+            <span class="badge bg-success">Active</span>
+        {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+    </td>
+    <td>{{ user.last_login|date:"Y-m-d H:i"|default:"Never" }}</td>
+    <td>
+        <button class="btn btn-sm btn-primary" 
+                hx-get="{% url 'admin_user_edit' user.id %}"
+                hx-target="#modal-container"
+                hx-swap="innerHTML">
+            Edit
+        </button>
+        <form style="display: inline;" 
+              hx-post="{% url 'admin_user_delete' user.id %}"
+              hx-target="#user-{{ user.id }}"
+              hx-swap="outerHTML"
+              hx-confirm="Are you sure you want to delete user {{ user.username }}?">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+    </td>
+</tr>

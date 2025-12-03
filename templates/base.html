@@ -60,7 +60,10 @@
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         {% if user.is_authenticated %}
-                            <li><a class="dropdown-item" href="#">Profile</a></li>
+                            <li><a class="dropdown-item" href="#"
+                                   hx-get="{% url 'accounts:profile' %}"
+                                   hx-target="#profile-modal-container"
+                                   hx-swap="innerHTML">Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#">Logout</a></li>
                         {% else %}
@@ -73,7 +76,7 @@
             <!-- MAST Logo -->
             <div class="text-end d-flex align-items-center gap-3 ms-3">
                 <div class="text-dark">
-                    <h4 class="mb-0">MASTers of Spectra</h4>
+                    <h4 class="mb-0">Spectra MASTers</h4>
                 </div>
                 <img src="{% static 'img/mast-logo.svg' %}" alt="MAST Logo" height="60">
             </div>
@@ -101,7 +104,7 @@
             <div id="sidebarContent">
                 <ul class="nav flex-column p-3">
                     <li class="nav-item">
-                        <a class="nav-link text-dark" href="#">
+                        <a class="nav-link text-dark" href="{% url 'units:list' %}">
                             <i class="bi bi-hdd-rack"></i> Units
                         </a>
                     </li>
@@ -118,10 +121,10 @@
                         <div class="collapse" id="safetyMenu">
                             <ul class="nav flex-column ms-3">
                                 <li class="nav-item">
-                                    <a class="nav-link text-secondary" href="#">Graphs</a>
+                                    <a class="nav-link text-secondary" href="{% url 'safety:graphs' %}">Graphs</a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link text-secondary" href="#">Data</a>
+                                    <a class="nav-link text-secondary" href="{% url 'safety:data' %}">Data</a>
                                 </li>
                             </ul>
                         </div>
@@ -171,8 +174,21 @@
         </div>
     </div>
 
+    <!-- Modal Container for Profile -->
+    <div id="profile-modal-container"></div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Configure HTMX to include CSRF token -->
+    <script>
+        document.body.addEventListener('htmx:configRequest', (event) => {
+            event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+        });
+    </script>
     
     <!-- Collapse indicator and sidebar toggle script -->
     <script>

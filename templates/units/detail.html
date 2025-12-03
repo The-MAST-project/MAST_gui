@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+
+{% block title %}Unit {{ unit_name }} - MAST GUI{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" style="color: white;">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'units:list' %}" style="color: white;">Units</a></li>
+    <li class="breadcrumb-item active" style="color: white;">{{ unit_name }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2>Unit: {{ unit_name }}</h2>
+    
+    <!-- Power Supply Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-light py-2">
+            <h5 class="mb-0">Power Supply</h5>
+        </div>
+        <div class="card-body py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                {% for outlet in outlets %}
+                <div class="text-center px-1">
+                    <div class="outlet-name mb-1" style="font-size: 0.85rem; font-weight: bold; min-height: 2rem; display: flex; align-items: center; justify-content: center;">
+                        {{ outlet.name }}
+                    </div>
+                    <button class="btn btn-sm outlet-toggle {% if outlet.status == 'on' %}btn-success{% else %}btn-secondary{% endif %}" 
+                            {% if not outlet.can_control and not outlet.is_computer %}disabled{% endif %}
+                            data-outlet="{{ outlet.id }}"
+                            data-can-control="{{ outlet.can_control|yesno:'true,false' }}"
+                            data-is-computer="{{ outlet.is_computer|yesno:'true,false' }}"
+                            {% if not outlet.is_computer %}
+                            hx-post="{% url 'units:toggle_outlet' unit_name outlet.id %}"
+                            hx-trigger="click"
+                            hx-swap="none"
+                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                            {% endif %}
+                            onclick="handleOutletClick(event, this)"
+                            style="min-width: 50px; padding: 0.2rem 0.4rem; font-size: 0.7rem;">
+                        {{ outlet.status|upper }}
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Component Accordion -->
+    <div class="card mb-2">
+        <div class="card-header bg-light py-2">
+            <div class="d-flex w-100 align-items-center">
+                <span class="component-label fw-bold">Component</span>
+                <span class="status-indicator fw-bold small">Powered</span>
+                <span class="status-indicator fw-bold small">Detected</span>
+                <span class="status-indicator fw-bold small">Operational</span>
+                <span class="status-spacer"></span>
+                <span class="component-detail fw-bold small">Details</span>
+                <span class="component-activities fw-bold small">Activities</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="accordion" id="componentAccordion">
+        <!-- Unit Component -->
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#unitCollapse">
+                    <div class="d-flex w-100 align-items-center">
+                        <span class="component-label">Unit</span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-indicator"><i class="bi bi-dash-circle-fill text-danger"></i></span>
+                        <span class="status-spacer"></span>
+                        <span class="component-detail">Status: Idle</span>
+                        <span class="component-activities text-muted">Idle</span>
+                    </div>
+                </button>
+            </h2>
+            <div id="unitCollapse" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                    <p>Unit component details...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mount Component -->
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mountCollapse">
+                    <div class="d-flex w-100 align-items-center">
+                        <span class="component-label">Mount</span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-spacer"></span>
+                        <span class="component-detail">RA: 12:34:56, Dec: +45:12:34</span>
+                        <span class="component-activities text-primary">Slewing</span>
+                    </div>
+                </button>
+            </h2>
+            <div id="mountCollapse" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                    <p>Mount component details...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stage Component -->
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#stageCollapse">
+                    <div class="d-flex w-100 align-items-center">
+                        <span class="component-label">Stage</span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-indicator"><i class="bi bi-dash-circle-fill text-danger"></i></span>
+                        <span class="status-indicator"><i class="bi bi-dash-circle-fill text-danger"></i></span>
+                        <span class="status-spacer"></span>
+                        <span class="component-detail">Position: 5000</span>
+                        <span class="component-activities text-muted">Idle</span>
+                    </div>
+                </button>
+            </h2>
+            <div id="stageCollapse" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                    <p>Stage component details...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Camera Component -->
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cameraCollapse">
+                    <div class="d-flex w-100 align-items-center">
+                        <span class="component-label">Camera</span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-spacer"></span>
+                        <span class="component-detail">Temp: -15°C</span>
+                        <span class="component-activities text-primary">Exposing, Cooling</span>
+                    </div>
+                </button>
+            </h2>
+            <div id="cameraCollapse" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                    <p>Camera component details...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Focuser Component -->
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#focuserCollapse">
+                    <div class="d-flex w-100 align-items-center">
+                        <span class="component-label">Focuser</span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-indicator"><i class="bi bi-check-circle-fill text-success"></i></span>
+                        <span class="status-spacer"></span>
+                        <span class="component-detail">Position: 12500</span>
+                        <span class="component-activities text-muted">Idle</span>
+                    </div>
+                </button>
+            </h2>
+            <div id="focuserCollapse" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                    <p>Focuser component details...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Not Allowed Modal -->
+<div class="modal fade" id="notAllowedModal" tabindex="-1" data-bs-backdrop="false" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-danger">
+            <div class="modal-body text-center py-3">
+                <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2rem;"></i>
+                <h5 class="mt-2 text-danger">Not Allowed</h5>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Computer Outlet Modal -->
+<div class="modal fade" id="computerOutletModal" tabindex="-1" data-bs-backdrop="false" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-warning">
+            <div class="modal-body text-center py-3">
+                <i class="bi bi-exclamation-circle text-warning" style="font-size: 2rem;"></i>
+                <h5 class="mt-2">Computer may not be turned off</h5>
+                <p class="mb-0">Use Unit controls to Shutdown/Powerdown the unit</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function handleOutletClick(event, button) {
+        const canControl = button.getAttribute('data-can-control') === 'true';
+        const isComputer = button.getAttribute('data-is-computer') === 'true';
+        
+        // Check if this is the Computer outlet
+        if (isComputer) {
+            event.preventDefault();
+            
+            // Show Computer outlet modal
+            const modal = new bootstrap.Modal(document.getElementById('computerOutletModal'));
+            modal.show();
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                modal.hide();
+            }, 5000);
+            
+            return false;
+        }
+        
+        // Check if user has permission
+        if (!canControl) {
+            event.preventDefault();
+            
+            // Show "Not Allowed" modal
+            const modal = new bootstrap.Modal(document.getElementById('notAllowedModal'));
+            modal.show();
+            
+            // Auto-hide after 1 second
+            setTimeout(() => {
+                modal.hide();
+            }, 1000);
+            
+            return false;
+        }
+        
+        // Authorized - HTMX will handle the request
+        // Listen for response to update button
+        button.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.successful) {
+                const response = JSON.parse(evt.detail.xhr.responseText);
+                const newStatus = response.status;
+                
+                // Update button appearance
+                button.textContent = newStatus.toUpperCase();
+                button.classList.remove('btn-success', 'btn-secondary');
+                button.classList.add(newStatus === 'on' ? 'btn-success' : 'btn-secondary');
+            }
+        }, { once: true });
+    }
+</script>
+
+<style>
+    .component-label {
+        display: inline-block;
+        width: 150px;
+        font-weight: 500;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 80px;
+        text-align: center;
+    }
+    
+    .status-spacer {
+        display: inline-block;
+        width: 30px;
+    }
+    
+    .component-detail {
+        display: inline-block;
+        width: 250px;
+        font-size: 0.9rem;
+    }
+    
+    .component-activities {
+        display: inline-block;
+        width: 200px;
+        font-size: 0.9rem;
+    }
+    
+    .accordion-button:not(.collapsed) {
+        background-color: #e7f3ff;
+    }
+</style>
+{% endblock %}

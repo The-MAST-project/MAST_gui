@@ -1,0 +1,82 @@
+<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-circle"></i> User Profile</h5>
+                <button type="button" class="btn-close" onclick="document.getElementById('profile-modal-container').innerHTML=''"></button>
+            </div>
+            <div class="modal-body">
+                <!-- User Information -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light py-2">
+                        <h6 class="mb-0">User Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-2">
+                            <div class="col-4 fw-bold">Username:</div>
+                            <div class="col-8">{{ user.username }}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-4 fw-bold">Full Name:</div>
+                            <div class="col-8">{{ user.first_name|default:"Not provided" }}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-4 fw-bold">Email:</div>
+                            <div class="col-8">{{ user.email|default:"Not provided" }}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-4 fw-bold">Authentication:</div>
+                            <div class="col-8">
+                                <span class="badge bg-primary">{{ auth_origin }}</span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-4 fw-bold">Groups:</div>
+                            <div class="col-8">
+                                {% for group in groups %}
+                                    <span class="badge bg-info me-1">{{ group.name }}</span>
+                                {% empty %}
+                                    <span class="text-muted">No groups</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Capabilities -->
+                <div class="card">
+                    <div class="card-header bg-light py-2">
+                        <h6 class="mb-0"><i class="bi bi-shield-check"></i> Capabilities</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;" class="text-center">Status</th>
+                                    <th>Capability</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cap in capabilities %}
+                                <tr>
+                                    <td class="text-center">
+                                        {% if cap.has_permission %}
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        {% else %}
+                                            <i class="bi bi-x-circle-fill text-muted"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ cap.name }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('profile-modal-container').innerHTML=''">OK</button>
+            </div>
+        </div>
+    </div>
+</div>

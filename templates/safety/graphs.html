@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Safety Graphs - MAST GUI{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" style="color: white;">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="#" style="color: white;">Safety</a></li>
+    <li class="breadcrumb-item active" style="color: white;">Graphs</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <iframe 
+        src="{{ grafana_url }}" 
+        style="width: 100%; height: calc(100vh - 120px); border: none;"
+        title="Grafana Safety Monitoring"
+    ></iframe>
+</div>
+{% endblock %}

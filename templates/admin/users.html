@@ -18,17 +18,21 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#signup-requests" type="button">
                     Sign-up Requests
-                    <span class="badge bg-danger">3</span>
+                    {% if signup_requests.count > 0 %}
+                        <span class="badge bg-danger">{{ signup_requests.count }}</span>
+                    {% endif %}
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#users" type="button">
                     Users
+                    <span class="badge bg-secondary">{{ users.count }}</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#groups" type="button">
                     Groups
+                    <span class="badge bg-secondary">{{ groups.count }}</span>
                 </button>
             </li>
         </ul>
@@ -38,8 +42,35 @@
             <div class="tab-pane fade show active" id="signup-requests">
                 <div class="card">
                     <div class="card-body">
-                        <p class="text-muted">Pending user sign-up requests</p>
-                        <!-- TODO: List sign-up requests -->
+                        {% if signup_requests.count > 0 %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Username</th>
+                                            <th>Email</th>
+                                            <th>Requested</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for user in signup_requests %}
+                                        <tr>
+                                            <td>{{ user.username }}</td>
+                                            <td>{{ user.email }}</td>
+                                            <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-success">Approve</button>
+                                                <button class="btn btn-sm btn-danger">Reject</button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No pending sign-up requests</p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -48,8 +79,25 @@
             <div class="tab-pane fade" id="users">
                 <div class="card">
                     <div class="card-body">
-                        <p class="text-muted">Manage existing users</p>
-                        <!-- TODO: List users -->
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Email</th>
+                                        <th>Groups</th>
+                                        <th>Status</th>
+                                        <th>Last Login</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users %}
+                                        {% include 'admin/partials/user_row.html' %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -58,12 +106,42 @@
             <div class="tab-pane fade" id="groups">
                 <div class="card">
                     <div class="card-body">
-                        <p class="text-muted">Manage user groups and capabilities</p>
-                        <!-- TODO: List groups -->
+                        <button class="btn btn-primary mb-3">
+                            <i class="bi bi-plus-circle"></i> Create New Group
+                        </button>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Group Name</th>
+                                        <th>Members</th>
+                                        <th>Permissions</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for group in groups %}
+                                    <tr>
+                                        <td><strong>{{ group.name }}</strong></td>
+                                        <td>{{ group.user_set.count }} user{{ group.user_set.count|pluralize }}</td>
+                                        <td>{{ group.permissions.count }} permission{{ group.permissions.count|pluralize }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary">Edit</button>
+                                            <button class="btn btn-sm btn-danger">Delete</button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Modal Container for HTMX -->
+<div id="modal-container"></div>
 {% endblock %}

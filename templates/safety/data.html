@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Safety Data - MAST GUI{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" style="color: white;">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="#" style="color: white;">Safety</a></li>
+    <li class="breadcrumb-item active" style="color: white;">Data</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2>Safety Data</h2>
+    <p class="text-muted">TODO: Load safety data from API and display as collapsible JSON trees</p>
+</div>
+{% endblock %}

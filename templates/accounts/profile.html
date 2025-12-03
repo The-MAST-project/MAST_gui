@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile - MAST GUI{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" style="color: white;">Dashboard</a></li>
+    <li class="breadcrumb-item active" style="color: white;">Profile</li>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2 class="mb-4">User Profile</h2>
+            
+            <!-- User Summary Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-person-circle"></i> User Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Username:</div>
+                        <div class="col-md-8">{{ user.username }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Full Name:</div>
+                        <div class="col-md-8">{{ user.first_name|default:"Not provided" }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Email:</div>
+                        <div class="col-md-8">{{ user.email|default:"Not provided" }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Authentication:</div>
+                        <div class="col-md-8">
+                            <span class="badge bg-primary">{{ auth_origin }}</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 fw-bold">Groups:</div>
+                        <div class="col-md-8">
+                            {% for group in groups %}
+                                <span class="badge bg-info me-1">{{ group.name }}</span>
+                            {% empty %}
+                                <span class="text-muted">No groups</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Capabilities Card -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-shield-check"></i> Capabilities</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;" class="text-center">Status</th>
+                                <th>Capability</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cap in capabilities %}
+                            <tr>
+                                <td class="text-center">
+                                    {% if cap.has_permission %}
+                                        <i class="bi bi-check-circle-fill text-success" style="font-size: 1.2rem;"></i>
+                                    {% else %}
+                                        <i class="bi bi-x-circle-fill text-muted" style="font-size: 1.2rem;"></i>
+                                    {% endif %}
+                                </td>
+                                <td>{{ cap.name }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

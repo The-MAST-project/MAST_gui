@@ -4,7 +4,7 @@
 
 **Project Name:** MAST_gui 
 **Full Name:** Multiple Aperture Spectroscopic Telescope - Web GUI 
-**Motto:** MASTers of Spectra 
+**Motto:**  Spectra MASTers 
 **Technology Stack:** Django + HTMX + Bootstrap 5 + Alpine.js + JS9
 
 -----
@@ -102,7 +102,7 @@ ControlApi (FastAPI on mast-*-control)
 - **Policy enforcement**: Business logic centralized (e.g., prevent conflicting observations)
 
 **Implementation:**
-- GUI uses `common/api.py` ControlApi class
+- GUI uses `common/api.py` ControllerApi class
 - All API calls return `CanonicalResponse` (defined in MAST_common)
 - Backend endpoints marked with `@gui_endpoint(capability='...')` decorator
 - GUI enforces access via `@proxy_backend` decorator on views
@@ -178,6 +178,7 @@ ControlApi (FastAPI on mast-*-control)
      - Group management
    - Resources (Netdata monitoring)
      - iframe: `http://mast-wis-control:19999`
+     - **Note**: Internal network access, bypasses HTTP_PROXY/HTTPS_PROXY
 
 **Note**: All sidebar entries with sub-entries appear initially as collapsed
 

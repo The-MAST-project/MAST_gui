@@ -5,7 +5,7 @@ from . import views
 app_name = 'units'
 
 urlpatterns = [
-    path('', views.unit_list, name='list'),
+    path('', views.units_list, name='list'),
     path('<str:unit_name>/', views.unit_detail, name='detail'),
-    path('<str:unit_name>/status/', views.unit_status, name='status'),
+    path('<str:unit_name>/power_switch/set_outlet/<str:outlet_id>/toggle', views.toggle_outlet, name='toggle_outlet'),
 ]
