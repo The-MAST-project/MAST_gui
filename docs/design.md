@@ -351,387 +351,1000 @@ Each component has `endpoint_status()` returning:
 
 -----
 
-## Plans Page
+## Plans & Assignments System
 
 ### Overview
 
-The Plans page displays and manages observation tasks stored as TOML files. Tasks are categorized into containers:
-- **Pending**: Submitted tasks awaiting assignment
-- **Assigned**: Tasks assigned to units but not yet executing
-- **In Progress**: Currently executing task (max 1)
-- **Completed**: Successfully finished tasks
-- **Failed**: Failed task executions
+The MAST observation system separates **scientific goals** (Plans) from **execution attempts** (Assignments):
 
-### Pydantic Models
+- **Plans**: Persistent entities defining **what** to observe (target, constraints, requirements)
+- **Assignments**: Transient execution wrappers defining **how** observations are attempted (unit allocations, timing)
 
-Tasks are built from several Pydantic models in `common/`:
+**Key Principle**: Plans survive assignment failures and can be rescheduled into new assignments with different resource allocations.
 
-**Primary Model:**
-- `TaskModel` (common/tasks/models.py) - Main task container
+**Relationship**: 
+- **One plan = One target** (1:1 relationship between plan and target)
+- **One assignment = Multiple plans** (1:N relationship between assignment and plans)
+- Plans can participate in multiple assignments over time
+- Failed plans automatically return to eligible state for rescheduling
 
-**Supporting Models:**
-- `TaskSettingsModel` (common/models/assignments.py) - Task metadata
-- `TargetModel` (common/models/assignments.py) - RA/Dec coordinates
-- `SpectrographModel` (common/models/spectrographs.py) - Spec configuration
-- `ConstraintsModel` (common/models/constraints.py) - Observing constraints
-- `EventModel` (common/tasks/models.py) - Audit events
+### Architecture Flow
 
-**Key Fields from TaskSettingsModel:**
-```python
-name: str                    # Human-readable task name
-ulid: str                    # Auto-generated unique ID
-file: str                    # Auto-set file path
-quorum: int | None          # Minimum units required (default: 1)
-timeout_to_guiding: int     # Seconds to wait for guiding (default: 300)
-production: bool            # Production vs debug mode
+```
+Researcher creates Plan (M87 observation)
+    ↓
+PlanManager approves Plan
+    ↓
+Scheduler evaluates constraints (moon, airmass, seeing, time window)
+    ↓
+Scheduler creates Assignment (combines multiple plans with current conditions)
+    - Plan A (M87) + Plan B (NGC1234) + Plan C (Crab)
+    - Allocates: wis:w, ns:2, ns:5, ns:7
+    ↓
+Assignment executes (some plans may fail)
+    - Plan A: Succeeded (units reached guiding)
+    - Plan B: Succeeded
+    - Plan C: Failed (guiding timeout)
+    ↓
+Failed plans return to Approved state (eligible for rescheduling)
+Succeeded plans: observations_completed++
+    ↓
+Scheduler creates new Assignment (Plan C + Plan D + Plan E)
 ```
 
-### Task Structure
+---
 
-Tasks are stored as TOML files following the pattern `TSK_<ULID>.toml` with the following sections:
+## Plans
 
-#### [task] Section (Metadata)
+### Concept
 
-```toml
-[task]
-name = 'Sample deepspec assigned task'  # Human-readable name
-quorum = 1                               # Minimum units required
-ulid = "01jj6rzhvkve6ta6xj9jm4cjpw"    # Unique identifier
-file = "/path/to/task.toml"             # Absolute file path
+**A Plan defines one target with observation requirements and constraints.**
+
+- One plan = one target (immutable association)
+- Plans are persistent (survive assignment failures)
+- Plans define scientific goals independent of execution details
+- Plans can be re-observed multiple times (numbered or indefinite)
+- Plans maintain links to all assignment attempts (success and failure)
+
+### Plan Lifecycle
+
+```
+Draft (user editing)
+  ↓ [Submit]
+Submitted (awaiting approval)
+  ↓ [PlanManager approves/rejects]
+Approved (eligible for scheduling) / Rejected
+  ↓ [Scheduler creates assignment]
+Scheduled (included in assignment)
+  ↓ [Assignment executes]
+Succeeded / Failed
+  ↓ [Owner/PlanManager can re-submit]
+Approved (for additional observations)
+  ↓ [When all observations complete]
+Completed (archived)
 ```
 
-#### [unit.X] Sections (Unit Assignments)
+### Plan States
 
-**Single Unit Notation:**
+- **Draft**: User creating/editing, not visible to scheduler
+- **Submitted**: Awaiting review by PlanManager
+- **Approved**: Eligible for scheduling by scheduler
+- **Rejected**: Declined by PlanManager (with reasons)
+- **Scheduled**: Currently included in an active assignment
+- **Succeeded**: Observation completed successfully (linked to assignment)
+- **Failed**: Assignment attempt failed (linked to assignment)
+- **Completed**: All requested observations finished (archived)
+
+**State Transitions After Assignment:**
+- **Assignment succeeds** → Plan moves to `Succeeded`
+  - `observations_completed` incremented
+  - Link to successful assignment added to `assignment_history`
+  - If `observations_completed < observations_requested` → Plan returns to `Approved` (eligible for more observations)
+  - If `observations_completed >= observations_requested` → Plan moves to `Completed` (archived)
+  
+- **Assignment fails** → Plan moves to `Failed`
+  - Link to failed assignment added to `assignment_history`
+  - Plan **automatically** returns to `Approved` (eligible for rescheduling)
+  - Merit may be raised (prioritizes retry)
+
+### Plan TOML Structure
+
+**File Pattern**: `PLN_<ULID>.toml`
+
+**Location**: `/data/plans/<status>/PLN_<ULID>.toml`
+
 ```toml
-[unit.w]              # Unit 'w' at local site
-ra = '12:34:56.789'   # Sexagesimal notation (HH:MM:SS.sss)
-dec = -23.45          # Decimal degrees
-```
+[plan]
+ulid = "01kk6rzhvkve6ta6xj9jm4cjpw"
+name = "M87 Deep Spectroscopy"
+owner = "john.doe"
+merit = 5
+status = "approved"  # draft/submitted/approved/rejected/scheduled/succeeded/failed/completed
+quorum = 3  # Minimum operational units required
+timeout_to_guiding = 600  # Seconds for units to reach guiding state
+observations_requested = 3  # Number of observations requested (null = indefinite)
+observations_completed = 1  # Number successfully completed
 
-**Multi-Unit Notation:**
-```toml
-[unit.'wis:w ns:north:2 ns:2-5,7,8-10 nam:17']
-ra = '12 34 56.789'   # Space-separated sexagesimal
-dec = '+45.67'        # Decimal with sign
-```
+# Timestamps (state snapshots)
+created_at = "2024-12-01T10:00:00Z"
+created_by = "john.doe"
+submitted_at = "2024-12-01T12:30:00Z"
+approved_at = "2024-12-01T14:00:00Z"
+approved_by = "admin"
+last_modified = "2024-12-06T23:30:00Z"
 
-**Coordinate Formats:**
-- **RA**: Sexagesimal with `:` or space separators (`12:34:56.789` or `12 34 56.789`) OR decimal degrees
-- **Dec**: Decimal degrees with optional `+`/`-` sign (-90 to +90)
+# Links to assignments that attempted this plan
+assignment_history = ["01mm...", "01nn...", "01oo..."]
 
-**Unit Spec Syntax:**
-- `unit_name` → Local site unit
-- `site:unit` → Unit at specific site
-- `site:building:unit` → Unit at site in building
-- `site:2-5,7,8-10` → Range and list notation
+[target]
+name = "M87"
+ra = "12:30:49.4"  # Sexagesimal or decimal degrees
+dec = "+12:23:28"   # Decimal degrees
 
-#### [spec] Section (Spectrograph Settings)
-
-**Common Fields:**
-```toml
 [spec]
-instrument = 'deepspec'  # or 'highspec'
-exposure = 12.5          # seconds
-```
+instrument = "deepspec"  # or "highspec"
+exposure = 300.0  # seconds
 
-#### [spec.camera] Section (Camera Configuration)
-
-**HighSpec (Single Camera):**
-```toml
 [spec.camera]
-binning = { x=1, y=2 }
-temperature = { set_point = -15 }        # Celsius
-shutter = { opening_time=20, closing_time=30 }  # milliseconds
-em_gain = 150
-pre_amp_gain = 0
-```
+binning = { x=2, y=3 }
+# ... other camera settings ...
 
-**DeepSpec (Multi-Band Camera):**
-```toml
-[spec.camera]
-binning = { x=2, y=3 }    # Default for all bands
-
-[spec.camera.U]            # Band-specific override
+[spec.camera.U]
+# Band-specific overrides for deepspec
 binning = { x=1 }
-crop = { col=200, line=100 }
 
-[spec.camera.X]            # Another band
-binning = { x=1, y=2 }
+[constraints]
+# All optional - missing constraint = no restriction
+
+[constraints.moon]
+max_phase = 0.3        # 0=new, 1=full
+min_distance = 30.0    # degrees from target
+
+[constraints.airmass]
+max = 2.0              # Maximum airmass
+
+[constraints.seeing]
+max = 2.5              # arcseconds
+
+[constraints.time_window]
+start = "2024-12-01T00:00:00Z"
+end = "2024-12-31T23:59:59Z"
 ```
 
-**DeepSpec Bands**: U, B, V, R, I, X (6 bands total)
+**Note**: No `[[event]]` sections in TOML - detailed events stored in MongoDB.
 
-#### [spec.calibration] Section
+---
+
+## Assignments
+
+### Concept
+
+**An Assignment is an execution wrapper combining multiple plans that satisfy current constraints.**
+
+- One assignment = multiple plans (targets)
+- Assignments are transient (created, executed, archived)
+- Assignments allocate specific units to specific plans
+- Assignments execute when conditions permit
+- Assignment success/failure tracked at both assignment and individual plan level
+
+### Plan-Assignment Relationship
+
+**Key Points:**
+- Plans are **reusable** - same plan can be in multiple assignments over time
+- Assignments **combine** plans that share:
+  - Compatible time windows
+  - Similar constraints (moon, airmass, seeing)
+  - Same instrument requirements
+  - Current favorable conditions
+
+**Example Timeline:**
+```
+Night 1:
+  Assignment #42: [Plan A, Plan B, Plan C]
+    → Plan A: Succeeded
+    → Plan B: Succeeded  
+    → Plan C: Failed (timeout)
+
+Night 2:
+  Assignment #43: [Plan C, Plan D]  # Plan C rescheduled
+    → Plan C: Succeeded
+    → Plan D: Failed (spec failure)
+
+Night 3:
+  Assignment #44: [Plan D, Plan E, Plan F]  # Plan D rescheduled
+    → All succeeded
+```
+
+### Assignment Lifecycle
+
+```
+Created (by scheduler)
+  ↓
+InProgress (executing)
+  ↓
+Completed (with individual plan results)
+```
+
+**No separate "Failed" state** - assignments always reach `Completed` with individual plan success/failure tracked.
+
+### Assignment Execution Logic
+
+**Pre-Execution Checks:**
+
+1. **Spectrograph check**:
+   - If spec NOT operational → Assignment fails immediately
+   - All plans in assignment → Failed
+   - Plans return to Approved state
+
+2. **Unit allocation**:
+   - Each plan attempts to acquire its required quorum of units
+   - Units must reach "Guiding" state within `timeout_to_guiding`
+   
+3. **Assignment viability**:
+   - If **zero plans** achieve quorum → Assignment ends, all plans Failed
+   - If **at least one plan** achieves quorum → Assignment proceeds
+
+**During Execution:**
+
+**Unit timeout behavior:**
+- Unit has `timeout_to_guiding` seconds to reach "Guiding" state
+- If timeout expires:
+  - Unit removed from operational count for that plan
+  - Remaining units recounted
+  - If remaining ≥ quorum → plan proceeds with fewer units
+  - If remaining < quorum → plan fails
+
+**Spectrograph failure:**
+- If spec fails during observation → **all plans in assignment fail immediately**
+- Partial observations discarded
+- All plans return to Approved state
+
+**Plan-level outcomes within assignment:**
+- ✅ **Succeeded**: Units reached guiding, observation completed
+- ❌ **Failed (quorum)**: Insufficient units operational at start
+- ❌ **Failed (timeout)**: Units didn't reach guiding in time
+- ❌ **Failed (spec)**: Spectrograph failure during observation
+
+**Post-Execution:**
+
+For each plan in assignment:
+1. Update plan status (Succeeded/Failed)
+2. Add assignment ULID to plan's `assignment_history`
+3. If succeeded: increment `observations_completed`
+4. If failed OR (succeeded but more observations requested): return plan to Approved state
+5. Update plan TOML file
+6. Log detailed events to MongoDB
+
+### Assignment TOML Structure
+
+**File Pattern**: `ASN_<ULID>.toml`
+
+**Location**: `/data/assignments/<status>/ASN_<ULID>.toml`
 
 ```toml
-[spec.calibration]
-lamp_on = true
-filter = 'ND1000'    # or 'ND4000', etc.
+[assignment]
+ulid = "01mm6rzhvkve6ta6xj9jm4cjpw"
+status = "completed"  # created/inprogress/completed
+
+# Timestamps (execution record)
+created = "2024-12-05T22:00:00Z"
+scheduled_start = "2024-12-05T22:00:00Z"
+actual_start = "2024-12-05T22:00:15Z"
+completed = "2024-12-05T22:15:45Z"
+duration = 945  # seconds
+
+# Plans included in this assignment
+plan_ulids = ["01kk...", "01ll...", "01nn..."]
+
+[spectrograph]
+instrument = "deepspec"
+operational_at_start = true
+failed_during_observation = false
+failure_time = null  # timestamp if failed
+failure_reason = null  # error message if failed
+
+# Individual plan results
+[[plan_result]]
+plan_ulid = "01kk..."  # M87
+plan_name = "M87 Deep Spectroscopy"
+status = "succeeded"
+units_assigned = ["wis:w", "ns:2", "ns:5"]
+units_reached_guiding = ["wis:w", "ns:2", "ns:5"]
+units_timed_out = []
+observation_start = "2024-12-05T22:10:30Z"
+observation_end = "2024-12-05T22:15:30Z"
+quorum_required = 3
+quorum_achieved = 3
+data_path = "/data/observations/2024-12-05/ASN_01mm/PLN_01kk"
+
+[[plan_result]]
+plan_ulid = "01ll..."  # NGC1234
+plan_name = "NGC1234 Survey"
+status = "succeeded"
+units_assigned = ["ns:3", "ns:7"]
+units_reached_guiding = ["ns:3", "ns:7"]
+units_timed_out = []
+observation_start = "2024-12-05T22:05:00Z"
+observation_end = "2024-12-05T22:10:00Z"
+quorum_required = 2
+quorum_achieved = 2
+data_path = "/data/observations/2024-12-05/ASN_01mm/PLN_01ll"
+
+[[plan_result]]
+plan_ulid = "01nn..."  # Crab Nebula
+plan_name = "Crab Nebula Multi-Unit"
+status = "failed"
+failure_reason = "guiding_timeout"
+units_assigned = ["ns:1", "ns:4", "ns:8", "ns:10", "ns:12"]
+units_reached_guiding = ["ns:1", "ns:4"]
+units_timed_out = ["ns:8", "ns:10", "ns:12"]
+timeout_period = 600  # seconds
+quorum_required = 5
+quorum_achieved = 2
+data_path = null  # no data collected
 ```
 
-#### [event] Section (Audit Trail)
+---
 
-```toml
-[event]
-when = "2025-02-12T17:49:42.641525"  # ISO 8601 timestamp
-what = "created"                      # Event type
-```
+## Event Logging: Hybrid Approach
 
-### Layout
+### Design Rationale
 
-- **Tabbed interface**: One tab per container (Pending, Assigned, In Progress, Failed, Completed)
-- **Accordion list** within each tab
-- Tasks sorted by creation date (newest first)
+**Problem**: Should events be stored in TOML files or MongoDB?
 
-### Task Accordion Item
+**Solution**: Hybrid approach balancing self-contained snapshots with queryable audit trails.
 
-**Collapsed view:**
-```
-┌─────────────────────────────────────────────────┐
-│ ▶ Sample deepspec assigned task                │
-│   Units: w | Instrument: deepspec | Exp: 12.5s │
-│   Created: 2025-02-12 17:49                    │
-└─────────────────────────────────────────────────┘
-```
+### Storage Strategy
 
-**Expanded - View Mode:**
-```
-┌─────────────────────────────────────────────────┐
-│ ▼ Sample deepspec assigned task                │
-│                                                  │
-│ ┌─ Task Information ──────────────────────────┐ │
-│ │ Name: Sample deepspec assigned task         │ │
-│ │ ULID: 01jj6r...                             │ │
-│ │ Quorum: 1 unit(s)                           │ │
-│ │ File: /path/to/task.toml                    │ │
-│ │ Created: 2025-02-12 17:49:42                │ │
-│ └─────────────────────────────────────────────┘ │
-│                                                  │
-│ ┌─ Unit Assignments ──────────────────────────┐ │
-│ │ • Unit w                                     │ │
-│ │   RA: 12:34:56.789                          │ │
-│ │   Dec: -23.45°                              │ │
-│ └─────────────────────────────────────────────┘ │
-│                                                  │
-│ ┌─ Spectrograph ──────────────────────────────┐ │
-│ │ Instrument: deepspec                         │ │
-│ │ Exposure: 12.5 seconds                      │ │
-│ └─────────────────────────────────────────────┘ │
-│                                                  │
-│ ┌─ Camera (Default) ──────────────────────────┐ │
-│ │ Binning: 2×3                                │ │
-│ └─────────────────────────────────────────────┘ │
-│                                                  │
-│ ┌─ Camera Overrides ──────────────────────────┐ │
-│ │ Band U: binning 1×3, crop 200×100          │ │
-│ │ Band X: binning 1×2                         │ │
-│ └─────────────────────────────────────────────┘ │
-│                                                  │
-│ ┌─ Calibration ───────────────────────────────┐ │
-│ │ Lamp: ON                                    │ │
-│ │ Filter: ND1000                              │ │
-│ └─────────────────────────────────────────────┘ │
-│                                                  │
-│ [Edit] [Delete] [Execute]                       │
-└─────────────────────────────────────────────────┘
-```
+**TOML Files (State Snapshots)**:
+- ✅ Store current state, not event history
+- ✅ Timestamps for major lifecycle changes
+- ✅ Self-contained backups (TOML files include all needed info)
+- ✅ Fast UI loading (parse one file)
+- ✅ Links to related entities (`assignment_history`)
 
-**Button Visibility:**
-- **Edit**: Requires `canChangeConfiguration`
-- **Delete**: Requires `canChangeConfiguration` + confirmation dialog
-- **Execute**: Only for Assigned tasks, requires `canUseControls`
+**MongoDB (Event Stream)**:
+- ✅ Store detailed event-by-event history
+- ✅ Granular actions (user edits, unit timeouts, spec failures)
+- ✅ Cross-entity queries ("What happened today?")
+- ✅ Analytics and reporting
+- ✅ Real-time monitoring data
 
-**Expanded - Edit Mode:**
-
-Form generation process:
-
-1. **Load task from TOML** → `TaskModel.from_toml_file()`
-2. **Extract Pydantic models** → `task.task`, `task.unit`, `task.model_extra['spec']`
-3. **Generate Django forms** → One per section
-4. **Render with HTMX** → In-place editing
-5. **Validate on submit** → Server-side Pydantic validation
-6. **Update TOML file** → `tomlkit` preserves structure
-
-**Form Sections:**
+### MongoDB Event Schema
 
 ```python
-# utils/forms.py
-class TaskMetadataForm(forms.Form):
-    """Generated from TaskSettingsModel"""
-    name = forms.CharField(max_length=200)
-    quorum = forms.IntegerField(min_value=1, initial=1)
-    # ULID and file are read-only
-
-class UnitAssignmentFormSet(forms.BaseFormSet):
-    """Dynamic formset for multiple units"""
-    # Each form has: unit_spec, ra, dec
-
-class SpectrographForm(forms.Form):
-    """Generated from SpectrographModel, instrument-dependent"""
-    instrument = forms.ChoiceField(choices=[('highspec', 'HighSpec'), ('deepspec', 'DeepSpec')])
-    exposure = forms.FloatField(min_value=0.001)
-    # Additional fields loaded dynamically based on instrument
-
-class CameraSettingsForm(forms.Form):
-    """Instrument-dependent, generated from camera models"""
-    # For highspec: single set of fields
-    # For deepspec: tabbed with common + per-band overrides
-```
-
-**HTMX pattern for instrument switching:**
-```html
-<select name="instrument" 
-        hx-get="{% url 'load_camera_form' %}"
-        hx-target="#camera-settings"
-        hx-trigger="change">
-  <option value="highspec">HighSpec</option>
-  <option value="deepspec">DeepSpec</option>
-</select>
-
-<div id="camera-settings">
-  <!-- Camera form loaded here via HTMX -->
-</div>
-```
-
-### Form Validation
-
-**Client-side (Alpine.js):**
-
-```javascript
+# Collection: events
 {
-  // ...existing validation code...
-  
-  instrument_changed() {
-    // Clear instrument-specific fields
-    // Trigger HTMX to load new form
+  "_id": ObjectId("..."),
+  "timestamp": datetime,
+  "event_type": str,  # "plan_created", "plan_approved", "unit_timeout", "plan_failed", etc.
+  "entity_type": str,  # "plan" or "assignment"
+  "entity_ulid": str,
+  "actor": str,  # username or "system" or "scheduler"
+  "related_entities": {
+    "plan_ulid": str,
+    "assignment_ulid": str,
+    "unit": str
   },
-  
-  band_override_changed(band) {
-    // Toggle visibility of band-specific fields
+  "details": dict  # Event-specific data
+}
+```
+
+### Example Events
+
+**Plan created:**
+```python
+{
+  "timestamp": "2024-12-01T10:00:00Z",
+  "event_type": "plan_created",
+  "entity_type": "plan",
+  "entity_ulid": "01kk...",
+  "actor": "john.doe",
+  "details": {
+    "target_name": "M87",
+    "instrument": "deepspec",
+    "quorum": 3
   }
 }
 ```
 
-**Server-side Process:**
+**Plan succeeded in assignment:**
+```python
+{
+  "timestamp": "2024-12-05T22:15:30Z",
+  "event_type": "plan_succeeded",
+  "entity_type": "plan",
+  "entity_ulid": "01kk...",
+  "actor": "system",
+  "related_entities": {
+    "plan_ulid": "01kk...",
+    "assignment_ulid": "01mm..."
+  },
+  "details": {
+    "units_used": ["wis:w", "ns:2", "ns:5"],
+    "observation_duration": 300,
+    "data_path": "/data/observations/2024-12-05/ASN_01mm/PLN_01kk"
+  }
+}
+```
+
+**Plan failed (timeout) in assignment:**
+```python
+{
+  "timestamp": "2024-12-05T22:10:00Z",
+  "event_type": "plan_failed",
+  "entity_type": "plan",
+  "entity_ulid": "01nn...",
+  "actor": "system",
+  "related_entities": {
+    "plan_ulid": "01nn...",
+    "assignment_ulid": "01mm..."
+  },
+  "details": {
+    "failure_reason": "guiding_timeout",
+    "units_assigned": 5,
+    "units_guiding": 2,
+    "units_timed_out": ["ns:8", "ns:10", "ns:12"],
+    "timeout_period": 600
+  }
+}
+```
+
+**Unit timeout during assignment:**
+```python
+{
+  "timestamp": "2024-12-05T22:10:00Z",
+  "event_type": "unit_timeout",
+  "entity_type": "assignment",
+  "entity_ulid": "01mm...",
+  "actor": "system",
+  "related_entities": {
+    "plan_ulid": "01nn...",
+    "assignment_ulid": "01mm...",
+    "unit": "ns:10"
+  },
+  "details": {
+    "timeout_period": 600,
+    "elapsed": 600,
+    "last_status": "acquiring",
+    "target": "Crab Nebula"
+  }
+}
+```
+
+**Spectrograph failure during assignment:**
+```python
+{
+  "timestamp": "2024-12-05T22:12:30Z",
+  "event_type": "spectrograph_failed",
+  "entity_type": "assignment",
+  "entity_ulid": "01mm...",
+  "actor": "system",
+  "details": {
+    "instrument": "deepspec",
+    "error_message": "Communication lost with spec",
+    "affected_plans": ["01kk...", "01ll...", "01nn..."],
+    "observations_in_progress": 2
+  }
+}
+```
+
+### Implementation Guidelines
+
+**When to write TOML:**
+- Plan state changes (created, approved, succeeded, failed, completed)
+- Assignment creation and completion
+- Metadata updates (`observations_completed`, `merit`, `assignment_history`)
+
+**When to write MongoDB:**
+- All granular events (unit timeouts, user actions, edits, approvals)
+- Real-time monitoring data
+- Audit trail for compliance
+- Cross-entity relationships
+
+**Consistency mechanism:**
+```python
+def update_plan_after_assignment(plan_ulid, assignment_ulid, outcome, details):
+    # 1. Update TOML (source of truth for state)
+    plan = Plan.from_toml(f"PLN_{plan_ulid}.toml")
+    
+    if outcome == "succeeded":
+        plan.status = "succeeded"
+        plan.observations_completed += 1
+        # Check if more observations needed
+        if (plan.observations_requested is not None and 
+            plan.observations_completed >= plan.observations_requested):
+            plan.status = "completed"
+        else:
+            plan.status = "approved"  # Ready for more observations
+    else:
+        plan.status = "failed"
+        # Auto-return to approved
+        plan.status = "approved"
+        plan.merit += 1  # Raise priority
+    
+    plan.assignment_history.append(assignment_ulid)
+    plan.last_modified = datetime.now()
+    plan.to_toml(f"PLN_{plan_ulid}.toml")
+    
+    # 2. Log detailed event to MongoDB
+    mongo.events.insert_one({
+        "timestamp": datetime.now(),
+        "event_type": f"plan_{outcome}",
+        "entity_type": "plan",
+        "entity_ulid": plan_ulid,
+        "actor": "system",
+        "related_entities": {
+            "plan_ulid": plan_ulid,
+            "assignment_ulid": assignment_ulid
+        },
+        "details": details
+    })
+```
+
+---
+
+## Scheduler
+
+### Behavior
+
+**Planning Phase (before observing night):**
+- Evaluates all approved plans against forecasted conditions
+- Creates time-ordered projection of proposed assignments
+- Example: "20:00 Assignment A (Plans 1,2,3), 22:00 Assignment B (Plans 4,5)"
+- Projection is a **guideline**, not committed execution
+
+**Real-Time Execution:**
+- Only **one assignment in-progress** at a time
+- After assignment completes:
+  - Updates all plan states (succeeded/failed)
+  - Re-evaluates current conditions (weather, seeing, moon)
+  - Creates next assignment based on updated constraints
+  - May deviate from projected schedule if conditions changed
+
+### Merit System
+
+- **Purpose**: Tiebreaker when multiple plans equally satisfy constraints
+- **Initial value**: User-settable (1-10 scale, default=5)
+- **Auto-adjustment**: Merit raised (+1) after assignment failure (prioritizes retry)
+- **Decay**: Merit may decrease over time if repeatedly scheduled but not executed
+- **Not fully defined**: Exact algorithm TBD
+
+### Constraint Evaluation
+
+Plans with optional constraints:
+- **Missing constraint** = no restriction (soft)
+- **Present constraint** = must satisfy (hard)
+
+Example:
+```toml
+[constraints]
+moon.max_phase = 0.3      # HARD: moon must be < 30% illuminated
+airmass.max = 2.0         # HARD: airmass < 2.0 required
+# seeing.max not specified # SOFT: any seeing acceptable
+```
+
+### Assignment Creation Logic
 
 ```python
-# views.py
-def save_task(request, ulid):
-    # 1. Load existing task
-    task = TaskModel.from_toml_file(task_path)
+def create_assignment(eligible_plans, current_conditions):
+    # 1. Filter plans by hard constraints
+    viable_plans = []
+    for plan in eligible_plans:
+        if satisfies_constraints(plan, current_conditions):
+            viable_plans.append(plan)
     
-    # 2. Validate forms
-    metadata_form = TaskMetadataForm(request.POST)
-    unit_formset = UnitAssignmentFormSet(request.POST)
-    spec_form = SpectrographForm(request.POST)
+    # 2. Group by instrument (can't mix deepspec and highspec)
+    deepspec_plans = [p for p in viable_plans if p.spec.instrument == "deepspec"]
+    highspec_plans = [p for p in viable_plans if p.spec.instrument == "highspec"]
     
-    if all([f.is_valid() for f in [metadata_form, unit_formset, spec_form]]):
-        # 3. Update TOML structure
-        toml_doc = tomlkit.load(task_path)
-        
-        # 4. Update sections
-        toml_doc['task']['name'] = metadata_form.cleaned_data['name']
-        # ... update other sections ...
-        
-        # 5. Validate with Pydantic (full model)
-        try:
-            updated_task = TaskModel(**toml_doc)
-        except ValidationError as e:
-            # Return errors to form
-            return render_errors(e)
-        
-        # 6. Write back to file
-        with open(task_path, 'w') as f:
-            f.write(tomlkit.dumps(toml_doc))
-        
-        return redirect('task_detail', ulid=ulid)
+    # 3. Select plans with highest merit (tiebreaker)
+    selected_plans = select_by_merit(deepspec_plans, max_plans=10)
+    
+    # 4. Check resource availability
+    total_required_units = sum(p.quorum for p in selected_plans)
+    if total_required_units > available_units():
+        # Reduce plan set
+        selected_plans = optimize_plan_set(selected_plans)
+    
+    # 5. Create assignment
+    assignment = Assignment(
+        plan_ulids=[p.ulid for p in selected_plans],
+        instrument=selected_plans[0].spec.instrument,
+        created=datetime.now()
+    )
+    
+    return assignment
 ```
 
-**Validation Errors Display:**
+---
 
-```html
-<!-- Per-field errors -->
-{% if form.field.errors %}
-  <div class="invalid-feedback d-block">
-    {{ form.field.errors|join:", " }}
-  </div>
-{% endif %}
+## Plans Page
 
-<!-- Global errors from Pydantic -->
-{% if pydantic_errors %}
-  <div class="alert alert-danger">
-    <ul>
-      {% for error in pydantic_errors %}
-        <li>{{ error.loc|join:" → " }}: {{ error.msg }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-{% endif %}
+### UI Structure
+
+**Tabs:**
+- **My Plans**: Current user's plans (if has `canManagePlans`)
+- **All Plans**: All plans (visible to all with `canView`)
+- **Filter dropdowns**: Status, Instrument, Owner, Date range
+
+### Accordion Display
+
+**Collapsed View:**
+```
+[ULID icon] PLN-01kk... | M87 (12:30:49, +12:23:28) | john.doe | Approved | Merit: 5 | Obs: 1/3
 ```
 
-### Multi-Unit Spec Parser
+**Expanded View:**
+```
+Plan: M87 Deep Spectroscopy (PLN-01kk...)
 
-For advanced users, provide text area for multi-unit specs:
+━━━ Target Information ━━━
+Name: M87
+RA: 12:30:49.4
+Dec: +12:23:28
+
+━━━ Observation Requirements ━━━
+Instrument: deepspec
+Exposure: 300s
+Quorum: 3 units
+Timeout to guiding: 600s
+Observations: 1 of 3 completed
+Merit: 5
+
+━━━ Constraints ━━━
+Moon phase: < 30%
+Moon distance: > 30°
+Airmass: < 2.0
+Seeing: < 2.5"
+Time window: 2024-12-01 to 2024-12-31
+
+━━━ Status ━━━
+Created: 2024-12-01 10:00 by john.doe
+Submitted: 2024-12-01 12:30
+Approved: 2024-12-01 14:00 by admin
+Last modified: 2024-12-06 23:30
+
+━━━ Assignment History ━━━
+• ASN-01mm... (2024-12-05 22:00) - Failed
+  Reason: Guiding timeout (2 of 5 units)
+  [View Details]
+  
+• ASN-01nn... (2024-12-06 23:00) - Succeeded
+  Units: wis:w, ns:2, ns:5
+  Data: /data/observations/2024-12-06/ASN_01nn/PLN_01kk
+  [View Data] [View Details]
+
+[Edit] [Delete] [Re-submit for N observations] [Archive]
+```
+
+**Buttons (permission-based):**
+- **Edit**: Owner or `canManagePlans` (only for Draft/Rejected/Failed plans)
+- **Delete**: Owner or `canManagePlans` + confirmation
+- **Re-submit**: Owner or `canManagePlans` (for Succeeded/Failed plans)
+- **Archive**: Owner or `canManagePlans` (manual completion)
+
+**Re-submission dialog:**
+```
+Re-submit plan "M87 Deep Spectroscopy" for additional observations:
+
+Current: 1 observation completed
+
+○ 1 additional observation (total: 2)
+○ 3 additional observations (total: 4)
+○ 10 additional observations (total: 11)
+○ Indefinite (continue until manually stopped)
+
+[Submit] [Cancel]
+```
+
+### Detailed Event History (Optional Drill-Down)
+
+Clicking "View Details" on assignment loads from MongoDB:
 
 ```
-Input: wis:w ns:north:2 ns:2-5,7,8-10 nam:17
-
-Parsed Result:
-✓ wis:w → Unit w at site WIS
-✓ ns:north:2 → Unit 2 in North building at NS  
-✓ ns:2-5 → Units 2, 3, 4, 5 at NS
-✓ ns:7 → Unit 7 at NS
-✓ ns:8-10 → Units 8, 9, 10 at NS
-✓ nam:17 → Unit 17 at site NAM
-
-Total: 11 units
+━━━ Assignment ASN-01mm Execution Timeline ━━━
+22:00:00 | Assignment created by scheduler
+22:00:15 | Assignment started
+22:00:15 | Plan: M87 - Units assigned: wis:w, ns:2, ns:5, ns:8, ns:10
+22:05:30 | Plan: M87 - Unit ns:2 reached guiding
+22:06:15 | Plan: M87 - Unit wis:w reached guiding
+22:08:45 | Plan: M87 - Unit ns:5 reached guiding
+22:10:00 | Plan: M87 - Unit ns:8 timeout (acquiring → timeout)
+22:10:00 | Plan: M87 - Unit ns:10 timeout (acquiring → timeout)
+22:10:00 | Plan: M87 - Quorum check: 3 of 5 required, 3 achieved ✓
+22:10:30 | Plan: M87 - Observation started
+22:15:30 | Plan: M87 - Observation completed ✓
+22:15:45 | Assignment completed
 ```
 
-**Toggle modes:**
-- Simple mode: Dropdown selectors
-- Advanced mode: Text input with parser
+---
 
-### Task State Transitions
+## Assignments Page
+
+### UI Structure
+
+**Tabs:**
+- **Scheduled**: Created by scheduler, awaiting execution
+- **In Progress**: Currently executing (usually 0 or 1)
+- **Completed**: Finished (with individual plan results)
+
+**Filter dropdowns**: Date range, Instrument, Success/Partial/Failed
+
+### Accordion Display
+
+**Collapsed View:**
+```
+[ULID icon] ASN-01mm... | 2024-12-05 22:00 | 3 plans | Completed | Success: 2, Failed: 1
+```
+
+**Expanded View:**
+```
+Assignment: ASN-01mm6rzhvkve6ta6xj9jm4cjpw
+
+━━━ Execution Summary ━━━
+Created: 2024-12-05 22:00:00
+Started: 2024-12-05 22:00:15
+Completed: 2024-12-05 22:15:45
+Duration: 15m 30s
+Status: Completed
+
+━━━ Spectrograph ━━━
+Instrument: deepspec
+Status at start: Operational ✓
+Status during observation: Operational ✓
+
+━━━ Plan Results ━━━
+
+[✓] M87 Deep Spectroscopy (PLN-01kk...)
+    Owner: john.doe
+    Units assigned: wis:w, ns:2, ns:5, ns:8, ns:10 (5 total)
+    Units guiding: wis:w, ns:2, ns:5 (3 of 3 required)
+    Units timeout: ns:8, ns:10
+    Observation: 22:10:30 - 22:15:30 (5m 0s)
+    Data: /data/observations/2024-12-05/ASN_01mm/PLN_01kk
+    [View Plan] [View Data]
+
+[✓] NGC1234 Survey (PLN-01ll...)
+    Owner: jane.smith
+    Units assigned: ns:3, ns:7 (2 total)
+    Units guiding: ns:3, ns:7 (2 of 2 required)
+    Observation: 22:05:00 - 22:10:00 (5m 0s)
+    Data: /data/observations/2024-12-05/ASN_01mm/PLN_01ll
+    [View Plan] [View Data]
+
+[✗] Crab Nebula Multi-Unit (PLN-01nn...)
+    Owner: bob.jones
+    Failure reason: Guiding timeout
+    Units assigned: ns:1, ns:4, ns:8, ns:10, ns:12 (5 total)
+    Units guiding: ns:1, ns:4 (2 of 5 required)
+    Units timeout: ns:8, ns:10, ns:12
+    Timeout period: 600s
+    
+    → Plan returned to Approved state for rescheduling
+    [View Plan]
+
+[View Complete Execution Log]
+```
+
+**No edit/delete buttons** - assignments are immutable execution records
+
+### Detailed Execution Log (Optional Drill-Down)
+
+Loads from MongoDB events:
 
 ```
-Created → Pending → Assigned → In Progress → Completed
-                                          ↘ Failed
+━━━ Complete Execution Timeline ━━━
+22:00:00 | Assignment created by scheduler
+         | Plans included: M87, NGC1234, Crab Nebula
+         | Instrument: deepspec
+         | Units available: 12 operational
+
+22:00:15 | Assignment execution started
+         | Spectrograph status: operational ✓
+
+22:00:15 | Plan: M87 - Unit allocation started
+         | Assigned: wis:w, ns:2, ns:5, ns:8, ns:10
+
+22:00:15 | Plan: NGC1234 - Unit allocation started
+         | Assigned: ns:3, ns:7
+
+22:00:15 | Plan: Crab Nebula - Unit allocation started
+         | Assigned: ns:1, ns:4, ns:8, ns:10, ns:12
+
+[Continues with detailed timeline...]
 ```
 
-**File Movement:**
-- Task moves between folders as state changes
-- ULID remains constant
-- Original file moved, not copied
+---
 
-### Required Models to Review
+## Permissions & Capabilities
 
-To complete form generation, need Pydantic models from `common/`:
+### New Capabilities
 
-1. **`common/models/assignments.py`**:
-   - `TaskSettingsModel` - Task metadata fields
-   - `TargetModel` - RA/Dec with validators
-   - `UnitAssignmentModel` - Unit-specific data
-   - `SpectrographAssignmentModel` - Spec assignment data
+**`canManagePlans`**:
+- **Group**: `PlanManagers`
+- **Rights**:
+  - Create, edit, delete own plans
+  - View all plans
+  - Approve/reject submitted plans (if in PlanManagers group)
+  - Edit/delete any plan (if in PlanManagers group)
+  - Re-submit plans for additional observations
 
-2. **`common/models/spectrographs.py`**:
-   - `SpectrographModel` - Top-level spec model
-   - Camera settings models (highspec vs deepspec)
-   - Band-specific models for deepspec
+**`canManageAssignments`**:
+- **Rights**:
+  - View all assignments and detailed execution logs
+  - View assignment execution history
+  - Future: Manually trigger scheduler
+  - No editing of assignment records (immutable history)
 
-3. **`common/models/constraints.py`**:
-   - `ConstraintsModel` - Observing constraints (optional)
+### Viewing Rights
 
-4. **`common/spec.py`**:
-   - `DeepspecBands` - TypeAlias for band names
+**All users with `canView`:**
+- View all plans (read-only)
+- View all assignments (read-only)
+- Cannot create or modify plans/assignments
+- Cannot approve/reject plans
 
-These models should have `json_schema_extra` metadata for:
-- `editable`: bool
-- `ui_widget`: str
-- `ui_group`: str
-- `tooltip`: str
-- `ui_unit`: str
-- `required_capability`: str
+---
+
+## File Organization
+
+```
+/data/
+├── plans/
+│   ├── draft/
+│   │   └── PLN_<ULID>.toml
+│   ├── submitted/
+│   │   └── PLN_<ULID>.toml
+│   ├── approved/
+│   │   └── PLN_<ULID>.toml
+│   ├── rejected/
+│   │   └── PLN_<ULID>.toml
+│   ├── scheduled/
+│   │   └── PLN_<ULID>.toml
+│   ├── succeeded/
+│   │   └── PLN_<ULID>.toml
+│   ├── failed/
+│   │   └── PLN_<ULID>.toml
+│   └── completed/
+│       └── PLN_<ULID>.toml
+│
+├── assignments/
+│   ├── scheduled/
+│   │   └── ASN_<ULID>.toml
+│   ├── inprogress/
+│   │   └── ASN_<ULID>.toml (max 1 file at a time)
+│   └── completed/
+│       └── ASN_<ULID>.toml
+│
+└── observations/
+    └── YYYY-MM-DD/
+        └── ASN_<ULID>/
+            ├── PLN_<ULID>/
+            │   └── [FITS files, logs, etc.]
+            └── assignment_summary.json
+```
+
+**File movement**: Plans/assignments move between folders as state changes, preserving ULID.
+
+---
+
+## Example Workflows
+
+### Workflow 1: Successful Plan Execution
+
+```
+1. User creates plan:
+   - Draft: Target M87, quorum=3, observations_requested=3
+   - Save → PLN_01kk.toml in /data/plans/draft/
+   - MongoDB event: plan_created
+
+2. User submits:
+   - Status: Draft → Submitted
+   - Move to /data/plans/submitted/
+   - MongoDB event: plan_submitted
+
+3. PlanManager approves:
+   - Status: Submitted → Approved
+   - Move to /data/plans/approved/
+   - MongoDB event: plan_approved
+
+4. Night 1 - Scheduler creates assignment:
+   - Conditions: airmass=1.8, moon=45° ✓
+   - Assignment ASN_01mm: Plan A (M87) + Plan B (NGC1234)
+   - Units allocated: wis:w, ns:2, ns:5
+   - Plan A status: Approved → Scheduled
+   - Move PLN_01kk.toml to /data/plans/scheduled/
+
+5. Assignment executes:
+   - Assignment status: Scheduled → InProgress
+   - Units acquire targets
+   - 3 units reach guiding ✓
+   - Observation completes ✓
+   - Data saved to /data/observations/2024-12-05/ASN_01mm/PLN_01kk/
+
+6. Post-execution:
+   - Plan A status: Scheduled → Succeeded
+   - observations_completed: 0 → 1
+   - assignment_history: ["01mm..."]
+   - Since 1 < 3 requested: Status Succeeded → Approved
+   - Move PLN_01kk.toml to /data/plans/approved/ (ready for more)
+   - MongoDB events: plan_succeeded, observation_completed
+   
+7. Night 2 - Plan rescheduled:
+   - Scheduler includes Plan A in new assignment
+   - Process repeats...
+   
+8. After 3rd success:
+   - observations_completed: 3
+   - Since 3 >= 3 requested: Status → Completed
+   - Move to /data/plans/completed/ (archived)
+```
+
+### Workflow 2: Failed Assignment with Recovery
+
+```
+1. Night 1 - Assignment ASN_01nn created:
+   - Plan C (Crab, quorum=5)
+   - Units allocated: ns:1, ns:4, ns:8, ns:10, ns:12
+
+2. Execution starts:
+   - Assignment: Scheduled → InProgress
+   - Plan C: Approved → Scheduled
+   - 5 units attempt guiding
+
+3. Guiding timeout (600s):
+   - Only 2 units reach guiding: ns:1, ns:4
+   - 3 units timeout: ns:8, ns:10, ns:12
+   - Quorum check: 2 < 5 required ❌
+
+4. Plan C fails:
+   - Plan C status: Scheduled → Failed
+   - assignment_history: ["01nn..."]
+   - MongoDB events: unit_timeout (×3), plan_failed
+
+5. Automatic recovery:
+   - Plan C status: Failed → Approved
+   - Merit: 5 → 6 (raised priority)
+   - Move PLN_01cc.toml to /data/plans/approved/
+   - Plan eligible for next assignment
+
+6. Night 2 - Plan C rescheduled:
+   - Scheduler creates ASN_01oo
+   - Includes Plan C + Plan D
+   - Different unit allocation (better seeing conditions)
+   - Plan C succeeds ✓
+```
+
+### Workflow 3: Spectrograph Failure
+
+```
+1. Assignment ASN_01pp executing:
+   - Plan E (in progress, 400s of 600s complete)
+   - Plan F (in progress, 100s of 300s complete)
+   - Plan G (not yet started)
+
+2. Spectrograph fails at t=400s:
+   - Communication lost with deepspec
+   - MongoDB event: spectrograph_failed
+
+3. Immediate assignment termination:
+   - All plans in assignment → Failed
+   - Plan E: Failed (incomplete observation)
+   - Plan F: Failed (incomplete observation)
+   - Plan G: Failed (never started)
+   - Partial data discarded
+
+4. Automatic recovery:
+   - All 3 plans → Approved state
+   - Merit raised for all (not their fault)
+   - Plans eligible for rescheduling
+   - MongoDB events logged for each plan
+
+5. Next night (after spec repair):
+   - Plans E, F, G rescheduled
+   - Fresh attempt with operational spec
+```
 
 -----
 
