@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2>Register for MAST Access</h2>
+            <p class="text-muted">Create an account to access the Multiple Aperture Spectroscopic Telescope system.</p>
+            
+            <form method="post" class="mt-4">
+                {% csrf_token %}
+                
+                <!-- Personal Information -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Personal Information</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ form.email.as_field_group }}
+                        <div class="row">
+                            <div class="col-md-6">{{ form.given_name.as_field_group }}</div>
+                            <div class="col-md-6">{{ form.family_name.as_field_group }}</div>
+                        </div>
+                        {{ form.preferred_name.as_field_group }}
+                    </div>
+                </div>
+                
+                <!-- Academic Affiliation -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Academic Affiliation</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ form.institution.as_field_group }}
+                        {{ form.department.as_field_group }}
+                        <div class="row">
+                            <div class="col-md-6">{{ form.position.as_field_group }}</div>
+                            <div class="col-md-6">{{ form.country.as_field_group }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Research Profile (Optional) -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Research Profile <small class="text-muted">(Optional)</small></h5>
+                    </div>
+                    <div class="card-body">
+                        {{ form.orcid.as_field_group }}
+                        {{ form.research_interests.as_field_group }}
+                    </div>
+                </div>
+                
+                <!-- Account Purpose -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Account Purpose</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ form.intended_use.as_field_group }}
+                        {{ form.additional_info.as_field_group }}
+                    </div>
+                </div>
+                
+                <!-- Terms & Conditions -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        {{ form.agree_terms.as_field_group }}
+                        {{ form.agree_citation.as_field_group }}
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-lg">Submit Registration Request</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
