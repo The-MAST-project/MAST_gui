@@ -1,0 +1,153 @@
+{% load activity_filters %}
+
+<div class="accordion-item">
+    <h2 class="accordion-header" id="heading-imager">
+        <button class="accordion-button collapsed" type="button" 
+                data-bs-toggle="collapse" 
+                data-bs-target="#collapse-imager" 
+                aria-expanded="false" 
+                aria-controls="collapse-imager">
+            <div class="d-flex w-100 align-items-center">
+                <!-- Component name - fixed width -->
+                <div style="width: 120px;">
+                    <strong>Imager</strong>
+                </div>
+                
+                <!-- Status indicators - three columns (larger icons, centered) -->
+                <div class="d-flex gap-4">
+                    <div style="width: 80px;" class="text-center">
+                        {% if imager.powered is not None %}
+                            {% if imager.powered %}
+                                <i class="bi bi-check text-success" style="font-size: 1.5rem;"></i>
+                            {% else %}
+                                <i class="bi bi-dash text-danger" style="font-size: 1.5rem;"></i>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted" style="font-size: 1.5rem;">-</span>
+                        {% endif %}
+                    </div>
+                    <div style="width: 80px;" class="text-center">
+                        {% if imager.detected is not None %}
+                            {% if imager.detected %}
+                                <i class="bi bi-check text-success" style="font-size: 1.5rem;"></i>
+                            {% else %}
+                                <i class="bi bi-dash text-danger" style="font-size: 1.5rem;"></i>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted" style="font-size: 1.5rem;">-</span>
+                        {% endif %}
+                    </div>
+                    <div style="width: 95px;" class="text-center">
+                        {% if imager.operational %}
+                            <i class="bi bi-check text-success" style="font-size: 1.5rem;"></i>
+                        {% else %}
+                            <i class="bi bi-dash text-danger" style="font-size: 1.5rem;"></i>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Spacer between Operational and Details -->
+                <div style="width: 40px;"></div>
+                
+                <!-- Details column (fixed width) -->
+                <div style="width: 400px;">
+                    <!-- No additional details for imager -->
+                </div>
+                
+                <!-- Activities column -->
+                <div class="flex-fill d-flex gap-2">
+                    {% if imager.activities_verbal %}
+                        {% for activity in imager.activities_verbal %}
+                            <span class="badge {{ activity|activity_badge_class }}">
+                                {{ activity|format_activity_name }}
+                            </span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="badge bg-secondary">Idle</span>
+                    {% endif %}
+                </div>
+            </div>
+        </button>
+    </h2>
+    <div id="collapse-imager" 
+         class="accordion-collapse collapse" 
+         aria-labelledby="heading-imager" 
+         data-bs-parent="#componentsAccordion">
+        <div class="accordion-body">
+            <div class="row">
+                <!-- Status -->
+                <div class="col-md-6">
+                    <h6>Status</h6>
+                    <table class="table table-sm">
+                        <tbody>
+                            {% if imager.powered is not None %}
+                                <tr>
+                                    <td><strong>Powered:</strong></td>
+                                    <td>
+                                        {% if imager.powered %}
+                                            <span class="text-success">Yes</span>
+                                        {% else %}
+                                            <span class="text-danger">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                            {% if imager.detected is not None %}
+                                <tr>
+                                    <td><strong>Detected:</strong></td>
+                                    <td>
+                                        {% if imager.detected %}
+                                            <span class="text-success">Yes</span>
+                                        {% else %}
+                                            <span class="text-danger">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                            <tr>
+                                <td><strong>Operational:</strong></td>
+                                <td>
+                                    {% if imager.operational %}
+                                        <span class="text-success">Yes</span>
+                                    {% else %}
+                                        <span class="text-danger">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    {% if imager.activities_verbal %}
+                        <div class="alert alert-primary">
+                            <strong>Activities:</strong>
+                            <ul class="mb-0">
+                                {% for activity in imager.activities_verbal %}
+                                    <li>{{ activity|format_activity_name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Details -->
+                <div class="col-md-6">
+                    <h6>Details</h6>
+                    {% if not imager.operational and imager.why_not_operational %}
+                        <div class="alert alert-warning">
+                            <strong>Why not operational:</strong>
+                            <ul class="mb-0">
+                                {% for reason in imager.why_not_operational %}
+                                    <li>{{ reason }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% else %}
+                        <p class="text-success"><i class="bi bi-check-circle-fill"></i> Imager is operational</p>
+                    {% endif %}
+                    
+                    <!-- TODO: Add FITS image viewer (JS9) -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

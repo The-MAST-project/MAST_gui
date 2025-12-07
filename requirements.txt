@@ -39,3 +39,4 @@ astropy
 pydantic>=2.5.0
 python-dotenv>=1.0.0
 daphne>=4.0.0
+python-ulid

@@ -1,0 +1,81 @@
+{% load time_filters %}
+
+<div class="controller-status dropdown" id="controller-status">
+    <button class="btn btn-sm btn-link dropdown-toggle text-decoration-none" 
+            type="button"
+            data-bs-toggle="dropdown" 
+            aria-expanded="false">
+        {% if connected %}
+            <span class="status-dot status-ok"></span>
+            <span class="d-none d-lg-inline">Controller: OK</span>
+        {% elif retry_count < 3 %}
+            <span class="status-dot status-warning"></span>
+            <span class="d-none d-lg-inline">Controller: Retrying</span>
+        {% else %}
+            <span class="status-dot status-error"></span>
+            <span class="d-none d-lg-inline">Controller: Offline</span>
+        {% endif %}
+    </button>
+    
+    <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 300px;">
+        <h6 class="dropdown-header">Controller Status</h6>
+        {% if connected %}
+            <div class="alert alert-success mb-2">
+                <i class="bi bi-check-circle-fill"></i>
+                Connected to <strong>{{ controller_host }}</strong>
+            </div>
+            <small class="text-muted">
+                Last checked: {{ last_check|seconds_since }} ago
+            </small>
+        {% else %}
+            <div class="alert alert-danger mb-2">
+                <i class="bi bi-x-circle-fill"></i>
+                Cannot reach <strong>{{ controller_host }}</strong>
+            </div>
+            <p class="mb-2">
+                <small class="text-muted">Retry attempt: {{ retry_count }}/5</small>
+            </p>
+            {% if error %}
+                <div class="alert alert-warning mb-2">
+                    <small><strong>Error:</strong> {{ error|truncatewords:15 }}</small>
+                </div>
+            {% endif %}
+            <button class="btn btn-sm btn-primary w-100" 
+                    hx-get="{% url 'controller_status_check' %}"
+                    hx-target="#controller-status"
+                    hx-swap="outerHTML">
+                <i class="bi bi-arrow-clockwise"></i> Retry Now
+            </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Trigger toast notification on state change -->
+<script>
+    (function() {
+        const connected = {{ connected|yesno:"true,false" }};
+        const retryCount = {{ retry_count }};
+        const controllerHost = '{{ controller_host|escapejs }}';
+        const siteName = '{{ request.session.selected_site|default:"wis"|escapejs }}';
+        const prevState = localStorage.getItem('controller_connected');
+        
+        // Store current state
+        localStorage.setItem('controller_connected', connected ? 'true' : 'false');
+        
+        // Show toast on state change
+        if (prevState !== null) {
+            if (prevState === 'true' && !connected) {
+                showToast('warning', 'Connection Lost', `Cannot reach ${controllerHost}. Retrying...`);
+            } else if (prevState === 'false' && connected) {
+                showToast('success', 'Connection Restored', `Connected to ${controllerHost}`);
+            }
+        }
+        
+        // Show/hide banner based on retry count
+        if (retryCount >= 2 && !connected) {
+            showBanner(controllerHost, siteName);
+        } else if (connected) {
+            hideBanner();
+        }
+    })();
+</script>

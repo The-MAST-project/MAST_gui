@@ -1,0 +1,175 @@
+{% load activity_filters %}
+
+<div class="accordion-item">
+    <h2 class="accordion-header" id="heading-focuser">
+        <button class="accordion-button collapsed" type="button" 
+                data-bs-toggle="collapse" 
+                data-bs-target="#collapse-focuser" 
+                aria-expanded="false" 
+                aria-controls="collapse-focuser">
+            <div class="d-flex w-100 align-items-center">
+                <!-- Component name - fixed width -->
+                <div style="width: 120px;">
+                    <strong>Focuser</strong>
+                </div>
+                
+                <!-- Status indicators - three columns (larger icons, centered) -->
+                <div class="d-flex gap-4">
+                    <div style="width: 80px;" class="text-center">
+                        {% if focuser.powered %}
+                            <i class="bi bi-check text-success" style="font-size: 1.5rem;"></i>
+                        {% else %}
+                            <i class="bi bi-dash text-danger" style="font-size: 1.5rem;"></i>
+                        {% endif %}
+                    </div>
+                    <div style="width: 80px;" class="text-center">
+                        {% if focuser.detected %}
+                            <i class="bi bi-check text-success" style="font-size: 1.5rem;"></i>
+                        {% else %}
+                            <i class="bi bi-dash text-danger" style="font-size: 1.5rem;"></i>
+                        {% endif %}
+                    </div>
+                    <div style="width: 95px;" class="text-center">
+                        {% if focuser.operational %}
+                            <i class="bi bi-check text-success" style="font-size: 1.5rem;"></i>
+                        {% else %}
+                            <i class="bi bi-dash text-danger" style="font-size: 1.5rem;"></i>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Spacer between Operational and Details -->
+                <div style="width: 40px;"></div>
+                
+                <!-- Details column (fixed width) -->
+                <div style="width: 400px;">
+                    {% if focuser.position is not None %}
+                        <span>
+                            <small class="text-muted">Position:</small>
+                            <strong>{{ focuser.position }}</strong>
+                        </span>
+                    {% endif %}
+                </div>
+                
+                <!-- Activities column -->
+                <div class="flex-fill d-flex gap-2">
+                    {% if focuser.activities_verbal %}
+                        {% for activity in focuser.activities_verbal %}
+                            <span class="badge {{ activity|activity_badge_class }}">
+                                {{ activity|format_activity_name }}
+                            </span>
+                        {% endfor %}
+                    {% elif focuser.moving %}
+                        <span class="badge bg-warning">Moving</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Idle</span>
+                    {% endif %}
+                </div>
+            </div>
+        </button>
+    </h2>
+    <div id="collapse-focuser" 
+         class="accordion-collapse collapse" 
+         aria-labelledby="heading-focuser" 
+         data-bs-parent="#componentsAccordion">
+        <div class="accordion-body">
+            <div class="row">
+                <!-- Left column: Status and Position -->
+                <div class="col-md-6">
+                    <h6>Status</h6>
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <td><strong>Powered:</strong></td>
+                                <td>
+                                    {% if focuser.powered %}
+                                        <span class="text-success">Yes</span>
+                                    {% else %}
+                                        <span class="text-danger">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detected:</strong></td>
+                                <td>
+                                    {% if focuser.detected %}
+                                        <span class="text-success">Yes</span>
+                                    {% else %}
+                                        <span class="text-danger">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Operational:</strong></td>
+                                <td>
+                                    {% if focuser.operational %}
+                                        <span class="text-success">Yes</span>
+                                    {% else %}
+                                        <span class="text-danger">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Moving:</strong></td>
+                                <td>
+                                    {% if focuser.moving %}
+                                        <span class="text-warning">Yes</span>
+                                    {% else %}
+                                        <span class="text-muted">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if focuser.position is not None %}
+                                <tr>
+                                    <td><strong>Position:</strong></td>
+                                    <td><strong>{{ focuser.position }}</strong> steps</td>
+                                </tr>
+                            {% endif %}
+                            {% if focuser.target is not None %}
+                                <tr>
+                                    <td><strong>Target:</strong></td>
+                                    <td>{{ focuser.target }} steps</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                    
+                    {% if focuser.target_verbal %}
+                        <div class="alert alert-info">
+                            <strong>Target:</strong> {{ focuser.target_verbal }}
+                        </div>
+                    {% endif %}
+                    
+                    {% if focuser.activities_verbal %}
+                        <div class="alert alert-primary">
+                            <strong>Activities:</strong>
+                            <ul class="mb-0">
+                                {% for activity in focuser.activities_verbal %}
+                                    <li>{{ activity|format_activity_name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Right column: Position Display -->
+                <div class="col-md-6">
+                    <h6>Current Position</h6>
+                    {% if focuser.position is not None %}
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h2 class="mb-0">
+                                    <span class="badge bg-primary">{{ focuser.position }} steps</span>
+                                </h2>
+                            </div>
+                        </div>
+                        
+                        <!-- TODO: Add V-curve graph visualization -->
+                    {% else %}
+                        <p class="text-muted">Position data not available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

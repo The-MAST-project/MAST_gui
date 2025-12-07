@@ -1,0 +1,181 @@
+{% load activity_filters %}
+
+<div class="accordion-item">
+    <h2 class="accordion-header" id="heading-covers">
+        <button class="accordion-button collapsed" type="button" 
+                data-bs-toggle="collapse" 
+                data-bs-target="#collapse-covers" 
+                aria-expanded="false" 
+                aria-controls="collapse-covers">
+            <div class="d-flex w-100 align-items-center">
+                <!-- Component name - fixed width -->
+                <div style="width: 120px;">
+                    <strong>Covers</strong>
+                </div>
+                
+                <!-- Status indicators - three columns (larger icons, centered) -->
+                <div class="d-flex gap-4">
+                    <div style="width: 80px;" class="text-center">
+                        {% if covers.powered %}
+                            <i class="bi bi-check text-success" style="font-size: 1.5rem;"></i>
+                        {% else %}
+                            <i class="bi bi-dash text-danger" style="font-size: 1.5rem;"></i>
+                        {% endif %}
+                    </div>
+                    <div style="width: 80px;" class="text-center">
+                        {% if covers.detected %}
+                            <i class="bi bi-check text-success" style="font-size: 1.5rem;"></i>
+                        {% else %}
+                            <i class="bi bi-dash text-danger" style="font-size: 1.5rem;"></i>
+                        {% endif %}
+                    </div>
+                    <div style="width: 95px;" class="text-center">
+                        {% if covers.operational %}
+                            <i class="bi bi-check text-success" style="font-size: 1.5rem;"></i>
+                        {% else %}
+                            <i class="bi bi-dash text-danger" style="font-size: 1.5rem;"></i>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Spacer between Operational and Details -->
+                <div style="width: 40px;"></div>
+                
+                <!-- Details column (fixed width) -->
+                <div style="width: 400px;">
+                    {% if covers.state_verbal %}
+                        <span>
+                            <small class="text-muted">State:</small>
+                            <strong>{{ covers.state_verbal|format_state_name }}</strong>
+                        </span>
+                    {% elif covers.state %}
+                        <span>
+                            <small class="text-muted">State:</small>
+                            <strong>{{ covers.state|format_state_name }}</strong>
+                        </span>
+                    {% endif %}
+                </div>
+                
+                <!-- Activities column -->
+                <div class="flex-fill d-flex gap-2">
+                    {% if covers.activities_verbal %}
+                        {% for activity in covers.activities_verbal %}
+                            <span class="badge {{ activity|activity_badge_class }}">
+                                {{ activity|format_activity_name }}
+                            </span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="badge bg-secondary">Idle</span>
+                    {% endif %}
+                </div>
+            </div>
+        </button>
+    </h2>
+    <div id="collapse-covers" 
+         class="accordion-collapse collapse" 
+         aria-labelledby="heading-covers" 
+         data-bs-parent="#componentsAccordion">
+        <div class="accordion-body">
+            <div class="row">
+                <!-- Left column: Status -->
+                <div class="col-md-6">
+                    <h6>Status</h6>
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <td><strong>Powered:</strong></td>
+                                <td>
+                                    {% if covers.powered %}
+                                        <span class="text-success">Yes</span>
+                                    {% else %}
+                                        <span class="text-danger">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Detected:</strong></td>
+                                <td>
+                                    {% if covers.detected %}
+                                        <span class="text-success">Yes</span>
+                                    {% else %}
+                                        <span class="text-danger">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Operational:</strong></td>
+                                <td>
+                                    {% if covers.operational %}
+                                        <span class="text-success">Yes</span>
+                                    {% else %}
+                                        <span class="text-danger">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>State:</strong></td>
+                                <td>
+                                    {% if covers.state_verbal %}
+                                        <strong>{{ covers.state_verbal|format_state_name }}</strong>
+                                    {% elif covers.state %}
+                                        <strong>{{ covers.state|format_state_name }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">Unknown</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    {% if covers.target_verbal %}
+                        <div class="alert alert-info">
+                            <strong>Target:</strong> {{ covers.target_verbal }}
+                        </div>
+                    {% endif %}
+                    
+                    {% if covers.activities_verbal %}
+                        <div class="alert alert-primary">
+                            <strong>Activities:</strong>
+                            <ul class="mb-0">
+                                {% for activity in covers.activities_verbal %}
+                                    <li>{{ activity|format_activity_name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Right column: State Display -->
+                <div class="col-md-6">
+                    <h6>Cover State</h6>
+                    {% if covers.state or covers.state_verbal %}
+                        {% with state=covers.state_verbal|format_state_name|default:covers.state|format_state_name %}
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    {% if state == 'Open' %}
+                                        <i class="bi bi-arrow-up-circle-fill text-success" style="font-size: 4rem;"></i>
+                                        <h4 class="mt-2 text-success">Open</h4>
+                                    {% elif state == 'Closed' %}
+                                        <i class="bi bi-arrow-down-circle-fill text-secondary" style="font-size: 4rem;"></i>
+                                        <h4 class="mt-2 text-secondary">Closed</h4>
+                                    {% elif state == 'Opening' %}
+                                        <i class="bi bi-arrow-up-circle text-primary" style="font-size: 4rem;"></i>
+                                        <h4 class="mt-2 text-primary">Opening...</h4>
+                                    {% elif state == 'Closing' %}
+                                        <i class="bi bi-arrow-down-circle text-warning" style="font-size: 4rem;"></i>
+                                        <h4 class="mt-2 text-warning">Closing...</h4>
+                                    {% else %}
+                                        <i class="bi bi-question-circle text-muted" style="font-size: 4rem;"></i>
+                                        <h4 class="mt-2 text-muted">{{ state }}</h4>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endwith %}
+                    {% else %}
+                        <p class="text-muted">Cover state not available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -239,13 +239,18 @@ ControlApi (FastAPI on mast-*-control)
 
 #### Power Supply Section (Above accordion, scrollable)
 
-- **Layout**: List/grid of 8 power sockets
-- **Each socket shows**:
-  - Socket name
-  - ON/OFF indicator (green=ON, gray=OFF)
+- **Layout**: Single horizontal line with 8 power outlets
+- **Compact design**: Bold labels, narrow buttons (50px min-width)
+- **Each outlet shows**:
+  - Socket name (bold)
+  - Colored button showing state:
+    - Green (ON) / Gray (OFF) / Yellow (Unknown)
 - **Interaction**:
   - If `canUseControls`: clickable to toggle
-  - Otherwise: read-only
+  - **Computer outlet special behavior**:
+    - If ON: Shows modal warning to use Unit controls (auto-closes 3 seconds)
+    - If OFF: Disabled button
+  - Otherwise: read-only (disabled button)
 
 #### Component Accordion
 
@@ -1047,6 +1052,7 @@ Clicking "View Details" on assignment loads from MongoDB:
 22:00:00 | Assignment created by scheduler
 22:00:15 | Assignment started
 22:00:15 | Plan: M87 - Units assigned: wis:w, ns:2, ns:5, ns:8, ns:10
+
 22:05:30 | Plan: M87 - Unit ns:2 reached guiding
 22:06:15 | Plan: M87 - Unit wis:w reached guiding
 22:08:45 | Plan: M87 - Unit ns:5 reached guiding
@@ -1607,14 +1613,16 @@ class CanonicalResponse(BaseModel):
 **Tag**: `Unit`
 
 - `GET /mast/control/v1/unit/{unit_name}/status` - Get unit status
-  - Returns: `{powered: bool, detected: bool, operational: bool, ...}`
+  - Returns: Discriminated union `UnitStatus` (ShortUnitStatus or FullUnitStatus)
 - `GET /mast/control/v1/unit/{unit_name}/power_switch/status` - Get power switch status
-  - Returns: Status of all 8 outlets
-- `GET /mast/control/v1/unit/{unit_name}/power_switch/get_outlet?outlet={id}` - Get outlet state
-  - Params: `outlet` (OutletId enum)
-  - Returns: `'on'` or `'off'`
-- `POST /mast/control/v1/unit/{unit_name}/power_switch/set_outlet` - Set outlet state
-  - Params: `outlet` (OutletId), `state` ('on'|'off'|'toggle')
+  - Returns: `PowerSwitchStatus` with list of outlets
+- `GET /mast/control/v1/unit/{unit_name}/power_switch/get_outlet/{outlet_id}` - Get outlet state
+  - Returns: `bool | None` (True=on, False=off, None=unknown)
+- `PUT /mast/control/v1/unit/{unit_name}/power_switch/set_outlet/{outlet_id}/{state}` - Set outlet state
+  - Path params: `outlet_id` (outlet identifier), `state` ('on'|'off'|'toggle')
+  - Returns: `CanonicalResponse` with success/error
+
+**Note**: Power switch operations always use controller endpoints, independent of unit operational status. This allows power control even when unit is offline.
 
 #### Task Endpoints
 

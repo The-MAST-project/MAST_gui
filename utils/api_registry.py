@@ -35,8 +35,8 @@ CONFIG_ENDPOINTS = [
 UNIT_ENDPOINTS = [
     GuiEndpoint('control', '/unit/{unit_name}/status', 'GET', 'canView', 'Get unit status'),
     GuiEndpoint('control', '/unit/{unit_name}/power_switch/status', 'GET', 'canView', 'Get power switch status'),
-    GuiEndpoint('control', '/unit/{unit_name}/power_switch/get_outlet', 'GET', 'canView', 'Get outlet state'),
-    GuiEndpoint('control', '/unit/{unit_name}/power_switch/set_outlet', 'POST', 'canUseControls', 'Set outlet state'),
+    GuiEndpoint('control', '/unit/{unit_name}/power_switch/get_outlet/{outlet_id}', 'GET', 'canView', 'Get outlet state'),
+    GuiEndpoint('control', '/unit/{unit_name}/power_switch/set_outlet/{outlet_id}/{state}', 'PUT', 'canUseControls', 'Set outlet state'),
 ]
 
 # Task Service Endpoints

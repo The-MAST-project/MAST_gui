@@ -1,0 +1,27 @@
+<div class="text-center" style="min-width: 60px;">
+    <small class="d-block mb-1" style="font-size: 0.875rem;"><strong>{{ outlet.name }}</strong></small>
+    {% if outlet.can_control %}
+        <button class="btn btn-sm {% if outlet.status == 'on' %}btn-success{% elif outlet.status == 'off' %}btn-secondary{% else %}btn-warning{% endif %}"
+                style="padding: 0.25rem 0.5rem; font-size: 0.875rem; width: 50px;"
+                hx-post="{% url 'units:toggle_outlet' unit_name outlet.id %}"
+                hx-target="#outlet-{{ outlet.id }}"
+                hx-swap="outerHTML">
+            {% if outlet.status == 'on' %}ON{% elif outlet.status == 'off' %}OFF{% else %}?{% endif %}
+        </button>
+    {% elif outlet.is_computer %}
+        <button class="btn btn-sm {% if outlet.status == 'on' %}btn-success{% elif outlet.status == 'off' %}btn-secondary{% else %}btn-warning{% endif %}"
+                style="padding: 0.25rem 0.5rem; font-size: 0.875rem; width: 50px;"
+                {% if outlet.status == 'on' %}
+                    data-bs-toggle="modal" data-bs-target="#computerControlModal"
+                {% else %}
+                    disabled
+                {% endif %}>
+            {% if outlet.status == 'on' %}ON{% elif outlet.status == 'off' %}OFF{% else %}?{% endif %}
+        </button>
+    {% else %}
+        <button class="btn btn-sm {% if outlet.status == 'on' %}btn-success{% elif outlet.status == 'off' %}btn-secondary{% else %}btn-warning{% endif %}"
+                style="padding: 0.25rem 0.5rem; font-size: 0.875rem; width: 50px;" disabled>
+            {% if outlet.status == 'on' %}ON{% elif outlet.status == 'off' %}OFF{% else %}?{% endif %}
+        </button>
+    {% endif %}
+</div>

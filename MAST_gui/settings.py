@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     # 'mast_safety',
     # 'assignments',
     # 'plans',
+    'mast_utils',  # Changed from 'utils' to 'mast_utils'
 ]
 
 MIDDLEWARE = [
@@ -71,6 +72,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'MAST_gui.context_processors.site_data',
+                'MAST_gui.context_processors.controller_status',  # Add this line
                 # 'accounts.context_processors.user_capabilities',  # Comment this out
             ],
         },
