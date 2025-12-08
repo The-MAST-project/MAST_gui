@@ -269,7 +269,7 @@ Each component shows:
   - ⚪ Gray = unknown/N/A
 - **Key detail**:
   - Focuser: position
-  - Stage: position
+  - Stage: position, preset name (if at preset)
   - Mount: coordinates (RA, Dec)
   - Camera: temperature
   - Unit: status info

@@ -76,106 +76,146 @@
          aria-labelledby="heading-covers" 
          data-bs-parent="#componentsAccordion">
         <div class="accordion-body">
-            <div class="row">
-                <!-- Left column: Status -->
-                <div class="col-md-6">
-                    <h6>Status</h6>
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td><strong>Powered:</strong></td>
-                                <td>
-                                    {% if covers.powered %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Detected:</strong></td>
-                                <td>
-                                    {% if covers.detected %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Operational:</strong></td>
-                                <td>
-                                    {% if covers.operational %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>State:</strong></td>
-                                <td>
-                                    {% if covers.state_verbal %}
-                                        <strong>{{ covers.state_verbal|format_state_name }}</strong>
-                                    {% elif covers.state %}
-                                        <strong>{{ covers.state|format_state_name }}</strong>
-                                    {% else %}
-                                        <span class="text-muted">Unknown</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    
-                    {% if covers.target_verbal %}
-                        <div class="alert alert-info">
-                            <strong>Target:</strong> {{ covers.target_verbal }}
-                        </div>
-                    {% endif %}
-                    
-                    {% if covers.activities_verbal %}
-                        <div class="alert alert-primary">
-                            <strong>Activities:</strong>
-                            <ul class="mb-0">
-                                {% for activity in covers.activities_verbal %}
-                                    <li>{{ activity|format_activity_name }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+            {% if not covers.powered %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Covers not powered</strong>
+                </div>
+            {% elif not covers.detected %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Covers not detected</strong>
+                </div>
+            {% elif not covers.operational %}
+                <div class="alert alert-danger">
+                    <strong>Covers not operational:</strong>
+                    {% if covers.why_not_operational %}
+                        <ul class="mb-0 mt-2">
+                            {% for reason in covers.why_not_operational %}
+                                <li>{{ reason }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-0 mt-2">No specific reasons provided.</p>
                     {% endif %}
                 </div>
-                
-                <!-- Right column: State Display -->
-                <div class="col-md-6">
-                    <h6>Cover State</h6>
-                    {% if covers.state or covers.state_verbal %}
-                        {% with state=covers.state_verbal|format_state_name|default:covers.state|format_state_name %}
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    {% if state == 'Open' %}
-                                        <i class="bi bi-arrow-up-circle-fill text-success" style="font-size: 4rem;"></i>
-                                        <h4 class="mt-2 text-success">Open</h4>
-                                    {% elif state == 'Closed' %}
-                                        <i class="bi bi-arrow-down-circle-fill text-secondary" style="font-size: 4rem;"></i>
-                                        <h4 class="mt-2 text-secondary">Closed</h4>
-                                    {% elif state == 'Opening' %}
-                                        <i class="bi bi-arrow-up-circle text-primary" style="font-size: 4rem;"></i>
-                                        <h4 class="mt-2 text-primary">Opening...</h4>
-                                    {% elif state == 'Closing' %}
-                                        <i class="bi bi-arrow-down-circle text-warning" style="font-size: 4rem;"></i>
-                                        <h4 class="mt-2 text-warning">Closing...</h4>
-                                    {% else %}
-                                        <i class="bi bi-question-circle text-muted" style="font-size: 4rem;"></i>
-                                        <h4 class="mt-2 text-muted">{{ state }}</h4>
-                                    {% endif %}
+            {% else %}
+                <!-- Component is operational - show tabs in scrollable area -->
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <ul class="nav nav-tabs" id="covers-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="covers-config-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#covers-config" type="button" role="tab">
+                                Configuration
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="covers-controls-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#covers-controls" type="button" role="tab">
+                                Controls
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="covers-details-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#covers-details" type="button" role="tab">
+                                Details
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="covers-tabs-content">
+                        <!-- Configuration Tab -->
+                        <div class="tab-pane fade show active" id="covers-config" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Configuration options coming soon...</p>
+                                <!-- TODO: Add configuration form -->
+                            </div>
+                        </div>
+                        
+                        <!-- Controls Tab -->
+                        <div class="tab-pane fade" id="covers-controls" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Control interface coming soon...</p>
+                                <!-- TODO: Add control buttons (open, close, abort) -->
+                            </div>
+                        </div>
+                        
+                        <!-- Details Tab -->
+                        <div class="tab-pane fade" id="covers-details" role="tabpanel">
+                            <div class="p-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Status</h6>
+                                        <table class="table table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <td><strong>State:</strong></td>
+                                                    <td>
+                                                        {% if covers.state_verbal %}
+                                                            <strong>{{ covers.state_verbal|format_state_name }}</strong>
+                                                        {% elif covers.state %}
+                                                            <strong>{{ covers.state|format_state_name }}</strong>
+                                                        {% else %}
+                                                            <span class="text-muted">Unknown</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        
+                                        {% if covers.target_verbal %}
+                                            <div class="alert alert-info">
+                                                <strong>Target:</strong> {{ covers.target_verbal }}
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if covers.activities_verbal %}
+                                            <div class="alert alert-primary">
+                                                <strong>Activities:</strong>
+                                                <ul class="mb-0">
+                                                    {% for activity in covers.activities_verbal %}
+                                                        <li>{{ activity|format_activity_name }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6>Cover State</h6>
+                                        {% if covers.state or covers.state_verbal %}
+                                            {% with state=covers.state_verbal|format_state_name|default:covers.state|format_state_name %}
+                                                <div class="card bg-light">
+                                                    <div class="card-body text-center">
+                                                        {% if state == 'Open' %}
+                                                            <i class="bi bi-arrow-up-circle-fill text-success" style="font-size: 4rem;"></i>
+                                                            <h4 class="mt-2 text-success">Open</h4>
+                                                        {% elif state == 'Closed' %}
+                                                            <i class="bi bi-arrow-down-circle-fill text-secondary" style="font-size: 4rem;"></i>
+                                                            <h4 class="mt-2 text-secondary">Closed</h4>
+                                                        {% elif state == 'Opening' %}
+                                                            <i class="bi bi-arrow-up-circle text-primary" style="font-size: 4rem;"></i>
+                                                            <h4 class="mt-2 text-primary">Opening...</h4>
+                                                        {% elif state == 'Closing' %}
+                                                            <i class="bi bi-arrow-down-circle text-warning" style="font-size: 4rem;"></i>
+                                                            <h4 class="mt-2 text-warning">Closing...</h4>
+                                                        {% else %}
+                                                            <i class="bi bi-question-circle text-muted" style="font-size: 4rem;"></i>
+                                                            <h4 class="mt-2 text-muted">{{ state }}</h4>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            {% endwith %}
+                                        {% else %}
+                                            <p class="text-muted">Cover state not available</p>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
-                        {% endwith %}
-                    {% else %}
-                        <p class="text-muted">Cover state not available</p>
-                    {% endif %}
+                        </div>
+                    </div>
                 </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>

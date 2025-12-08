@@ -50,9 +50,7 @@
                         </span>
                     {% endif %}
                     {% if stage.at_preset %}
-                        <span>
-                            <i class="bi bi-geo-alt-fill text-success"></i> At Preset
-                        </span>
+                        <span class="badge bg-success">{{ stage.at_preset }}</span>
                     {% endif %}
                 </div>
                 
@@ -76,102 +74,142 @@
          aria-labelledby="heading-stage" 
          data-bs-parent="#componentsAccordion">
         <div class="accordion-body">
-            <div class="row">
-                <!-- Left column: Status -->
-                <div class="col-md-6">
-                    <h6>Status</h6>
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td><strong>Powered:</strong></td>
-                                <td>
-                                    {% if stage.powered %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Detected:</strong></td>
-                                <td>
-                                    {% if stage.detected %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Operational:</strong></td>
-                                <td>
-                                    {% if stage.operational %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>At Preset:</strong></td>
-                                <td>
-                                    {% if stage.at_preset %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-muted">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% if stage.position is not None %}
-                                <tr>
-                                    <td><strong>Position:</strong></td>
-                                    <td><strong>{{ stage.position }}</strong></td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                    
-                    {% if stage.target_verbal %}
-                        <div class="alert alert-info">
-                            <strong>Target:</strong> {{ stage.target_verbal }}
-                        </div>
-                    {% endif %}
-                    
-                    {% if stage.activities_verbal %}
-                        <div class="alert alert-primary">
-                            <strong>Activities:</strong>
-                            <ul class="mb-0">
-                                {% for activity in stage.activities_verbal %}
-                                    <li>{{ activity|format_activity_name }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+            {% if not stage.powered %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Stage not powered</strong>
+                </div>
+            {% elif not stage.detected %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Stage not detected</strong>
+                </div>
+            {% elif not stage.operational %}
+                <div class="alert alert-danger">
+                    <strong>Stage not operational:</strong>
+                    {% if stage.why_not_operational %}
+                        <ul class="mb-0 mt-2">
+                            {% for reason in stage.why_not_operational %}
+                                <li>{{ reason }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-0 mt-2">No specific reasons provided.</p>
                     {% endif %}
                 </div>
-                
-                <!-- Right column: Position Display -->
-                <div class="col-md-6">
-                    <h6>Current Position</h6>
-                    {% if stage.position is not None %}
-                        <div class="card bg-light">
-                            <div class="card-body text-center">
-                                <h2 class="mb-0">
-                                    <span class="badge {% if stage.at_preset %}bg-success{% else %}bg-primary{% endif %}">
-                                        {{ stage.position }}
-                                    </span>
-                                </h2>
-                                {% if stage.at_preset %}
-                                    <p class="text-success mt-2 mb-0">
-                                        <i class="bi bi-check-circle-fill"></i> At Preset Position
-                                    </p>
-                                {% endif %}
+            {% else %}
+                <!-- Component is operational - show tabs in scrollable area -->
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <ul class="nav nav-tabs" id="stage-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="stage-config-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#stage-config" type="button" role="tab">
+                                Configuration
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="stage-controls-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#stage-controls" type="button" role="tab">
+                                Controls
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="stage-details-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#stage-details" type="button" role="tab">
+                                Details
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="stage-tabs-content">
+                        <!-- Configuration Tab -->
+                        <div class="tab-pane fade show active" id="stage-config" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Configuration options coming soon...</p>
+                                <!-- TODO: Add configuration form (presets, limits, etc.) -->
                             </div>
                         </div>
-                    {% else %}
-                        <p class="text-muted">Position data not available</p>
-                    {% endif %}
+                        
+                        <!-- Controls Tab -->
+                        <div class="tab-pane fade" id="stage-controls" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Control interface coming soon...</p>
+                                <!-- TODO: Add control buttons (move to preset, position, etc.) -->
+                            </div>
+                        </div>
+                        
+                        <!-- Details Tab -->
+                        <div class="tab-pane fade" id="stage-details" role="tabpanel">
+                            <div class="p-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Status</h6>
+                                        <table class="table table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <td><strong>At Preset:</strong></td>
+                                                    <td>
+                                                        {% if stage.at_preset %}
+                                                            <span class="badge bg-success">{{ stage.at_preset }}</span>
+                                                        {% else %}
+                                                            <span class="text-muted">No</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% if stage.position is not None %}
+                                                    <tr>
+                                                        <td><strong>Position:</strong></td>
+                                                        <td><strong>{{ stage.position }}</strong></td>
+                                                    </tr>
+                                                {% endif %}
+                                            </tbody>
+                                        </table>
+                                        
+                                        {% if stage.target_verbal %}
+                                            <div class="alert alert-info">
+                                                <strong>Target:</strong> {{ stage.target_verbal }}
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if stage.activities_verbal %}
+                                            <div class="alert alert-primary">
+                                                <strong>Activities:</strong>
+                                                <ul class="mb-0">
+                                                    {% for activity in stage.activities_verbal %}
+                                                        <li>{{ activity|format_activity_name }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6>Current Position</h6>
+                                        {% if stage.position is not None %}
+                                            <div class="card bg-light">
+                                                <div class="card-body text-center">
+                                                    <h2 class="mb-0">
+                                                        <span class="badge {% if stage.at_preset %}bg-success{% else %}bg-primary{% endif %}">
+                                                            {{ stage.position }}
+                                                        </span>
+                                                    </h2>
+                                                    {% if stage.at_preset %}
+                                                        <p class="text-success mt-2 mb-0">
+                                                            <i class="bi bi-check-circle-fill"></i> At Preset: <span class="badge bg-success">{{ stage.at_preset }}</span>
+                                                        </p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <p class="text-muted">Position data not available</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>

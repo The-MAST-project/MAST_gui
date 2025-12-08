@@ -75,119 +75,153 @@
          aria-labelledby="heading-mount" 
          data-bs-parent="#componentsAccordion">
         <div class="accordion-body">
-            <div class="row">
-                <!-- Left column: Status and Position -->
-                <div class="col-md-6">
-                    <h6>Status</h6>
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td><strong>Powered:</strong></td>
-                                <td>
-                                    {% if mount.powered %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Detected:</strong></td>
-                                <td>
-                                    {% if mount.detected %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Operational:</strong></td>
-                                <td>
-                                    {% if mount.operational %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Tracking:</strong></td>
-                                <td>
-                                    {% if mount.tracking %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-muted">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Slewing:</strong></td>
-                                <td>
-                                    {% if mount.slewing %}
-                                        <span class="text-warning">Yes</span>
-                                    {% else %}
-                                        <span class="text-muted">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    
-                    {% if mount.target_verbal %}
-                        <div class="alert alert-info">
-                            <strong>Target:</strong> {{ mount.target_verbal }}
-                        </div>
-                    {% endif %}
-                    
-                    {% if mount.activities_verbal %}
-                        <div class="alert alert-primary">
-                            <strong>Activities:</strong>
-                            <ul class="mb-0">
-                                {% for activity in mount.activities_verbal %}
-                                    <li>{{ activity }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+            {% if not mount.powered %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Mount not powered</strong>
+                </div>
+            {% elif not mount.detected %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Mount not detected</strong>
+                </div>
+            {% elif not mount.operational %}
+                <div class="alert alert-warning">
+                    <strong>Mount not operational:</strong>
+                    {% if mount.why_not_operational %}
+                        <ul class="mb-0 mt-2">
+                            {% for reason in mount.why_not_operational %}
+                                <li>{{ reason }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-0 mt-2">No specific reasons provided.</p>
                     {% endif %}
                 </div>
-                
-                <!-- Right column: Coordinates -->
-                <div class="col-md-6">
-                    <h6>Current Position (J2000)</h6>
-                    {% if mount.ra_j2000_hours and mount.dec_j2000_degs %}
-                        <table class="table table-sm">
-                            <tbody>
-                                <tr>
-                                    <td><strong>Right Ascension:</strong></td>
-                                    <td>{{ mount.ra_j2000_hours|floatformat:6 }} hours</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Declination:</strong></td>
-                                    <td>{{ mount.dec_j2000_degs|floatformat:6 }}°</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        
-                        <div class="card bg-light">
-                            <div class="card-body text-center">
-                                <h3 class="mb-0">
-                                    <span class="badge bg-primary">RA {{ mount.ra_j2000_hours|floatformat:4 }}h</span>
-                                    <span class="badge bg-success">Dec {{ mount.dec_j2000_degs|floatformat:4 }}°</span>
-                                </h3>
+            {% else %}
+                <!-- Component is operational - show tabs in scrollable area -->
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <ul class="nav nav-tabs" id="mount-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="mount-config-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#mount-config" type="button" role="tab">
+                                Configuration
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="mount-controls-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#mount-controls" type="button" role="tab">
+                                Controls
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="mount-details-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#mount-details" type="button" role="tab">
+                                Details
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="mount-tabs-content">
+                        <!-- Configuration Tab -->
+                        <div class="tab-pane fade show active" id="mount-config" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Configuration options coming soon...</p>
+                                <!-- TODO: Add configuration form -->
                             </div>
                         </div>
-                    {% else %}
-                        <p class="text-muted">Position data not available</p>
-                    {% endif %}
-                    
-                    <!-- TODO: Add position chart visualization -->
+                        
+                        <!-- Controls Tab -->
+                        <div class="tab-pane fade" id="mount-controls" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Control interface coming soon...</p>
+                                <!-- TODO: Add control buttons -->
+                            </div>
+                        </div>
+                        
+                        <!-- Details Tab -->
+                        <div class="tab-pane fade" id="mount-details" role="tabpanel">
+                            <div class="p-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Status</h6>
+                                        <table class="table table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <td><strong>Tracking:</strong></td>
+                                                    <td>
+                                                        {% if mount.tracking %}
+                                                            <span class="text-success">Yes</span>
+                                                        {% else %}
+                                                            <span class="text-muted">No</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Slewing:</strong></td>
+                                                    <td>
+                                                        {% if mount.slewing %}
+                                                            <span class="text-warning">Yes</span>
+                                                        {% else %}
+                                                            <span class="text-muted">No</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        
+                                        {% if mount.target_verbal %}
+                                            <div class="alert alert-info">
+                                                <strong>Target:</strong> {{ mount.target_verbal }}
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if mount.activities_verbal %}
+                                            <div class="alert alert-primary">
+                                                <strong>Activities:</strong>
+                                                <ul class="mb-0">
+                                                    {% for activity in mount.activities_verbal %}
+                                                        <li>{{ activity|format_activity_name }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6>Current Position (J2000)</h6>
+                                        {% if mount.ra_j2000_hours and mount.dec_j2000_degs %}
+                                            <table class="table table-sm">
+                                                <tbody>
+                                                    <tr>
+                                                        <td><strong>Right Ascension:</strong></td>
+                                                        <td>{{ mount.ra_j2000_hours|floatformat:6 }} hours</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Declination:</strong></td>
+                                                        <td>{{ mount.dec_j2000_degs|floatformat:6 }}°</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                            
+                                            <div class="card bg-light">
+                                                <div class="card-body text-center">
+                                                    <h3 class="mb-0">
+                                                        <span class="badge bg-primary">RA {{ mount.ra_j2000_hours|floatformat:4 }}h</span>
+                                                        <span class="badge bg-success">Dec {{ mount.dec_j2000_degs|floatformat:4 }}°</span>
+                                                    </h3>
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <p class="text-muted">Position data not available</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Configuration and Control sections (permission-based) -->
-            <!-- TODO: Add configuration editing for users with canChangeConfiguration -->
-            <!-- TODO: Add control buttons for users with canUseControls -->
+            {% endif %}
         </div>
     </div>
 </div>

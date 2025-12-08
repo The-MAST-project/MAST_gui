@@ -8,8 +8,11 @@ from common.api import ControllerApi
 from common.dlipowerswitch import PowerSwitchStatus
 from common.models.statuses import UnitStatus, ShortUnitStatus, FullUnitStatus
 import asyncio
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from django.views.decorators.http import require_http_methods
+import os
+from pathlib import Path
+import mimetypes
 
 
 @login_required
@@ -317,6 +320,7 @@ def toggle_outlet(request, unit_name, outlet_id):
     current_site = request.session.get('selected_site', 'wis')
     
     # Toggle the outlet using controller endpoint
+    # Returns the new state directly
     controller = ControllerApi(site_name=current_site)
     response = asyncio.run(
         controller.client.put(f"unit/{unit_name}/power_switch/set_outlet/{outlet_id}/toggle")
@@ -325,7 +329,13 @@ def toggle_outlet(request, unit_name, outlet_id):
     if not response.succeeded:
         return JsonResponse({'error': 'Failed to toggle outlet'}, status=500)
     
-    # Get updated power switch status to get outlet name
+    # response.value contains the new state (bool or None)
+    if response.value is None:
+        new_state = 'unknown'
+    else:
+        new_state = 'on' if response.value else 'off'
+    
+    # Get power switch status to get outlet name
     power_response = asyncio.run(controller.client.get(f"unit/{unit_name}/power_switch/status"))
     
     if power_response.succeeded and power_response.value:
@@ -339,12 +349,13 @@ def toggle_outlet(request, unit_name, outlet_id):
                 break
         
         if outlet:
-            new_state = 'on' if outlet.state else 'off'
             is_computer = outlet.name.lower() == 'computer'
             user_can_control = request.user.has_perm('auth.canUseControls')
             
             # Return the complete outlet HTML for swap
             from django.template.loader import render_to_string
+            from django.http import HttpResponse
+            
             html = render_to_string('units/components/outlet_button.html', {
                 'outlet': {
                     'id': outlet_id,
@@ -356,7 +367,12 @@ def toggle_outlet(request, unit_name, outlet_id):
                 'unit_name': unit_name
             })
             
-            from django.http import HttpResponse
             return HttpResponse(html)
     
-    return JsonResponse({'error': 'Failed to get outlet state'}, status=500)
+    return JsonResponse({'error': 'Failed to get outlet info'}, status=500)
+
+# Use os.path for cross-platform compatibility
+
+def get_image_path(filename):
+    # Use Path for better cross-platform support
+    return Path(settings.MEDIA_ROOT) / 'images' / filename.lower()

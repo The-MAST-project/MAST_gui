@@ -74,80 +74,92 @@
          aria-labelledby="heading-imager" 
          data-bs-parent="#componentsAccordion">
         <div class="accordion-body">
-            <div class="row">
-                <!-- Status -->
-                <div class="col-md-6">
-                    <h6>Status</h6>
-                    <table class="table table-sm">
-                        <tbody>
-                            {% if imager.powered is not None %}
-                                <tr>
-                                    <td><strong>Powered:</strong></td>
-                                    <td>
-                                        {% if imager.powered %}
-                                            <span class="text-success">Yes</span>
-                                        {% else %}
-                                            <span class="text-danger">No</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endif %}
-                            {% if imager.detected is not None %}
-                                <tr>
-                                    <td><strong>Detected:</strong></td>
-                                    <td>
-                                        {% if imager.detected %}
-                                            <span class="text-success">Yes</span>
-                                        {% else %}
-                                            <span class="text-danger">No</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endif %}
-                            <tr>
-                                <td><strong>Operational:</strong></td>
-                                <td>
-                                    {% if imager.operational %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    
-                    {% if imager.activities_verbal %}
-                        <div class="alert alert-primary">
-                            <strong>Activities:</strong>
-                            <ul class="mb-0">
-                                {% for activity in imager.activities_verbal %}
-                                    <li>{{ activity|format_activity_name }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    {% endif %}
+            {% if not imager.powered %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Camera not powered</strong>
                 </div>
-                
-                <!-- Details -->
-                <div class="col-md-6">
-                    <h6>Details</h6>
-                    {% if not imager.operational and imager.why_not_operational %}
-                        <div class="alert alert-warning">
-                            <strong>Why not operational:</strong>
-                            <ul class="mb-0">
-                                {% for reason in imager.why_not_operational %}
-                                    <li>{{ reason }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+            {% elif not imager.detected %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Camera not detected</strong>
+                </div>
+            {% elif not imager.operational %}
+                <div class="alert alert-danger">
+                    <strong>Camera not operational:</strong>
+                    {% if imager.why_not_operational %}
+                        <ul class="mb-0 mt-2">
+                            {% for reason in imager.why_not_operational %}
+                                <li>{{ reason }}</li>
+                            {% endfor %}
+                        </ul>
                     {% else %}
-                        <p class="text-success"><i class="bi bi-check-circle-fill"></i> Imager is operational</p>
+                        <p class="mb-0 mt-2">No specific reasons provided.</p>
                     {% endif %}
-                    
-                    <!-- TODO: Add FITS image viewer (JS9) -->
                 </div>
-            </div>
+            {% else %}
+                <!-- Component is operational - show tabs in scrollable area -->
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <ul class="nav nav-tabs" id="imager-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="imager-config-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#imager-config" type="button" role="tab">
+                                Configuration
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="imager-controls-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#imager-controls" type="button" role="tab">
+                                Controls
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="imager-details-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#imager-details" type="button" role="tab">
+                                Details
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="imager-tabs-content">
+                        <!-- Configuration Tab -->
+                        <div class="tab-pane fade show active" id="imager-config" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Configuration options coming soon...</p>
+                                <!-- TODO: Add configuration form (binning, exposure, etc.) -->
+                            </div>
+                        </div>
+                        
+                        <!-- Controls Tab -->
+                        <div class="tab-pane fade" id="imager-controls" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Control interface coming soon...</p>
+                                <!-- TODO: Add control buttons (expose, abort, cooling, etc.) -->
+                            </div>
+                        </div>
+                        
+                        <!-- Details Tab -->
+                        <div class="tab-pane fade" id="imager-details" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-success"><i class="bi bi-check-circle-fill"></i> Imager is operational</p>
+                                
+                                {% if imager.activities_verbal %}
+                                    <div class="alert alert-primary mt-3">
+                                        <strong>Activities:</strong>
+                                        <ul class="mb-0">
+                                            {% for activity in imager.activities_verbal %}
+                                                <li>{{ activity|format_activity_name }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                                
+                                <!-- TODO: Add FITS image viewer (JS9) -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>

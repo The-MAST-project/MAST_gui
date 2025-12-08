@@ -1,18 +1,23 @@
 {% load time_filters %}
 
-<div class="controller-status dropdown" id="controller-status">
+<div class="controller-status dropdown" 
+     id="controller-status"
+     x-data="controllerStatus()"
+     x-init="init()">
+    
     <button class="btn btn-sm btn-link dropdown-toggle text-decoration-none" 
             type="button"
             data-bs-toggle="dropdown" 
-            aria-expanded="false">
+            aria-expanded="false"
+            :aria-label="statusLabel">
         {% if connected %}
-            <span class="status-dot status-ok"></span>
+            <span class="status-dot status-ok" aria-hidden="true"></span>
             <span class="d-none d-lg-inline">Controller: OK</span>
         {% elif retry_count < 3 %}
-            <span class="status-dot status-warning"></span>
+            <span class="status-dot status-warning" aria-hidden="true"></span>
             <span class="d-none d-lg-inline">Controller: Retrying</span>
         {% else %}
-            <span class="status-dot status-error"></span>
+            <span class="status-dot status-error" aria-hidden="true"></span>
             <span class="d-none d-lg-inline">Controller: Offline</span>
         {% endif %}
     </button>
@@ -43,39 +48,80 @@
             <button class="btn btn-sm btn-primary w-100" 
                     hx-get="{% url 'controller_status_check' %}"
                     hx-target="#controller-status"
-                    hx-swap="outerHTML">
+                    hx-swap="innerHTML"
+                    @click="retryClicked()">
                 <i class="bi bi-arrow-clockwise"></i> Retry Now
             </button>
         {% endif %}
     </div>
 </div>
 
-<!-- Trigger toast notification on state change -->
 <script>
-    (function() {
-        const connected = {{ connected|yesno:"true,false" }};
-        const retryCount = {{ retry_count }};
-        const controllerHost = '{{ controller_host|escapejs }}';
-        const siteName = '{{ request.session.selected_site|default:"wis"|escapejs }}';
-        const prevState = localStorage.getItem('controller_connected');
+function controllerStatus() {
+    return {
+        // Outputs boolean, not string
+        connected: {{ connected|lower }},
+        retryCount: {{ retry_count|default:"0" }},
+        controllerHost: '{{ controller_host|escapejs }}',
+        siteName: '{{ request.session.selected_site|default:"wis"|escapejs }}',
         
-        // Store current state
-        localStorage.setItem('controller_connected', connected ? 'true' : 'false');
+        get statusLabel() {
+            if (this.connected) return 'Controller status: Connected';
+            if (this.retryCount < 3) return 'Controller status: Retrying connection';
+            return 'Controller status: Offline';
+        },
         
-        // Show toast on state change
-        if (prevState !== null) {
-            if (prevState === 'true' && !connected) {
-                showToast('warning', 'Connection Lost', `Cannot reach ${controllerHost}. Retrying...`);
-            } else if (prevState === 'false' && connected) {
-                showToast('success', 'Connection Restored', `Connected to ${controllerHost}`);
+        init() {
+            this.checkStateChange();
+            this.updateBanner();
+        },
+        
+        checkStateChange() {
+            try {
+                const prevState = localStorage.getItem('controller_connected');
+                const currentState = this.connected ? 'true' : 'false';
+                
+                // Store current state
+                localStorage.setItem('controller_connected', currentState);
+                
+                // Show toast on state change
+                if (prevState !== null && prevState !== currentState) {
+                    if (this.connected) {
+                        this.showToast('success', 'Connection Restored', 
+                                     `Connected to ${this.controllerHost}`);
+                    } else {
+                        this.showToast('warning', 'Connection Lost', 
+                                     `Cannot reach ${this.controllerHost}. Retrying...`);
+                    }
+                }
+            } catch (e) {
+                console.warn('localStorage not available:', e);
             }
-        }
+        },
         
-        // Show/hide banner based on retry count
-        if (retryCount >= 2 && !connected) {
-            showBanner(controllerHost, siteName);
-        } else if (connected) {
-            hideBanner();
+        updateBanner() {
+            if (this.retryCount >= 2 && !this.connected) {
+                if (typeof showBanner === 'function') {
+                    showBanner(this.controllerHost, this.siteName);
+                }
+            } else if (this.connected) {
+                if (typeof hideBanner === 'function') {
+                    hideBanner();
+                }
+            }
+        },
+        
+        showToast(type, title, message) {
+            if (typeof window.showToast === 'function') {
+                window.showToast(type, title, message);
+            } else {
+                console.warn('showToast not available:', title, message);
+            }
+        },
+        
+        retryClicked() {
+            console.log('Retrying connection to controller...');
         }
-    })();
+    }
+}
 </script>

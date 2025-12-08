@@ -77,94 +77,111 @@
          aria-labelledby="heading-unit" 
          data-bs-parent="#componentsAccordion">
         <div class="accordion-body">
-            <div class="row">
-                <!-- Left column: Status -->
-                <div class="col-md-6">
-                    <h6>Status</h6>
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td><strong>Powered:</strong></td>
-                                <td>
-                                    {% if unit.powered %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Detected:</strong></td>
-                                <td>
-                                    {% if unit.detected %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Operational:</strong></td>
-                                <td>
-                                    {% if unit.operational %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Guiding:</strong></td>
-                                <td>
-                                    {% if unit.guiding %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-muted">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Autofocusing:</strong></td>
-                                <td>
-                                    {% if unit.autofocusing %}
-                                        <span class="text-primary">Yes</span>
-                                    {% else %}
-                                        <span class="text-muted">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    
-                    {% if unit.activities_verbal %}
-                        <div class="alert alert-primary">
-                            <strong>Activities:</strong>
-                            <ul class="mb-0">
-                                {% for activity in unit.activities_verbal %}
-                                    <li>{{ activity|format_activity_name }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    {% endif %}
+            {% if not unit.powered %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Unit not powered</strong>
                 </div>
-                
-                <!-- Right column: Details -->
-                <div class="col-md-6">
-                    <h6>Details</h6>
-                    {% if not unit.operational and unit.why_not_operational %}
-                        <div class="alert alert-warning">
-                            <strong>Why not operational:</strong>
-                            <ul class="mb-0">
-                                {% for reason in unit.why_not_operational %}
-                                    <li>{{ reason }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+            {% elif not unit.detected %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Unit not detected</strong>
+                </div>
+            {% elif not unit.operational %}
+                <div class="alert alert-danger">
+                    <strong>Unit not operational:</strong>
+                    {% if unit.why_not_operational %}
+                        <ul class="mb-0 mt-2">
+                            {% for reason in unit.why_not_operational %}
+                                <li>{{ reason }}</li>
+                            {% endfor %}
+                        </ul>
                     {% else %}
-                        <p class="text-success"><i class="bi bi-check-circle-fill"></i> Unit is operational</p>
+                        <p class="mb-0 mt-2">No specific reasons provided.</p>
                     {% endif %}
                 </div>
-            </div>
+            {% else %}
+                <!-- Component is operational - show tabs in scrollable area -->
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <ul class="nav nav-tabs" id="unit-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="unit-config-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#unit-config" type="button" role="tab">
+                                Configuration
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="unit-controls-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#unit-controls" type="button" role="tab">
+                                Controls
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="unit-details-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#unit-details" type="button" role="tab">
+                                Details
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="unit-tabs-content">
+                        <!-- Configuration Tab -->
+                        <div class="tab-pane fade show active" id="unit-config" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Configuration options coming soon...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Controls Tab -->
+                        <div class="tab-pane fade" id="unit-controls" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Control interface coming soon...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Details Tab -->
+                        <div class="tab-pane fade" id="unit-details" role="tabpanel">
+                            <div class="p-3">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Guiding:</strong></td>
+                                            <td>
+                                                {% if unit.guiding %}
+                                                    <span class="text-success">Yes</span>
+                                                {% else %}
+                                                    <span class="text-muted">No</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Autofocusing:</strong></td>
+                                            <td>
+                                                {% if unit.autofocusing %}
+                                                    <span class="text-primary">Yes</span>
+                                                {% else %}
+                                                    <span class="text-muted">No</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                
+                                {% if unit.activities_verbal %}
+                                    <div class="alert alert-primary">
+                                        <strong>Activities:</strong>
+                                        <ul class="mb-0">
+                                            {% for activity in unit.activities_verbal %}
+                                                <li>{{ activity|format_activity_name }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>

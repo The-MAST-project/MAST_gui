@@ -73,103 +73,143 @@
          aria-labelledby="heading-focuser" 
          data-bs-parent="#componentsAccordion">
         <div class="accordion-body">
-            <div class="row">
-                <!-- Left column: Status and Position -->
-                <div class="col-md-6">
-                    <h6>Status</h6>
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td><strong>Powered:</strong></td>
-                                <td>
-                                    {% if focuser.powered %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Detected:</strong></td>
-                                <td>
-                                    {% if focuser.detected %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Operational:</strong></td>
-                                <td>
-                                    {% if focuser.operational %}
-                                        <span class="text-success">Yes</span>
-                                    {% else %}
-                                        <span class="text-danger">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Moving:</strong></td>
-                                <td>
-                                    {% if focuser.moving %}
-                                        <span class="text-warning">Yes</span>
-                                    {% else %}
-                                        <span class="text-muted">No</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% if focuser.position is not None %}
-                                <tr>
-                                    <td><strong>Position:</strong></td>
-                                    <td><strong>{{ focuser.position }}</strong> steps</td>
-                                </tr>
-                            {% endif %}
-                            {% if focuser.target is not None %}
-                                <tr>
-                                    <td><strong>Target:</strong></td>
-                                    <td>{{ focuser.target }} steps</td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                    
-                    {% if focuser.target_verbal %}
-                        <div class="alert alert-info">
-                            <strong>Target:</strong> {{ focuser.target_verbal }}
-                        </div>
-                    {% endif %}
-                    
-                    {% if focuser.activities_verbal %}
-                        <div class="alert alert-primary">
-                            <strong>Activities:</strong>
-                            <ul class="mb-0">
-                                {% for activity in focuser.activities_verbal %}
-                                    <li>{{ activity|format_activity_name }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+            {% if not focuser.powered %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Focuser not powered</strong>
+                </div>
+            {% elif not focuser.detected %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Focuser not detected</strong>
+                </div>
+            {% elif not focuser.operational %}
+                <div class="alert alert-danger">
+                    <strong>Focuser not operational:</strong>
+                    {% if focuser.why_not_operational %}
+                        <ul class="mb-0 mt-2">
+                            {% for reason in focuser.why_not_operational %}
+                                <li>{{ reason }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-0 mt-2">No specific reasons provided.</p>
                     {% endif %}
                 </div>
-                
-                <!-- Right column: Position Display -->
-                <div class="col-md-6">
-                    <h6>Current Position</h6>
-                    {% if focuser.position is not None %}
-                        <div class="card bg-light">
-                            <div class="card-body text-center">
-                                <h2 class="mb-0">
-                                    <span class="badge bg-primary">{{ focuser.position }} steps</span>
-                                </h2>
+            {% else %}
+                <!-- Component is operational - show tabs in scrollable area -->
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <ul class="nav nav-tabs" id="focuser-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="focuser-config-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#focuser-config" type="button" role="tab">
+                                Configuration
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="focuser-controls-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#focuser-controls" type="button" role="tab">
+                                Controls
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="focuser-details-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#focuser-details" type="button" role="tab">
+                                Details
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="focuser-tabs-content">
+                        <!-- Configuration Tab -->
+                        <div class="tab-pane fade show active" id="focuser-config" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Configuration options coming soon...</p>
+                                <!-- TODO: Add configuration form -->
                             </div>
                         </div>
                         
-                        <!-- TODO: Add V-curve graph visualization -->
-                    {% else %}
-                        <p class="text-muted">Position data not available</p>
-                    {% endif %}
+                        <!-- Controls Tab -->
+                        <div class="tab-pane fade" id="focuser-controls" role="tabpanel">
+                            <div class="p-3">
+                                <p class="text-muted">Control interface coming soon...</p>
+                                <!-- TODO: Add control buttons (move to position, relative move, etc.) -->
+                            </div>
+                        </div>
+                        
+                        <!-- Details Tab -->
+                        <div class="tab-pane fade" id="focuser-details" role="tabpanel">
+                            <div class="p-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Status</h6>
+                                        <table class="table table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <td><strong>Moving:</strong></td>
+                                                    <td>
+                                                        {% if focuser.moving %}
+                                                            <span class="text-warning">Yes</span>
+                                                        {% else %}
+                                                            <span class="text-muted">No</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% if focuser.position is not None %}
+                                                    <tr>
+                                                        <td><strong>Position:</strong></td>
+                                                        <td><strong>{{ focuser.position }}</strong> steps</td>
+                                                    </tr>
+                                                {% endif %}
+                                                {% if focuser.target is not None %}
+                                                    <tr>
+                                                        <td><strong>Target:</strong></td>
+                                                        <td>{{ focuser.target }} steps</td>
+                                                    </tr>
+                                                {% endif %}
+                                            </tbody>
+                                        </table>
+                                        
+                                        {% if focuser.target_verbal %}
+                                            <div class="alert alert-info">
+                                                <strong>Target:</strong> {{ focuser.target_verbal }}
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if focuser.activities_verbal %}
+                                            <div class="alert alert-primary">
+                                                <strong>Activities:</strong>
+                                                <ul class="mb-0">
+                                                    {% for activity in focuser.activities_verbal %}
+                                                        <li>{{ activity|format_activity_name }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6>Current Position</h6>
+                                        {% if focuser.position is not None %}
+                                            <div class="card bg-light">
+                                                <div class="card-body text-center">
+                                                    <h2 class="mb-0">
+                                                        <span class="badge bg-primary">{{ focuser.position }} steps</span>
+                                                    </h2>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- TODO: Add V-curve graph visualization -->
+                                        {% else %}
+                                            <p class="text-muted">Position data not available</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>

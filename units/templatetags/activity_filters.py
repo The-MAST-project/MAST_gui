@@ -20,6 +20,8 @@ def activity_badge_class(activity_name: str) -> str:
     """
     # Handle different activity name formats
     # Could be "MountActivities.Slewing" or just "Slewing"
+    if ':' in activity_name:
+        activity_name = activity_name.split(':')[0].strip()
     if '.' in activity_name:
         # Extract just the activity name after the dot
         activity_name = activity_name.split('.')[-1]
@@ -82,6 +84,8 @@ def format_activity_name(activity_name: str) -> str:
     
     # Handle different activity name formats
     # Could be "MountActivities.Slewing" or just "Slewing"
+    if ':' in activity_name:
+        activity_name = activity_name.split(':')[0].strip()
     if '.' in activity_name:
         # Extract just the activity name after the dot
         activity_name = activity_name.split('.')[-1]
