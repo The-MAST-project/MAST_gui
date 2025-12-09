@@ -17,7 +17,7 @@ urlpatterns = [
     
     # App includes
     path('accounts/', include('accounts.urls', namespace='accounts')),
-    path('units/', include('units.urls', namespace='units')),
+    path('units/', include('units.urls')),  # ✅ Remove namespace='units'
     path('safety/', include('mast_safety.urls', namespace='safety')),
     
     # Admin/management URLs

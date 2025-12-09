@@ -22,7 +22,7 @@ def is_field_editable(pydantic_model, field_name: str, user) -> bool:
     metadata = get_field_metadata(pydantic_model, field_name)
     
     # Check if field is hidden
-    if metadata.get('ui_hidden'):
+    if metadata.get('ui.hidden'):
         return False
     
     # Check if field is explicitly marked as not editable
@@ -51,7 +51,7 @@ def generate_form_fields(pydantic_model, instance, user) -> dict:
         metadata = field_info.json_schema_extra or {}
         
         # Skip hidden fields
-        if metadata.get('ui_hidden'):
+        if metadata.get('ui.hidden'):
             continue
         
         # Determine if editable
@@ -70,10 +70,10 @@ def generate_form_fields(pydantic_model, instance, user) -> dict:
             'value': getattr(instance, field_name, None),
             'editable': editable,
             'description': field_info.description or field_name.replace('_', ' ').title(),
-            'widget': metadata.get('ui_widget', 'text'),
-            'unit': metadata.get('ui_unit'),
-            'format': metadata.get('ui_format'),
-            'group': metadata.get('ui_group', 'General'),
+            'widget': metadata.get('ui.widget', 'text'),
+            'unit': metadata.get('ui.unit'),
+            'format': metadata.get('ui.format'),
+            'group': metadata.get('ui.group', 'General'),
             'validation': validation,
             'error_message': metadata.get('error_message', f'Invalid {field_name}'),
             'tooltip': metadata.get('tooltip', field_info.description),
@@ -83,7 +83,7 @@ def generate_form_fields(pydantic_model, instance, user) -> dict:
 
 
 def group_fields(fields: dict) -> dict:
-    """Group fields by their ui_group metadata."""
+    """Group fields by their ui.group metadata."""
     grouped = {}
     for field in fields.values():
         group = field['group']

@@ -98,18 +98,36 @@
                 </div>
             {% else %}
                 <!-- Component is operational - show tabs in scrollable area -->
+                <script>
+                    window.allowedBackground = '#d4edda';    // light green
+                    window.notAllowedBackground = '#f8d7da'; // light red
+                </script>
+                <style>
+                    /* Override Bootstrap nav-link active background for config tab */
+                    #focuser-config-tab.nav-link.active,
+                    #focuser-config-tab.nav-link {
+                        background-color: inherit !important;
+                    }
+                </style>
                 <div style="max-height: 500px; overflow-y: auto;">
                     <ul class="nav nav-tabs" id="focuser-tabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="focuser-config-tab" data-bs-toggle="tab" 
-                                    data-bs-target="#focuser-config" type="button" role="tab">
+                            <button class="nav-link active"
+                                    id="focuser-config-tab"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#focuser-config"
+                                    type="button"
+                                    role="tab"
+                                    :style="{
+                                        backgroundColor: $store.userCanChangeConfiguration ? window.allowedBackground : window.notAllowedBackground
+                                    }">
                                 Configuration
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="focuser-controls-tab" data-bs-toggle="tab" 
                                     data-bs-target="#focuser-controls" type="button" role="tab">
-                                Controls
+                                Control
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
@@ -124,8 +142,20 @@
                         <!-- Configuration Tab -->
                         <div class="tab-pane fade show active" id="focuser-config" role="tabpanel">
                             <div class="p-3">
-                                <p class="text-muted">Configuration options coming soon...</p>
-                                <!-- TODO: Add configuration form -->
+                                <!-- DEBUG -->
+                                <!-- <div class="alert alert-warning">
+                                    <strong>Debug:</strong><br>
+                                    Has values: {{ focuser_config_values|length }}<br>
+                                    Has schema: {{ focuser_config_schema|length }}<br>
+                                    Values: {{ focuser_config_values }}<br>
+                                    Schema: {{ focuser_config_schema }}
+                                </div> -->
+                                
+                                {% if focuser_config_values and focuser_config_schema %}
+                                    {% include 'units/components/config_form.html' with component_name='focuser' config_values=focuser_config_values config_schema=focuser_config_schema %}
+                                {% else %}
+                                    <p class="text-muted">Configuration not available</p>
+                                {% endif %}
                             </div>
                         </div>
                         

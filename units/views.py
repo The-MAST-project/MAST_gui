@@ -10,9 +10,18 @@ from common.models.statuses import UnitStatus, ShortUnitStatus, FullUnitStatus
 import asyncio
 from django.http import JsonResponse, FileResponse
 from django.views.decorators.http import require_http_methods
-import os
+import datetime
 from pathlib import Path
 import mimetypes
+import json
+import logging
+
+from .config_utils import extract_field_metadata
+from common.config.focuser import FocuserConfig
+
+# Set default log level to DEBUG for this module
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -295,13 +304,63 @@ def unit_detail(request, unit_name):
                 'is_computer': False
             })
     
+    # --- Fetch unit configuration from ControllerApi ---
+    focuser_config_values = {}
+    focuser_config_schema = {}
+    unit_config_focuser = ""
+    unit_config_dump = ""
+
+    controller = ControllerApi(site_name=current_site)
+    config_response = asyncio.run(
+        controller.client.get(f"config/get_unit/{unit_name}")
+    )
+
+    if config_response.succeeded and config_response.value:
+        unit_config = config_response.value
+        # Dump the whole unit config for debugging
+        try:
+            import pprint
+            unit_config_dump = pprint.pformat(unit_config)
+        except Exception:
+            unit_config_dump = str(unit_config)
+
+        # Try to extract focuser config robustly
+        focuser_obj = None
+        # If unit_config is a dict, try key lookup
+        if isinstance(unit_config, dict):
+            focuser_obj = unit_config.get('focuser', None)
+        else:
+            # Try attribute access
+            focuser_obj = getattr(unit_config, 'focuser', None)
+            # If still None, try dict conversion
+            if focuser_obj is None and hasattr(unit_config, '__dict__'):
+                focuser_obj = unit_config.__dict__.get('focuser', None)
+
+        unit_config_focuser = str(focuser_obj)
+        if focuser_obj:
+            if hasattr(focuser_obj, 'model_dump'):
+                focuser_config_values = focuser_obj.model_dump()
+            elif hasattr(focuser_obj, 'dict'):
+                focuser_config_values = focuser_obj.dict()
+            elif isinstance(focuser_obj, dict):
+                focuser_config_values = focuser_obj
+            else:
+                # Last resort: try __dict__
+                focuser_config_values = getattr(focuser_obj, '__dict__', {})
+            focuser_config_schema = extract_field_metadata(FocuserConfig)
+
+    print(f"unit_details: {focuser_config_values=}\n{focuser_config_schema=}")
     return render(request, 'units/detail.html', {
         'unit_name': unit_name,
         'site': current_site,
         'outlets': outlets,
         'unit_operational': unit_operational,
         'unit_info': unit_info,
-        'component_statuses': component_statuses,  # Pass component data to template
+        'component_statuses': component_statuses,
+        'focuser_config_values': json.dumps(focuser_config_values),
+        'focuser_config_schema': json.dumps(focuser_config_schema),
+        'unit_config_focuser': unit_config_focuser,
+        'unit_config_dump': unit_config_dump,
     })
 
 
@@ -371,8 +430,67 @@ def toggle_outlet(request, unit_name, outlet_id):
     
     return JsonResponse({'error': 'Failed to get outlet info'}, status=500)
 
-# Use os.path for cross-platform compatibility
 
-def get_image_path(filename):
-    # Use Path for better cross-platform support
-    return Path(settings.MEDIA_ROOT) / 'images' / filename.lower()
+@login_required
+@require_http_methods(["POST"])
+def save_component_config(request, unit_name, component):
+    """
+    Save component configuration via ControllerApi
+    """
+    # Check if user has configuration permission
+    if not request.user.has_perm('auth.canChangeConfiguration'):
+        return JsonResponse({'error': 'Not authorized'}, status=403)
+    
+    # Get current site from session
+    current_site = request.session.get('selected_site', 'wis')
+    
+    try:
+        # Parse request body
+        config_data = json.loads(request.body)
+        
+        # Get current unit config
+        controller = ControllerApi(site_name=current_site)
+        get_response = asyncio.run(
+            controller.client.get(f"config/get_unit/{unit_name}")
+        )
+        
+        if not get_response.succeeded:
+            return JsonResponse({'error': 'Failed to get current config'}, status=500)
+        
+        # Update the specific component config
+        unit_config = get_response.value
+        
+        if component == 'focuser' and hasattr(unit_config, 'focuser'):
+            # Validate with Pydantic
+            from common.config.focuser import FocuserConfig
+            updated_focuser = FocuserConfig(**config_data)
+            unit_config.focuser = updated_focuser
+        else:
+            return JsonResponse({'error': f'Unknown component: {component}'}, status=400)
+        
+        # Save via ControllerApi
+        save_response = asyncio.run(
+            controller.client.post(f"config/set_unit/{unit_name}", json=unit_config.model_dump())
+        )
+        
+        if save_response.succeeded:
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'error': save_response.errors}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+def controller_status_check(request):
+    """
+    Endpoint for polling controller status.
+    Returns basic health/status info for the controller.
+    """
+    # You can expand this with real health checks as needed
+    status = {
+        "controller": "online",
+        "message": "Controller is running",
+        "timestamp": str(datetime.datetime.utcnow()),
+    }
+    return JsonResponse(status)

@@ -1420,25 +1420,53 @@ Loads from MongoDB events:
 
 ### Field Metadata Structure
 
-Fields use `json_schema_extra` for UI behavior:
+Fields use `json_schema_extra` for UI behavior.  
+**UI-related fields are grouped under a `ui` key, and do not use the `ui_` prefix.**
 
 ```python
 from pydantic import BaseModel, Field
 
 class ComponentConfig(BaseModel):
-    # Editable field
+    # Dropdown selector field
+    home_position: str = Field(
+        default="Home",
+        json_schema_extra={
+            'ui': {
+                'editable': True,
+                'widget': 'select',
+                'options': ['Home', 'Fiber', 'ThAr', 'Flat', 'Dark'],
+                'tooltip': 'Default home position for stage'
+            },
+            'required_capability': 'canChangeConfiguration'
+        }
+    )
+    
+    # Numeric field
     max_position: int = Field(
         default=10000,
         description="Maximum position",
         ge=0,
         le=50000,
         json_schema_extra={
-            'editable': True,
-            'ui_widget': 'number',
-            'ui_group': 'Limits',
-            'ui_unit': 'steps',
-            'tooltip': 'Maximum allowed position',
-            'error_message': 'Position must be 0-50000'
+            'ui': {
+                'editable': True,
+                'widget': 'number',
+                'unit': 'steps',
+                'tooltip': 'Maximum allowed position',
+                'error_message': 'Position must be 0-50000'
+            }
+        }
+    )
+    
+    # Boolean checkbox field
+    auto_home: bool = Field(
+        default=True,
+        json_schema_extra={
+            'ui': {
+                'editable': True,
+                'widget': 'checkbox',
+                'tooltip': 'Automatically home on startup'
+            }
         }
     )
 
@@ -1446,460 +1474,162 @@ class ComponentConfig(BaseModel):
     current_position: int = Field(
         default=0,
         json_schema_extra={
-            'editable': False,
-            'ui_widget': 'readonly'
+            'ui': {
+                'editable': False,
+                'widget': 'readonly'
+            }
         }
     )
 
     # Hidden field
     internal_id: str = Field(
         json_schema_extra={
-            'ui_hidden': True
+            'ui': {
+                'hidden': True
+            }
         }
     )
 
     # Admin-only field
     calibration: float = Field(
         json_schema_extra={
-            'editable': True,
-            'required_capability': 'canChangeAdvancedConfig',
-            'ui_group': 'Advanced'
+            'ui': {
+                'editable': True
+            },
+            'required_capability': 'canChangeAdvancedConfig'
         }
     )
 ```
 
 ### Metadata Fields
 
-- `editable`: Boolean, whether user can edit
-- `ui_hidden`: Boolean, hide from UI entirely
-- `ui_widget`: ‘text’, ‘number’, ‘readonly’, etc.
-- `ui_group`: Group name for organizing fields
-- `ui_unit`: Display unit (°C, steps, etc.)
-- `ui_format`: String format for display (e.g., ‘.1f’)
-- `required_capability`: MAST capability needed to edit
-- `tooltip`: Help text shown on hover
-- `error_message`: Custom validation error message
+- **`ui`**: Dictionary containing all UI-related metadata:
+    - **`editable`**: Boolean, whether user can edit
+    - **`hidden`**: Boolean, hide from UI entirely
+    - **`widget`**: Input control type (see Widget Types below)
+    - **`options`**: List of strings for dropdown/select widgets
+    - **`unit`**: Display unit (°C, steps, mm/s, etc.)
+    - **`format`**: String format for display (e.g., '.1f', '.2f')
+    - **`tooltip`**: Help text shown on hover
+    - **`error_message`**: Custom validation error message
+- **`required_capability`**: MAST capability needed to edit (outside `ui`)
+
+### Widget Types (`widget`)
+
+Alpine.js will render different HTML controls based on `widget`:
+
+**Text Inputs:**
+- `'text'` → `<input type="text">`
+- `'email'` → `<input type="email">`
+- `'password'` → `<input type="password">`
+- `'url'` → `<input type="url">`
+- `'tel'` → `<input type="tel">`
+
+**Numeric Inputs:**
+- `'number'` → `<input type="number">`
+- `'range'` → `<input type="range">`
+
+**Date/Time:**
+- `'date'` → `<input type="date">`
+- `'time'` → `<input type="time">`
+- `'datetime-local'` → `<input type="datetime-local">`
+
+**Selection:**
+- `'select'` → `<select>` (requires `options` list)
+- `'checkbox'` → `<input type="checkbox">`
+
+**Text Area:**
+- `'textarea'` → `<textarea>`
+
+**Other:**
+- `'color'` → `<input type="color">`
+- `'file'` → `<input type="file">`
+- `'readonly'` → `<span>`
 
 ### Form Field Display Rules
 
-1. **Hidden fields** (`ui_hidden: True`): Not rendered
-1. **Read-only fields** (`editable: False`): Rendered as plain text
-1. **Permission-based**: Check `required_capability` against user
-1. **Grouped**: Fields organized by `ui_group`
-1. **Validation**: Min/max from Pydantic constraints → HTML attributes
+1. **Hidden fields** (`ui['hidden']: True`): Not rendered
+2. **Read-only fields** (`ui['editable']: False`): Rendered as plain text
+3. **Permission-based**: Check `required_capability` against user
+4. **Dropdown fields** (`ui['widget']: 'select'`): Require `ui['options']` list
+5. **Validation**: Min/max from Pydantic constraints → HTML attributes
 
------
-
-## Authentication & Authorization
-
-### User Authentication
-
-- **Method**: Email-based authentication
-- **Options**:
-  - Local account (email + password)
-  - Social auth (Google, Facebook, Apple)
-- **Rule**: User has EITHER social OR local (not both)
-
-### User Identity
-
-- **Primary identifier**: Unique username (string)
-- **Username generation**: Initially derived from email (e.g., `john.doe` from `john.doe@example.com`)
-- **Username changes**: User can change username if new value is unique across all users
-- **Email changes**: User can change email address; username remains constant
-- **Display name**: Full name used in UI; username used internally
-
-### User Storage
-
-- **MongoDB**: MAST configuration database
-- **Django**: Session management only
-- **Username**: Primary key/identifier (unique, immutable for system purposes)
-- **Email**: Authentication credential (can be changed)
-
-### User Data Structure
-
-```json
-{
-  "name": "john.doe",                // unique username (primary identifier)
-  "email": "user@example.com",       // current email (can be changed)
-  "full_name": "John Doe",
-  "password": "hashed_pw" or null,   // null for social auth
-  "groups": ["admin", "operator"],
-  "picture": {...}                   // from social or uploaded
-}
-```
-
-**Note**: When a user changes their email:
-- The `email` field is updated
-- The `name` (username) remains unchanged
-- MongoDB references by username remain valid
-- Re-authentication required with new email
-
-### Groups & Capabilities
-
-```json
-{
-  "name": "admin",
-  "members": ["user@example.com"],
-  "capabilities": [
-    "canChangeConfiguration",
-    "canUseControls",
-    "canChangeUsers",
-    "canOwnTasks"
-  ]
-}
-```
-
-**Special group**: `everybody` - all users belong to this group
-
-### Capability System
-
-- **canView**: View-only access
-- **canChangeConfiguration**: Edit configurations
-- **canUseControls**: Operate units/components
-- **canChangeUsers**: Manage users/groups
-- **canOwnTasks**: Create/own observation tasks
-
-### Profile Pictures
-
-- **Social auth**: Fetched from provider, stored in MongoDB
-- **Local account**: Manually uploaded or default avatar
-
------
-
-## API Structure
-
-### Base Path
-
-All MAST_control API endpoints use the base path: `/mast/control/v1/`
-
-### Response Format
-
-All API endpoints return a `CanonicalResponse` object (defined in `common/canonical.py`):
+### Example: Complete Configuration Model
 
 ```python
-class CanonicalResponse(BaseModel):
-    succeeded: bool           # True if operation succeeded
-    errors: list[str] | None  # Error messages if failed
-    value: Any | None         # Response data if succeeded
+from pydantic import BaseModel, Field
+
+class StageConfig(BaseModel):
+    # Dropdown selector
+    home_position: str = Field(
+        default="Home",
+        json_schema_extra={
+            'ui': {
+                'editable': True,
+                'widget': 'select',
+                'options': ['Home', 'Fiber', 'ThAr', 'Flat', 'Dark'],
+                'tooltip': 'Default home position for stage'
+            }
+        }
+    )
+    
+    # Number input with range
+    max_speed: float = Field(
+        default=10.0,
+        ge=1.0,
+        le=50.0,
+        json_schema_extra={
+            'ui': {
+                'editable': True,
+                'widget': 'number',
+                'unit': 'mm/s',
+                'tooltip': 'Maximum stage movement speed'
+            }
+        }
+    )
+    
+    # Checkbox
+    auto_home_on_startup: bool = Field(
+        default=True,
+        json_schema_extra={
+            'ui': {
+                'editable': True,
+                'widget': 'checkbox',
+                'tooltip': 'Automatically home stage when unit starts'
+            }
+        }
+    )
+    
+    # Multi-line text
+    calibration_notes: str = Field(
+        default="",
+        json_schema_extra={
+            'ui': {
+                'editable': True,
+                'widget': 'textarea',
+                'tooltip': 'Notes about stage calibration'
+            }
+        }
+    )
+    
+    # Read-only
+    serial_number: str = Field(
+        default="STG-001",
+        json_schema_extra={
+            'ui': {
+                'editable': False,
+                'widget': 'readonly'
+            }
+        }
+    )
+    
+    # Hidden from UI
+    internal_calibration_offset: float = Field(
+        default=0.0,
+        json_schema_extra={
+            'ui': {
+                'hidden': True
+            }
+        }
+    )
 ```
-
-### Endpoint Categories
-
-#### Control Endpoints
-
-**Tag**: `Control`
-
-- `GET /mast/control/v1/status` - Get overall system status
-  - Returns: `{spec: dict, units: dict, date: str}`
-- `GET /mast/control/v1/startup` - Start controller operations
-- `GET /mast/control/v1/shutdown` - Stop controller operations
-
-#### Configuration Endpoints
-
-**Tag**: `Config`
-
-- `GET /mast/control/v1/config/world` - Get sites, buildings, units configuration
-- `GET /mast/control/v1/config/users` - Get all users
-- `GET /mast/control/v1/config/user?user_name={username}` - Get specific user
-- `GET /mast/control/v1/config/get_unit/{unit_name}` - Get unit configuration
-  - Returns: Merged common + unit-specific config
-- `POST /mast/control/v1/config/set_unit/{unit_name}` - Set unit configuration
-  - Body: `UnitConfig` (Pydantic model)
-  - Stores only delta from common config
-- `GET /mast/control/v1/config/get_thar_filters` - Get ThAr filter wheel configuration
-
-#### Unit Endpoints
-
-**Tag**: `Unit`
-
-- `GET /mast/control/v1/unit/{unit_name}/status` - Get unit status
-  - Returns: Discriminated union `UnitStatus` (ShortUnitStatus or FullUnitStatus)
-- `GET /mast/control/v1/unit/{unit_name}/power_switch/status` - Get power switch status
-  - Returns: `PowerSwitchStatus` with list of outlets
-- `GET /mast/control/v1/unit/{unit_name}/power_switch/get_outlet/{outlet_id}` - Get outlet state
-  - Returns: `bool | None` (True=on, False=off, None=unknown)
-- `PUT /mast/control/v1/unit/{unit_name}/power_switch/set_outlet/{outlet_id}/{state}` - Set outlet state
-  - Path params: `outlet_id` (outlet identifier), `state` ('on'|'off'|'toggle')
-  - Returns: `CanonicalResponse` with success/error
-
-**Note**: Power switch operations always use controller endpoints, independent of unit operational status. This allows power control even when unit is offline.
-
-#### Task Endpoints
-
-**Tag**: `Tasks`
-
-- `GET /mast/control/v1/get_tasks` - Get all tasks
-  - Optional params: `ulid`, `name`
-  - Returns: `TasksResponse` with categorized task lists
-    - `assigned`: Tasks assigned to units
-    - `pending`: Tasks waiting for assignment
-    - `failed`: Failed tasks
-    - `in_progress`: Currently executing tasks
-- `POST /mast/control/v1/execute_assigned_task?ulid={task_ulid}` - Execute a task
-- `PUT /mast/control/v1/task_acquisition_path_notification` - Receive task file locations
-  - Body: `TaskAcquisitionPathNotification`
-  - Creates symlinks in task run folder
-- `PUT /mast/control/v1/activity_notification` - Receive activity notifications
-  - Body: `ActivityNotification`
-  - Broadcasts to WebSocket clients
-
-#### WebSocket Endpoints
-
-- `WS /mast/control/v1/activity_notification` - WebSocket for real-time activity updates
-  - Push notifications for activity start/end events
-  - Used by GUI for live status updates
-
-### Task Management
-
-**Task Containers** (file-based with filesystem watchers):
-
-- **pending/**: Submitted tasks waiting for scheduling
-- **assigned/**: Tasks assigned to units but not started
-- **in-progress/**: Currently executing task (max 1)
-- **failed/**: Failed task executions
-- **completed/**: Successfully completed tasks
-
-**Task File Pattern**: `TSK_*.toml` (ULID-based naming)
-
-**File Operations**:
-- Create: Task added to list
-- Modify: Task updated in list (by ULID)
-- Delete: Task removed from list
-
-### Power Switch Control
-
-**Outlet IDs**: Enum-based (OutletId)
-- Computer (unit computer)
-- Mount, Camera, Focuser, Stage, Dome
-- Additional accessories
-
-**Operations**:
-- Get status of all outlets
-- Get individual outlet state
-- Set outlet: `on`, `off`, or `toggle`
-
-### Activity Notifications
-
-**ActivityNotification Model**:
-```python
-{
-  "initiator": str,          # Component name
-  "activity": int,           # Activity ID
-  "activity_verbal": str,    # Human-readable activity name
-  "started": bool,           # True=start, False=end
-  "duration": str | None     # Duration in seconds (on end)
-}
-```
-
-**Flow**:
-1. Unit/Spec/Controller emits activity notification
-2. Controller receives via PUT endpoint
-3. Controller broadcasts to all WebSocket clients (GUIs)
-4. GUI displays notification card
-
------
-
-## Logging
-
-### Structure
-
-- **Base directory**: `/var/log/mast/`
-- **Daily directories**: `/var/log/mast/<yyyy-mm-dd>/`
-- **UI log file**: `ui.log` (same name in each daily directory)
-- **Rollover**: Midnight UTC
-- **Other logs**: Can coexist in same daily directories
-
-### Example
-
-```
-/var/log/mast/
-├── 2024-12-01/
-│   ├── ui.log
-│   ├── control.log
-│   └── spec.log
-├── 2024-12-02/
-│   ├── ui.log
-│   └── ...
-```
-
------
-
-## Technology Choices
-
-### Backend
-
-- **Framework**: Django 4.2+
-- **Development Server**: Port 8010 (default)
-- **Dynamic updates**: HTMX (no page reloads)
-- **Real-time**: WebSocket (Django Channels)
-- **Database**: MongoDB (configuration) + SQLite (Django internal)
-
-### Frontend
-
-- **UI Framework**: Bootstrap 5
-- **Design style**: Material Design (Mantis-inspired)
-- **Icons**: Bootstrap Icons
-- **Client reactivity**: Alpine.js (for validation)
-- **FITS viewer**: JS9
-
-### Why HTMX?
-
-- Server-side simplicity (Django templates)
-- No complex JavaScript state management
-- Progressive enhancement
-- Perfect for dashboard/monitoring UIs
-- Native feel without SPA complexity
-
------
-
-## Special UI Patterns
-
-### Editable Accordion Pattern
-
-Used for: Plans, Unit configs, Specs configs
-
-**States:**
-
-1. **Collapsed**: Summary only
-1. **Expanded - View mode**: Full details, Edit button
-1. **Expanded - Edit mode**: In-place form, Submit/Cancel buttons
-
-**Permissions:**
-
-- View: `canView`
-- Edit: `canChangeConfiguration`
-- Delete: `canChangeConfiguration` (with confirmation)
-
-### Collapsible JSON Trees
-
-Used for: Safety data (initial implementation)
-
-**Library**: Bootstrap accordion or custom component
-**Future**: Format into proper tables/cards
-
-### Traffic Light Indicators
-
-Used for: Unit status, component status, specs status
-
-**Colors:**
-
-- 🟢 Green: Operational/good
-- 🟡 Yellow: Warning/maintenance
-- 🔴 Red: Error/offline
-- ⚪ Gray: Planned/unknown
-
------
-
-## Development Guidelines
-
-### Code Organization
-
-- **One concern per file**: Separate views, forms, utilities
-- **Pydantic for validation**: Single source of truth
-- **Minimal JavaScript**: Use HTMX + Alpine.js
-- **Server-side rendering**: Django templates
-- **Reusable components**: Template includes
-
-### Performance
-
-- **Lazy loading**: Load accordion content on expand
-- **Caching**: Use Django cache for MongoDB queries
-- **HTMX polling**: Only for real-time data (5-10s intervals)
-- **WebSocket**: For push notifications only
-
-### Security
-
-- **Capability checks**: Every view, every action
-- **CSRF protection**: Django middleware
-- **Email verification**: Optional in dev, mandatory in production
-- **Secret key**: Never commit, use .env
-- **MongoDB auth**: Via MAST_common Config class
-- **API endpoint whitelist**: Backend endpoints marked with `@gui_endpoint` decorator
-  - Decorator location: `common/decorators.py` (in MAST_common submodule)
-  - Each endpoint specifies required capability inline
-  - GUI views use `@proxy_backend` decorator for automatic validation
-  - Unmarked endpoints are automatically blocked from GUI access
-  - No separate registry file needed - decoration is self-documenting
-
------
-
-## File Structure
-
-```
-MAST_gui/
-├── common/                  # MAST_common submodule
-├── MAST_gui/               # Django project settings
-│   ├── settings.py
-│   ├── urls.py
-│   ├── logging_handlers.py
-│   └── ...
-├── accounts/               # Authentication
-├── dashboard/              # Main dashboard
-├── units/                  # Unit management
-├── specs/                  # Spectrograph control
-├── safety/                 # Safety monitoring
-├── assignments/            # Task assignments
-├── plans/                  # Observation plans
-├── utils/                  # Shared utilities
-│   ├── form_helpers.py    # Pydantic → Django forms
-│   ├── permissions.py     # Capability decorators
-│   └── ...
-├── templates/
-│   ├── base.html          # Main layout
-│   └── components/        # Reusable components
-├── static/
-│   ├── css/
-│   ├── js/
-│   └── img/
-└── manage.py
-```
-
------
-
-## Future Enhancements
-
-### Planned Features
-
-- **Endpoint decoration review**: Systematic review of all backend endpoints to determine which should be GUI-accessible
-  - Review MAST_control endpoints and add `@gui_endpoint` decorators
-  - Review MAST_unit endpoints (if any need direct GUI access)
-  - Review MAST_spec endpoints (if any need direct GUI access)
-  - Document capability requirements for each decorated endpoint
-- Specs page implementation
-- Assignments page implementation
-- Advanced plan editing
-- Real-time unit status updates
-- JS9 FITS viewer integration
-- Safety service API integration
-- WebSocket activity notifications
-- User management interface
-
-### Potential Additions
-
-- Historical data viewing
-- Alert system
-- Custom dashboards per user
-- Mobile responsive optimizations
-- Dark mode toggle
-- Export/import configurations
-- Audit logging
-- API documentation (Swagger/OpenAPI)
-
------
-
-## Design Principles
-
-1. **User-centric**: Easy for astronomers, not developers
-1. **Progressive disclosure**: Show what’s needed, hide complexity
-1. **Consistent patterns**: Same interaction models across features
-1. **Real-time awareness**: Live updates without page refresh
-1. **Permission-aware**: UI adapts to user capabilities
-1. **Fault-tolerant**: Graceful degradation, clear error messages
-1. **Performance**: Fast loading, lazy loading, caching
-1. **Accessibility**: Semantic HTML, ARIA labels, keyboard navigation
-
------
-
-**Document Version**: 1.0 
-**Last Updated**: December 2024 
-**Project Repository**: github.com/The-MAST-project/MAST_gui

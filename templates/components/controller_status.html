@@ -3,7 +3,7 @@
 <div class="controller-status dropdown" 
      id="controller-status"
      x-data="controllerStatus()"
-     x-init="init()">
+     x-init="$data.init()">
     
     <button class="btn btn-sm btn-link dropdown-toggle text-decoration-none" 
             type="button"
@@ -30,7 +30,12 @@
                 Connected to <strong>{{ controller_host }}</strong>
             </div>
             <small class="text-muted">
-                Last checked: {{ last_check|seconds_since }} ago
+                Last checked: 
+                {% if last_check %}
+                    {{ last_check|timesince }} ago
+                {% else %}
+                    never
+                {% endif %}
             </small>
         {% else %}
             <div class="alert alert-danger mb-2">
@@ -59,9 +64,8 @@
 <script>
 function controllerStatus() {
     return {
-        // Outputs boolean, not string
-        connected: {{ connected|lower }},
-        retryCount: {{ retry_count|default:"0" }},
+        connected: "{{ connected|default:'false'|lower }}" === "true",
+        retryCount: parseInt("{{ retry_count|default:0 }}", 10),
         controllerHost: '{{ controller_host|escapejs }}',
         siteName: '{{ request.session.selected_site|default:"wis"|escapejs }}',
         
@@ -71,7 +75,7 @@ function controllerStatus() {
             return 'Controller status: Offline';
         },
         
-        init() {
+        init: function() {
             this.checkStateChange();
             this.updateBanner();
         },
@@ -90,8 +94,10 @@ function controllerStatus() {
                         this.showToast('success', 'Connection Restored', 
                                      `Connected to ${this.controllerHost}`);
                     } else {
-                        this.showToast('warning', 'Connection Lost', 
-                                     `Cannot reach ${this.controllerHost}. Retrying...`);
+                        if (this.controllerHost) {
+                            this.showToast('warning', 'Connection Lost', 
+                                         `Cannot reach ${this.controllerHost}. Retrying...`);
+                        }
                     }
                 }
             } catch (e) {

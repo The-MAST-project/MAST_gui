@@ -1,0 +1,308 @@
+<!-- filepath: /home/mast/PycharmProjects/MAST_gui/templates/units/components/config_form.html -->
+<!-- Reusable configuration form with Alpine.js validation -->
+
+
+
+<!-- Add this to the top of your template for Alpine.js presence check -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // setTimeout(function() {
+    //     if (!window.Alpine) {
+    //         document.body.insertAdjacentHTML('afterbegin', '<div style="background: #dc3545; color: white; padding: 10px; font-weight: bold;">Alpine.js NOT loaded!</div>');
+    //     } else {
+    //         document.body.insertAdjacentHTML('afterbegin', '<div style="background: #28a745; color: white; padding: 10px; font-weight: bold;">Alpine.js loaded.</div>');
+    //     }
+    // }, 500); // Wait a bit for Alpine.js to load
+});
+</script>
+
+<!-- <div>
+    <details class="mb-2">
+        <summary>Raw config_values</summary>
+        <pre>{{ config_values }}</pre>
+    </details>
+    <details class="mb-2">
+        <summary>Raw config_schema</summary>
+        <pre>{{ config_schema }}</pre>
+    </details>
+    <details class="mb-2">
+        <summary>Raw unit_config.focuser</summary>
+        <pre>{{ unit_config_focuser }}</pre>
+    </details>
+    <details class="mb-2">
+        <summary>Raw unit_config (full)</summary>
+        <pre>{{ unit_config_dump }}</pre>
+    </details>
+</div> -->
+
+<div
+    x-data="configForm(
+        '{{ component_name }}',
+        '{{ unit_name }}',
+        '{{ config_values|escapejs }}',
+        '{{ config_schema|escapejs }}'
+    )"
+>
+    <!-- DEBUG: Show Alpine.js reactive data -->
+    <!-- <div class="alert alert-info mb-3">
+        <strong>Debug Info:</strong>
+        <pre style="color: #212529; background: transparent;" x-text="'VALUES: ' + JSON.stringify($data.values, null, 2)"></pre>
+        <pre style="color: #212529; background: transparent;" x-text="'SCHEMA: ' + JSON.stringify($data.schema, null, 2)"></pre>
+        <pre style="color: #212529; background: transparent;" x-text="'TEST STRING'"></pre>
+    </div> -->
+    
+    <!-- Edit button (permission-based) -->
+    <!-- {% if perms.auth.canChangeConfiguration %}
+        <button x-show="!editing" 
+                @click="editing = true" 
+                class="btn btn-primary btn-sm mb-3">
+            <i class="bi bi-pencil"></i> Edit
+        </button>
+    {% endif %} -->
+
+
+    <!-- Form fields -->
+    <div class="row">
+        <table style="width:100%; border-collapse:collapse; border:none;">
+            <tbody>
+            <template x-for="(fieldMeta, fieldName) in $data.schema" :key="fieldName">
+                <tr x-show="!(fieldMeta.ui && fieldMeta.ui.hidden)" style="border:none; vertical-align:baseline;">
+                    <!-- Label column: fixed width 300px -->
+                    <td style="width:300px; white-space:nowrap; border:none; vertical-align:baseline;">
+                        <label class="form-label mb-0" style="vertical-align:baseline;">
+                            <strong x-text="fieldMeta.ui && fieldMeta.ui.label ? fieldMeta.ui.label : fieldMeta.name"></strong>
+                            <span x-show="fieldMeta.ui && fieldMeta.ui.tooltip" 
+                                  class="ms-1"
+                                  data-bs-toggle="tooltip" 
+                                  :title="fieldMeta.ui.tooltip">
+                                <i class="bi bi-info-circle text-muted"></i>
+                            </span>
+                            <small x-show="fieldMeta.ui && fieldMeta.ui.unit" 
+                                   class="text-muted"
+                                   x-text="'(' + fieldMeta.ui.unit + ')'"></small>
+                        </label>
+                    </td>
+                    <!-- Value column: input width adapts to value/options -->
+                    <td style="border:none; vertical-align:baseline;">
+                        <!-- Read-only view -->
+                        <div x-show="!editing">
+                            <span class="form-control-plaintext" 
+                                  x-text="$data.values[fieldName]"></span>
+                        </div>
+                        <!-- Edit mode input -->
+                        <div x-show="editing && fieldMeta.ui.editable">
+                            <!-- Text/Number/Email inputs -->
+                            <template x-if="['text', 'number', 'email', 'url', 'tel'].includes(fieldMeta.ui.widget)">
+                                <input 
+                                    :type="fieldMeta.ui.widget"
+                                    x-model="$data.values[fieldName]"
+                                    @input="validate(fieldName)"
+                                    class="form-control form-control-sm"
+                                    :class="{
+                                        'border-danger': errors[fieldName],
+                                        'border-success': !errors[fieldName] && hasChanged(fieldName)
+                                    }"
+                                    :min="fieldMeta.min"
+                                    :max="fieldMeta.max"
+                                    :size="String($data.values[fieldName]).length > 10 ? String($data.values[fieldName]).length : 10"
+                                    style="width:auto; min-width:80px;"
+                                >
+                            </template>
+                            <!-- Textarea -->
+                            <template x-if="fieldMeta.ui.widget === 'textarea'">
+                                <textarea 
+                                    x-model="$data.values[fieldName]"
+                                    @input="validate(fieldName)"
+                                    class="form-control form-control-sm"
+                                    :class="{
+                                        'border-danger': errors[fieldName],
+                                        'border-success': !errors[fieldName] && hasChanged(fieldName)
+                                    }"
+                                    rows="3"
+                                    style="width:auto; min-width:120px;"
+                            ></textarea>
+                            </template>
+                            <!-- Select dropdown -->
+                            <template x-if="fieldMeta.ui.widget === 'select'">
+                                <select 
+                                    x-model="$data.values[fieldName]"
+                                    @change="validate(fieldName)"
+                                    class="form-select form-select-sm"
+                                    :class="{
+                                        'border-danger': errors[fieldName],
+                                        'border-success': !errors[fieldName] && hasChanged(fieldName)
+                                    }"
+                                    :style="'width:' + (fieldMeta.ui.options ? Math.max(...fieldMeta.ui.options.map(o => o.length)) * 10 + 40 : 120) + 'px;'"
+                                >
+                                    <template x-for="option in fieldMeta.ui.options" :key="option">
+                                        <option :value="option" x-text="option"></option>
+                                    </template>
+                                </select>
+                            </template>
+                            <!-- Checkbox -->
+                            <template x-if="fieldMeta.ui.widget === 'checkbox'">
+                                <input 
+                                    type="checkbox"
+                                    x-model="$data.values[fieldName]"
+                                    @change="validate(fieldName)"
+                                    class="form-check-input"
+                                    style="width:20px;"
+                                >
+                            </template>
+                            <!-- Error message -->
+                            <small x-show="errors[fieldName]" 
+                                   x-text="errors[fieldName]" 
+                                   class="text-danger d-block mt-1"></small>
+                        </div>
+                    </td>
+                </tr>
+            </template>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Action buttons row: Save/Cancel only if editing and hasChanges, Edit button if not editing and user is authorized -->
+    <div class="mt-3 d-flex justify-content-end align-items-center" style="gap: 12px;">
+        <span style="min-width:90px;">
+            <button x-show="editing && hasChanges()" 
+                    @click="cancel()" 
+                    class="btn btn-secondary btn-sm" style="min-width:90px;">
+                <i class="bi bi-x-circle"></i> Cancel
+            </button>
+        </span>
+        <span style="min-width:90px;">
+            <button x-show="editing && hasChanges()" 
+                    @click="save()"
+                    :disabled="hasErrors()"
+                    :title="hasErrors() ? 'Fix validation errors first' : ''"
+                    class="btn btn-primary btn-sm" style="min-width:90px;">
+                <i class="bi bi-save"></i> Save
+            </button>
+        </span>
+        {% if perms.auth.canChangeConfiguration %}
+        <span style="min-width:90px;">
+            <button x-show="!editing" 
+                    @click="editing = true" 
+                    class="btn btn-primary btn-sm" style="min-width:90px;">
+                <i class="bi bi-pencil"></i> Edit
+            </button>
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Alpine.js component definition -->
+<script>
+function configForm(component, unit, configValuesStr, configSchemaStr) {
+    // Debug: log arguments to the browser console
+    console.log("configForm args (raw):", { component, unit, configValuesStr, configSchemaStr });
+
+    // Parse JSON strings
+    let configValues = {};
+    let configSchema = {};
+    try {
+        configValues = JSON.parse(configValuesStr);
+    } catch (e) {
+        console.error("Failed to parse configValues:", e, configValuesStr);
+    }
+    try {
+        configSchema = JSON.parse(configSchemaStr);
+    } catch (e) {
+        console.error("Failed to parse configSchema:", e, configSchemaStr);
+    }
+
+    // Debug: log parsed objects
+    console.log("configForm args (parsed):", { configValues, configSchema });
+
+    return {
+        component: component,
+        unit: unit,
+        editing: false,
+        values: { ...configValues },
+        schema: configSchema,
+        errors: {},
+        originalValues: { ...configValues },
+
+        // Remove init, everything is initialized in the factory function
+        validate(fieldName) {
+            const value = this.values[fieldName];
+            const meta = this.schema[fieldName];
+            delete this.errors[fieldName];
+            if (meta.required && (value === '' || value === null || value === undefined)) {
+                this.errors[fieldName] = meta.error_message || `${meta.name} is required`;
+                return;
+            }
+            if (meta.min !== undefined && value < meta.min) {
+                this.errors[fieldName] = meta.error_message || `Must be >= ${meta.min}`;
+                return;
+            }
+            if (meta.max !== undefined && value > meta.max) {
+                this.errors[fieldName] = meta.error_message || `Must be <= ${meta.max}`;
+                return;
+            }
+            if (meta.pattern && !new RegExp(meta.pattern).test(value)) {
+                this.errors[fieldName] = meta.error_message || 'Invalid format';
+                return;
+            }
+        },
+        hasChanged(fieldName) {
+            // Always compare as strings for both sides
+            const ret = String(this.values[fieldName]) !== String(this.originalValues[fieldName]);
+            // console.log("Checking hasChanged for field:", fieldName,
+            //     "Current:", this.values[fieldName], "(", typeof this.values[fieldName], ")",
+            //     "Original:", this.originalValues[fieldName], "(", typeof this.originalValues[fieldName], ")",
+            //     "Ret:", ret);
+            return ret;
+        },
+        hasChanges() {
+            // Compare each field as string for reliability
+            for (const key in this.values) {
+                if (String(this.values[key]) !== String(this.originalValues[key])) {
+                    // console.log("hasChanges: field", key, "changed from", this.originalValues[key], "to", this.values[key]);
+                    return true;
+                }
+            }
+            return false;
+        },
+        hasErrors() {
+            return Object.keys(this.errors).length > 0;
+        },
+        cancel() {
+            this.values = { ...this.originalValues };
+            this.errors = {};
+            this.editing = false;
+        },
+        async save() {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            try {
+                const response = await fetch(`/units/${this.unit}/config/${this.component}/save/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(this.values)
+                });
+                if (response.ok) {
+                    this.originalValues = { ...this.values };
+                    this.editing = false;
+                    if (typeof showToast === 'function') {
+                        showToast('success', 'Configuration Saved', 'Changes saved successfully');
+                    }
+                } else {
+                    const error = await response.json();
+                    if (typeof showToast === 'function') {
+                        showToast('error', 'Save Failed', error.error || 'Unknown error');
+                    }
+                }
+            } catch (e) {
+                // Only show "Connection Lost" if controller host is set
+                const controllerHost = window.controller_host || '';
+                if (typeof showToast === 'function' && controllerHost) {
+                    showToast('error', 'Save Failed', 'Connection Lost');
+                }
+            }
+        }
+    }
+}
+</script>
