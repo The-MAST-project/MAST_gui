@@ -67,6 +67,10 @@ document.addEventListener('DOMContentLoaded', function() {
             <tbody>
             <template x-for="(fieldMeta, fieldName) in $data.schema" :key="fieldName">
                 <tr x-show="!(fieldMeta.ui && fieldMeta.ui.hidden)" style="border:none; vertical-align:baseline;">
+                    <!-- Required asterisk column -->
+                    <td style="width:20px; border:none; vertical-align:baseline; text-align:center;">
+                        <span x-show="(fieldMeta.ui && fieldMeta.ui.required)" style="color:#dc3545;">*</span>
+                    </td>
                     <!-- Label column: fixed width 300px -->
                     <td style="width:300px; white-space:nowrap; border:none; vertical-align:baseline;">
                         <label class="form-label mb-0" style="vertical-align:baseline;">
@@ -150,9 +154,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                 >
                             </template>
                             <!-- Error message -->
-                            <small x-show="errors[fieldName]" 
-                                   x-text="errors[fieldName]" 
-                                   class="text-danger d-block mt-1"></small>
+                            <div style="min-height:1.5em;">
+                                <small x-show="errors[fieldName]" 
+                                       x-text="errors[fieldName]" 
+                                       class="text-danger d-block mt-1"></small>
+                            </div>
                         </div>
                     </td>
                 </tr>
@@ -228,7 +234,12 @@ function configForm(component, unit, configValuesStr, configSchemaStr) {
             const value = this.values[fieldName];
             const meta = this.schema[fieldName];
             delete this.errors[fieldName];
-            if (meta.required && (value === '' || value === null || value === undefined)) {
+            // Check for required field (using ui.required if present)
+            if ((meta.ui && meta.ui.required) && (value === '' || value === null || value === undefined)) {
+                this.errors[fieldName] = "Required: cannot be empty";
+                return;
+            }
+            if (meta.ui.required && (value === '' || value === null || value === undefined)) {
                 this.errors[fieldName] = meta.error_message || `${meta.name} is required`;
                 return;
             }
@@ -265,7 +276,8 @@ function configForm(component, unit, configValuesStr, configSchemaStr) {
             return false;
         },
         hasErrors() {
-            return Object.keys(this.errors).length > 0;
+            // Return true if any field has an error
+            return Object.keys(this.errors).length > 0 && Object.values(this.errors).some(e => e);
         },
         cancel() {
             this.values = { ...this.originalValues };

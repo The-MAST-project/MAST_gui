@@ -72,13 +72,13 @@ def build_default_error_message(meta: dict) -> str:
     
     if 'min' in meta and 'max' in meta:
         unit = meta.get('ui.unit', '')
-        return f"Must be between {meta['min']} and {meta['max']} {unit}".strip()
+        return f"Must be in range [{meta['min']}..{meta['max']}] {unit}".strip()
     elif 'min' in meta:
         return f"Must be >= {meta['min']}"
     elif 'max' in meta:
         return f"Must be <= {meta['max']}"
     
     if 'pattern' in meta:
-        return "Invalid format"
+        return f"Pattern violation '{meta['pattern']}'"
     
     return "Invalid value"

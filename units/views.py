@@ -147,6 +147,7 @@ def unit_detail(request, unit_name):
     
     if status_response.succeeded and status_response.value:
         # response.value is discriminated union UnitStatus
+        logger.info(f"Unit {unit_name} status response: {status_response.value}")
         unit_status = ShortUnitStatus(**status_response.value) if status_response.value['type'] == 'short' else FullUnitStatus(**status_response.value)
         
         if isinstance(unit_status, ShortUnitStatus):
