@@ -48,3 +48,5 @@ Thumbs.db
 
 # MAST specific
 /logs/
+
+static/js9/
