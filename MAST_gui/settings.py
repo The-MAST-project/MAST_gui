@@ -16,7 +16,7 @@ sys.path.insert(0, MAST_COMMON_PATH)
 # Security
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,mast-wis-control', 
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,mast-wis-control,10.23.3.73', 
                        cast=lambda v: [s.strip() for s in v.split(',')])
 
 # Application definition
@@ -43,7 +43,27 @@ INSTALLED_APPS = [
     # 'assignments',
     # 'plans',
     'mast_utils',  # Changed from 'utils' to 'mast_utils'
+    'social_django',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    # Add providers as needed, e.g.:
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.github',
+    'django.contrib.sites',
 ]
+
+AUTH_USER_MODEL = 'accounts.User'  # Make sure this is set to your custom user model
+
+# There is NO 'account' app in INSTALLED_APPS.
+# Only 'accounts' is present, which is correct for your custom user model.
+
+INSTALLED_APPS += [
+    'allauth.socialaccount.providers.facebook',
+    'allauth.socialaccount.providers.apple',
+]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -51,11 +71,16 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'MAST_gui.middleware.ProxyAwareLoginRedirectMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Comment out allauth middleware until we need it
-    # 'allauth.account.middleware.AccountMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://10.23.3.73:8000",
+    # Add any other proxy/external URLs as needed
 ]
 
 ROOT_URLCONF = 'MAST_gui.urls'
@@ -74,6 +99,7 @@ TEMPLATES = [
                 'MAST_gui.context_processors.site_data',
                 'MAST_gui.context_processors.controller_status',  # Add this line
                 # 'accounts.context_processors.user_capabilities',  # Comment this out
+                'MAST_gui.context_processors.mast',
             ],
         },
     },
@@ -99,7 +125,11 @@ CHANNEL_LAYERS = {
 
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
+    'accounts.backends.RegisteredUserBackend',
     'django.contrib.auth.backends.ModelBackend',  # Use Django's default
+    'allauth.account.auth_backends.AuthenticationBackend',
+    'social_core.backends.google.GoogleOAuth2',
+    'social_core.backends.github.GithubOAuth2',
 ]
 
 # Login URLs
@@ -137,7 +167,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SITE_ID = 1
 
 # Authentication method: email only (no username)
-ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}
 
 # Signup fields: email and password
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
@@ -147,9 +177,38 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'  # 'mandatory' for production
 ACCOUNT_UNIQUE_EMAIL = True
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Print to console for development
 
+# Allauth settings
+ACCOUNT_EMAIL_VERIFICATION = "optional"
+ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
+ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"
+ACCOUNT_ADAPTER = "accounts.adapter.CustomAccountAdapter"  # if you want to customize registration approval
+
 # Redirects
 LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/accounts/login/'
+LOGOUT_REDIRECT_URL = '/'
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+    },
+    'github': {
+        'SCOPE': ['user', 'user:email'],
+    },
+    'facebook': {
+        'METHOD': 'oauth2',
+        'SCOPE': ['email'],
+        'FIELDS': ['email', 'name'],
+    },
+    'apple': {
+        'APP': {
+            'client_id': 'YOUR_APPLE_CLIENT_ID',
+            'key': 'YOUR_APPLE_KEY',
+            'team_id': 'YOUR_APPLE_TEAM_ID',
+            'secret': 'YOUR_APPLE_SECRET',
+        }
+    }
+}
 
 # Crispy Forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
@@ -159,6 +218,22 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 MAST_SITE = config('MAST_SITE', default='wis')
 MAST_CONFIG_SOURCE = config('MAST_CONFIG_SOURCE', default=None)
 MAST_API_PREFIX = 'mast/api/v1'
+
+# For python-social-auth:
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '209268696894-q7r751q0bcqu5a3jm7cb8ag9je1h6a7m.apps.googleusercontent.com'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
+SOCIAL_AUTH_GOOGLE_OAUTH2_REDIRECT_URI = 'http://localhost:8010/auth/complete/google-oauth2/'
+
+# For django-allauth:
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': '209268696894-q7r751q0bcqu5a3jm7cb8ag9je1h6a7m.apps.googleusercontent.com',
+            'secret': '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',
+            'key': ''
+        }
+    }
+}
 
 # Logging
 LOGGING = {
