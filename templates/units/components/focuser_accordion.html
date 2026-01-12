@@ -1,4 +1,5 @@
-{% load activity_filters %}
+{% load activity_filters static %}
+{% load dynamic_urls %}
 
 <div class="accordion-item">
     <h2 class="accordion-header" id="heading-focuser">
@@ -243,3 +244,343 @@
         </div>
     </div>
 </div>
+
+<!-- Add JSZip library for zip extraction -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<!-- Add jQuery before any script that uses $ -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Add Bootstrap Datepicker JS and CSS before any usage of $('.datepickerinput').datepicker -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/css/bootstrap-datepicker.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/js/bootstrap-datepicker.min.js"></script>
+
+<!-- Use get_static_prefix for static assets -->
+<script src="{% get_dynamic_static_url 'js/api.js' %}"></script>
+<!-- <script src="/static/js/renderJsonTree.js""></script> -->
+<!-- Use abodelot/jquery.json-viewer from CDNJS, which provides $(...).jsonViewer and does NOT define window.JSONViewer -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/json-viewer/1.2.3/json-viewer.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/json-viewer/1.2.3/json-viewer.min.css">
+<script>
+    // Set the script prefix for JS (for AJAX/API calls)
+    // Use request.path to infer the prefix if SCRIPT_NAME is not set
+    (function() {
+        var scriptName = "{{ request.META.SCRIPT_NAME|default:'' }}";
+        if (!scriptName) {
+            // Try to infer from the current path if accessed via a subpath
+            var path = "{{ request.path|escapejs }}";
+            // Match the subpath prefix (e.g. /mast-dash/) and use it as SCRIPT_PREFIX
+            var match = path.match(/^\/([a-zA-Z0-9_-]+)\//);
+            if (match) {
+                scriptName = '/' + match[1];
+            }
+        }
+        window.SCRIPT_PREFIX = scriptName || '';
+    })();
+</script>
+<script>
+window.autofocusDetails = function(unitName) {
+    return {
+        autofocusTree: {},
+        dates: [],
+        selectedDate: '',
+        sessions: [],
+        selectedSession: '',
+        images: { fits: [], vcurve: [], status: [] },
+        loadingImages: false,
+        _fetchingImages: false,
+        _initialFetchDone: false,
+        showResultJson: false,
+        resultJsonPretty: '',
+        resultJsonObj: null,
+        // Return the filename (last segment) with .fits/.fits.fz/.fz removed
+        getImageBaseName(url) {
+            try {
+                const seg = String(url || '').split('/').pop() || String(url || '');
+                // strip common FITS extensions: .fits, .fits.fz, .fz (case-insensitive)
+                return seg.replace(/(\.fits(\.fz)?|\.fz)$/i, '');
+            } catch (e) {
+                return String(url || '');
+            }
+        },
+        // Produce a safe id fragment from a name by replacing unsafe chars with '_'
+        _sanitizeFilename(name) {
+            try {
+                return String(name || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+            } catch (e) {
+                return '';
+            }
+        },
+        // Resolve an image URL for use in <img src> or JS9.Load:
+        // - Prefer a blob URL cache if present (this._blobUrls[url])
+        // - If the URL already contains a scheme, return as-is
+        // - Otherwise prepend http:// to make a usable absolute URL
+        getImageUrl(path) {
+            try {
+                if (!path) return '';
+                if (this._blobUrls && this._blobUrls[path]) return this._blobUrls[path];
+                if (/^https?:\/\//i.test(path)) return path;
+                // Some endpoints provide host:port/... without scheme — add http://
+                return 'http://' + path;
+            } catch (e) {
+                return String(path || '');
+            }
+        },
+        init() {
+            this.fetchAutofocusTree();
+        },
+        fetchAutofocusTree() {
+            // Use SCRIPT_PREFIX for API calls
+            const prefix = window.SCRIPT_PREFIX || '';
+            ControlApi(`${prefix}/data/autofocus/${unitName}`)
+                .then(data => {
+                    // store the mapping as-is
+                    this.autofocusTree = data || {};
+                    // dates are the top-level keys (strings)
+                    console.log('Fetched autofocus tree:', this.autofocusTree);
+                    this.dates = Object.keys(this.autofocusTree || {}).sort().reverse();
+                    if (this.dates.length > 0) {
+                        this.selectedDate = this.dates[0];
+                        // sessions are keys under the selected date; be defensive if missing
+                        this.sessions = Object.keys(this.autofocusTree[this.selectedDate] || {});
+                        this.selectedSession = this.sessions.length ? this.sessions[0] : '';
+                        setTimeout(() => {
+                            this.setupDatepicker();
+                        });
+                        // Load images for the latest date/session from the already-fetched tree
+                        if (!this._initialFetchDone && this.selectedDate && this.selectedSession) {
+                            this.fetchImages(); // will read from this.autofocusTree
+                            this._initialFetchDone = true;
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.warn('Failed to fetch autofocus tree:', err);
+                    this.autofocusTree = {};
+                    this.dates = [];
+                    this.sessions = [];
+                    this.selectedDate = '';
+                    this.selectedSession = '';
+                });
+        },
+        setupDatepicker() {
+            setTimeout(() => {
+                if (window.jQuery && $('.datepickerinput').length) {
+                    // Only enable dates present in this.dates (array of 'yyyy-mm-dd' strings)
+                    const enabledSet = new Set(this.dates);
+                    $('.datepickerinput').datepicker({
+                        format: 'yyyy-mm-dd',
+                        autoclose: true,
+                        todayHighlight: true,
+                        beforeShowDay: function(date) {
+                            // Format date as yyyy-mm-dd
+                            const y = date.getFullYear();
+                            const m = String(date.getMonth() + 1).padStart(2, '0');
+                            const d = String(date.getDate()).padStart(2, '0');
+                            const key = `${y}-${m}-${d}`;
+                            if (enabledSet.has(key)) {
+                                return { enabled: true };
+                            }
+                            return { enabled: false, classes: 'disabled-date' };
+                        }
+                    }).datepicker('setDate', this.selectedDate);
+
+                    $('.datepickerinput').off('change').on('change', (e) => {
+                        this.onDateChange(e);
+                    });
+                }
+            }, 0);
+        },
+        onDateChange(e) {
+            this.selectedDate = e.target.value;
+            this.sessions = Object.keys(this.autofocusTree[this.selectedDate]);
+            this.selectedSession = this.sessions[0];
+            // Do not fetch images automatically; user must press Fetch
+        },
+        onSessionChange(e) {
+            this.selectedSession = e.target.value;
+            // Do not fetch images automatically; user must press Fetch
+        },
+        fetchImages() {
+            // Prevent multiple concurrent fetches
+            if (this._fetchingImages) return;
+            this._fetchingImages = true;
+            this.loadingImages = true;
+
+            // Read the session entry from the previously fetched autofocusTree.
+            try {
+                const sessionEntry = (this.autofocusTree[this.selectedDate] || {})[this.selectedSession] || null;
+                if (!sessionEntry) {
+                    this.images = { fits: [], vcurve: [], status: [] };
+                } else {
+                    this.images = {
+                        fits: Array.isArray(sessionEntry.fits) ? sessionEntry.fits : [],
+                        vcurve: Array.isArray(sessionEntry.vcurve) ? sessionEntry.vcurve : [],
+                        status: Array.isArray(sessionEntry.status) ? sessionEntry.status : []
+                    };
+                }
+            } catch (err) {
+                this.images = { fits: [], vcurve: [], status: [] };
+            } finally {
+                this.loadingImages = false;
+                this._fetchingImages = false;
+                setTimeout(() => this.loadJs9Images(), 50);
+                this.loadStatusJson();
+            }
+        },
+        async loadStatusJson() {
+            this.resultJsonPretty = '';
+            this.resultJsonObj = null;
+            const el = document.getElementById('status-json-viewer');
+            if (el) el.innerHTML = '';
+            if (this.images.status && this.images.status.length > 0) {
+                try {
+                    const url = this.getImageUrl(this.images.status[0]);
+                    // If the URL is relative, prefix with SCRIPT_PREFIX
+                    const absUrl = url.startsWith('/') && window.SCRIPT_PREFIX
+                        ? window.SCRIPT_PREFIX + url
+                        : url;
+                    const resp = await fetch(absUrl);
+                    if (!resp.ok) throw new Error('Failed to fetch status.json');
+                    const data = await resp.json();
+                    this.resultJsonObj = data;
+                    this.resultJsonPretty = JSON.stringify(data, null, 2);
+                    // No need to render here; x-init on .json-tree will handle it
+                } catch (e) {
+                    this.resultJsonPretty = 'Error loading status.json: ' + e;
+                    this.resultJsonObj = null;
+                }
+            } else {
+                this.resultJsonObj = null;
+            }
+        },
+        // renderJsonTree(el, obj) {
+        //     if (window.plansPage.renderJsonTree) {
+        //         window.plansPage.renderJsonTree(el, obj);
+        //     } else {
+        //         el.textContent = obj === undefined ? 'undefined' : JSON.stringify(obj);
+        //     }
+        // },
+
+        loadJs9Images() {
+            // Simplified loader: images.fits contains URLs -> call JS9.Load(url, {display: divId})
+            const findByFilename = (filename) => {
+                const els = document.querySelectorAll('.JS9');
+                for (let i = 0; i < els.length; i++) {
+                    const el = els[i];
+                    if (el.getAttribute('data-filename') === filename) return el;
+                }
+                return null;
+            };
+
+            const isDetailsPaneVisible = () => {
+                const pane = document.getElementById('focuser-details');
+                if (!pane) return false;
+                if (pane.classList && (pane.classList.contains('show') || pane.classList.contains('active'))) return true;
+                const cs = window.getComputedStyle(pane);
+                return cs && cs.display !== 'none' && cs.visibility !== 'hidden' && pane.offsetParent !== null;
+            };
+
+            // Ensure a JS9.Display exists for divId (create and wait until registered)
+            const ensureDisplayExists = async (divId, el, timeoutMs = 10000, intervalMs = 50) => {
+                // Quick check
+                // try {
+                //     if (window.JS9 && JS9.lookupDisplay(divId)) return true;
+                // } catch (e) {}
+
+                // Try to create a display if JS9 available
+                try {
+                    if (window.JS9 && typeof JS9.Display === 'function') {
+                        try { new JS9.Display(el); } catch (e) { /* may still register asynchronously */ }
+                    }
+                } catch (e) { /* ignore */ }
+
+                // Poll until lookup succeeds or timeout
+                const start = Date.now();
+                while (Date.now() - start < timeoutMs) {
+                    try {
+                        if (window.JS9 && JS9.lookupDisplay(divId)) return true;
+                    } catch (e) {}
+                    await new Promise(r => setTimeout(r, intervalMs));
+                }
+                return false;
+            };
+
+            const tryLoad = async () => {
+                const maxAttempts = 100;
+                const intervalMs = 200;
+                let attempts = 0;
+
+                // Wait until details pane and JS9 are available
+                while ((!isDetailsPaneVisible() || !window.JS9 || typeof window.JS9.Load !== "function") && attempts < maxAttempts) {
+                    await new Promise(r => setTimeout(r, intervalMs));
+                    attempts++;
+                }
+                if (!isDetailsPaneVisible()) {
+                    console.warn('Details pane not visible; aborting JS9 load attempts');
+                    return;
+                }
+                if (!window.JS9 || typeof window.JS9.Load !== "function") {
+                    console.warn('JS9 not available; cannot load FITS URLs');
+                    return;
+                }
+
+                for (const url of this.images.fits) {
+                    try {
+                        // console.log('Loading JS9 image for URL:', url);
+                        const el = findByFilename(url);
+                        if (!el) {
+                            console.warn('JS9 display div not found for URL:', url);
+                            continue;
+                        }
+                        const base = this.getImageBaseName(url);
+                        const divId = el.id || ('js9-' + this._sanitizeFilename(base));
+                        if (!el.id) el.id = divId;
+
+                        // Ensure display exists (create + wait)
+                        const ok = await ensureDisplayExists(divId, el);
+                        if (!ok) {
+                            console.warn('Timed out waiting for JS9 display to register for', divId);
+                            continue;
+                        }
+
+                        // Use resolved absolute URL for loading
+                        const urlToLoad = this.getImageUrl(url);
+                        try {
+                            console.log('Calling JS9.Load for', urlToLoad, 'into', divId);
+                            JS9.Load(urlToLoad, {
+                                display: divId,
+                                scale: "log",
+                                menubar: 'js9-menubar-' + this._sanitizeFilename(base)
+                            });
+                        } catch (e) {
+                            console.error('JS9.Load failed for', urlToLoad, '->', divId, e);
+                        }
+                    } catch (e) {
+                        console.warn('Error while loading JS9 image for URL', url, e);
+                    }
+                }
+            };
+
+            // fire-and-forget async loader
+            tryLoad().catch(err => console.warn('loadJs9Images tryLoad error', err));
+         }
+    }
+};
+document.addEventListener('alpine:init', () => {
+    Alpine.data('autofocusDetails', window.autofocusDetails);
+});
+</script>
+
+<script>
+    // Create a reference you can inspect from the console.
+    // Do NOT call fetchAutofocusTree() here because Alpine.init() already calls init() -> fetchAutofocusTree().
+    window.autofocusDetailsInstance = window.autofocusDetails('{{ unit_name }}');
+    // If you need to trigger a fetch manually (rare), call:
+    // window.autofocusDetailsInstance.fetchAutofocusTree();
+</script>
+
+<form method="post">
+    {% csrf_token %}
+    <!-- ...existing form fields... -->
+</form>

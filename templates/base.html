@@ -1,4 +1,6 @@
 {% load static %}
+{% load dynamic_urls %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,29 +11,65 @@
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/logo.css' %}">
-    <link rel="stylesheet" href="{% static 'css/notifications.css' %}">
+    <link rel="stylesheet" href="{% get_dynamic_static_url 'css/logo.css' %}">
+    <link rel="stylesheet" href="{% get_dynamic_static_url 'css/notifications.css' %}">
+    <link rel="icon" type="image/x-icon" href="{% get_dynamic_static_url 'favicon.ico' %}">
     
     {% block extra_css %}{% endblock %}
     
     <!-- Alpine.js (make sure this is present and only once) -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+    <!-- Add this in the <head> of your base template or before any code that uses JS9: -->
+    <!-- Example: -->
+    <!-- JS9 from CDN (do NOT use for production, but OK for testing/demo) -->
+    <link rel="stylesheet" type="text/css" href="{% get_dynamic_static_url 'js9/js9support.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% get_dynamic_static_url 'js9/js9.css' %}">
+    <script type="text/javascript" src="{% get_dynamic_static_url 'js9/js9support.min.js' %}"></script>
+    <script type="text/javascript" src="{% get_dynamic_static_url 'js9/js9.min.js' %}"></script>
+
+    <script>
+      // Global JS9 preferences for all displays
+      window.js9Prefs = {
+        // Example preferences (customize as needed)
+        colormap: "heat",
+        scale: "log",
+        contrast: 2.0,
+        bias: 0.5,
+        menu: "all"
+        // Add more JS9 options here as needed
+      };
+    </script>
 </head>
 <body>
+    <script>
+        // Set the script prefix for JS (for AJAX/API calls)
+        // Use request.path to infer the prefix if SCRIPT_NAME is not set
+        (function() {
+            var scriptName = "{{ request.META.SCRIPT_NAME|default:'' }}";
+            if (!scriptName) {
+                // Try to infer from the current path if accessed via a subpath
+                var path = "{{ request.path|escapejs }}";
+                // Match the subpath prefix (e.g. /mast-dash/) and use it as SCRIPT_PREFIX
+                var match = path.match(/^\/([a-zA-Z0-9_-]+)\//);
+                if (match) {
+                    scriptName = '/' + match[1];
+                }
+            }
+            window.SCRIPT_PREFIX = scriptName || '';
+        })();
+    </script>
+
+    <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
     <!-- Banner Header -->
     <header class="bg-white border-bottom" style="height: 80px;">
         <div class="container-fluid h-100 d-flex align-items-center justify-content-between px-4">
             <div class="d-flex align-items-center gap-3 flex-grow-1">
                 <!-- Weizmann Logo -->
-                <img src="{% static 'img/weizmann-logo.png' %}" alt="Weizmann Institute" height="60">
-                
-                <!-- Search -->
-                <form class="d-flex">
-                    <input class="form-control" type="search" placeholder="Search..." aria-label="Search" style="width: 200px;">
-                </form>
+                <img src="{% get_dynamic_static_url 'img/weizmann-logo.png' %}" alt="Weizmann Institute" height="60">
 
                 <!-- Site Selector -->
-                <form method="post" action="{% url 'select_site' %}" class="d-flex align-items-center">
+                <form method="post" action="{% get_dynamic_url 'select_site' %}" class="d-flex align-items-center">
                     {% csrf_token %}
                     <label for="site-select" class="me-2 mb-0 text-dark">Site:</label>
                     <select id="site-select" name="site" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 200px;">
@@ -55,33 +93,43 @@
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         {% if user.is_authenticated %}
-                            <li><a class="dropdown-item" href="#"
-                                   hx-get="{% url 'accounts:profile' %}"
-                                   hx-target="#profile-modal-container"
-                                   hx-swap="innerHTML">Profile</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#">Logout</a></li>
-                        {% else %}
-                            <li><a class="dropdown-item" href="#">Login</a></li>
-                        {% endif %}
-                    </ul>
+        <li>
+            <a class="dropdown-item" href="{% get_dynamic_url 'profile' %}">
+                Profile
+            </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+            <form method="post" action="{% get_dynamic_url 'logout' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item">Logout</button>
+            </form>
+        </li>
+    {% else %}
+        <li><a class="dropdown-item" href="{% get_dynamic_url 'login' %}">Login</a></li>
+    {% endif %}
+    <li><a class="dropdown-item" href="{% get_dynamic_url 'signup' %}">Signup</a></li>
+</ul>
                 </div>
             </div>
             
+
             <!-- Controller Status (between site selector and user menu) -->
-            <div hx-get="{% url 'controller_status_check' %}"
+            {% if user.is_authenticated %}
+            <div id="controller-status"
+                 hx-get="{% url 'controller_status_check' %}"
                  hx-trigger="load, every 15s"
-                 hx-swap="outerHTML"
-                 hx-target="#controller-status">
+                 hx-swap="outerHTML">
                 {% include 'components/controller_status.html' %}
             </div>
+            {% endif %}
             
             <!-- MAST Logo -->
             <div class="text-end d-flex align-items-center gap-3 ms-3">
-                <div class="text-dark">
+                <!-- <div class="text-dark">
                     <h4 class="mb-0">Spectra MASTers</h4>
-                </div>
-                <img src="{% static 'img/mast-logo.png' %}" alt="MAST Logo" height="60">
+                </div> -->
+                <img src="{% get_dynamic_static_url 'img/mast-logo.png' %}" alt="MAST Logo" height="60">
             </div>
         </div>
     </header>
@@ -89,90 +137,12 @@
     <!-- Banner Alert Container (below header, above content) -->
     <div id="banner-container"></div>
 
-    <div class="d-flex">
+    <div class="d-flex" style="min-height: calc(100vh - 80px);">
         <!-- Sidebar -->
-        <nav id="sidebar" class="bg-light border-end transition-width" style="width: 300px; min-height: calc(100vh - 80px); transition: width 0.3s ease;">
-            <!-- Site Location -->
-            <div class="p-2 bg-info text-white text-center">
-                <i class="bi bi-geo-alt-fill"></i>
-                <strong>{{ current_site_obj.location|default:"No site selected" }}</strong>
-            </div>
-            
-            <!-- Collapse Toggle Button -->
-            <div class="p-2 border-bottom text-end">
-                <button class="btn btn-sm btn-outline-secondary" 
-                        id="sidebarToggle"
-                        onclick="toggleSidebar()">
-                    <i class="bi bi-chevron-left" id="toggleIcon"></i>
-                </button>
-            </div>
-            
-            <div id="sidebarContent">
-                <ul class="nav flex-column p-3">
-                    <li class="nav-item">
-                        <a class="nav-link text-dark" href="{% url 'units:list' %}">
-                            <i class="bi bi-hdd-rack"></i> Units
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-dark" href="#">
-                            <i class="bi bi-camera"></i> Specs
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-dark" data-bs-toggle="collapse" href="#safetyMenu" aria-expanded="false">
-                            <i class="bi bi-shield-check"></i> Safety
-                            <i class="bi bi-chevron-down float-end collapse-indicator"></i>
-                        </a>
-                        <div class="collapse" id="safetyMenu">
-                            <ul class="nav flex-column ms-3">
-                                <li class="nav-item">
-                                    <a class="nav-link text-secondary" href="{% url 'safety:graphs' %}">Graphs</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-secondary" href="{% url 'safety:data' %}">Data</a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-dark" href="#">
-                            <i class="bi bi-list-task"></i> Assignments
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-dark" href="#">
-                            <i class="bi bi-calendar-check"></i> Plans
-                        </a>
-                    </li>
-                    
-                    <!-- Admin Section -->
-                    <li class="nav-item mt-3 border-top pt-3">
-                        <a class="nav-link text-dark" data-bs-toggle="collapse" href="#adminMenu" aria-expanded="false">
-                            <i class="bi bi-gear"></i> Admin
-                            <i class="bi bi-chevron-down float-end collapse-indicator"></i>
-                        </a>
-                        <div class="collapse" id="adminMenu">
-                            <ul class="nav flex-column ms-3">
-                                <li class="nav-item">
-                                    <a class="nav-link text-secondary" href="{% url 'admin_users' %}">
-                                        <i class="bi bi-people"></i> User Management
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-secondary" href="{% url 'admin_resources' %}">
-                                        <i class="bi bi-speedometer2"></i> Resources
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </nav>
+        {% include 'components/sidebar.html' %}
 
         <!-- Main Content -->
-        <div class="flex-grow-1">
+        <div class="flex-grow-1" style="min-width:0; overflow-x:auto;">
             <div class="container-fluid mt-3">
                 {% block content %}
                 {% endblock %}
@@ -203,46 +173,12 @@
         });
     </script>
     
-    <!-- Collapse indicator and sidebar toggle script -->
-    <script>
-        // Toggle chevron direction on collapse for menu items
-        document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(element) {
-            if (element.id !== 'sidebarToggle') {
-                element.addEventListener('click', function() {
-                    const icon = this.querySelector('.collapse-indicator');
-                    if (icon) {
-                        icon.classList.toggle('bi-chevron-down');
-                        icon.classList.toggle('bi-chevron-up');
-                    }
-                });
-            }
-        });
-        
-        // Sidebar collapse toggle
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarContent = document.getElementById('sidebarContent');
-            const toggleIcon = document.getElementById('toggleIcon');
-            
-            if (sidebar.style.width === '70px') {
-                // Expand
-                sidebar.style.width = '300px';
-                sidebarContent.style.display = 'block';
-                toggleIcon.classList.remove('bi-chevron-right');
-                toggleIcon.classList.add('bi-chevron-left');
-            } else {
-                // Collapse
-                sidebar.style.width = '70px';
-                sidebarContent.style.display = 'none';
-                toggleIcon.classList.remove('bi-chevron-left');
-                toggleIcon.classList.add('bi-chevron-right');
-            }
-        }
-    </script>
-    
     <!-- Notification JavaScript -->
-    <script src="{% static 'js/notifications.js' %}"></script>
+    <script src="{% get_dynamic_static_url 'js/notifications.js' %}"></script>
     
     {% block extra_js %}{% endblock %}
+    {% block scripts %}
+    <script src="{% get_dynamic_static_url 'js/confirm-modal.js' %}"></script>
+    {% endblock %}
 </body>
 </html>

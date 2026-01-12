@@ -1,13 +1,15 @@
 {% load static %}
+{% load dynamic_urls %}
+
 <div class="banner">
     <div class="banner-left">
-        <img src="{% static 'img/weizmann-logo.png' %}" alt="Weizmann Institute" class="banner-logo">
+        <img src="{% get_dynamic_static_url 'img/weizmann-logo.png' %}" alt="Weizmann Institute" class="banner-logo">
     </div>
     <div class="banner-right">
         <div>
             <div class="banner-title">MAST</div>
-            <div class="banner-motto">Spectra MASTers</div>
+            <!-- <div class="banner-motto">Spectra MASTers</div> -->
         </div>
-        <img src="{% static 'img/mast-logo.png' %}" alt="MAST" class="banner-logo" style="height: 50px;">
+        <img src="{% get_dynamic_static_url 'img/mast-logo.png' %}" alt="MAST" class="banner-logo" style="height: 50px;">
     </div>
 </div>
