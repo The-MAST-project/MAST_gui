@@ -3,11 +3,6 @@
 
 {% block title %}{{ unit_name }} - MAST{% endblock %}
 
-{% block breadcrumb %}
-<li class="breadcrumb-item"><a href="{% url 'units:list' %}">Units</a></li>
-<li class="breadcrumb-item active">{{ unit_name }}</li>
-{% endblock %}
-
 {% block content %}
 <div class="container-fluid">
     <h2 class="mb-4">Unit: {{ unit_name }}</h2>
