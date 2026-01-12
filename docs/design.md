@@ -173,18 +173,57 @@ ControlApi (FastAPI on mast-*-control)
 1. **Plans**
 1. **Admin** (collapsible, requires `canChangeUsers`)
    - User Management
-     - Sign-up requests
-     - User changes/approvals
-     - Group management
    - Resources (Netdata monitoring)
-     - iframe: `http://mast-wis-control:19999`
-     - **Note**: Internal network access, bypasses HTTP_PROXY/HTTPS_PROXY
+   - ...
 
-**Note**: All sidebar entries with sub-entries appear initially as collapsed
+#### Sidebar: Plans link (implementation note)
 
-**Permissions**:
-- Admin menu visible only to users with `canChangeUsers` capability
-- Resources page accessible with `canView` capability
+If the "Plans" sidebar entry currently does nothing, implement it as a regular navigation link to the Plans page route. Recommended minimal template markup (Django) — insert into your sidebar template where menu items are rendered:
+
+```html
+{# filepath: templates/includes/sidebar.html (example) #}
+<ul class="nav flex-column">
+  <!-- ...other menu items... -->
+  <li class="nav-item">
+    <a class="nav-link" href="{% url 'plans_index' %}" id="sidebar-link-plans">
+      <i class="bi bi-list-ul"></i>
+      <span class="ms-1">Plans</span>
+    </a>
+  </li>
+  <!-- ...other menu items... -->
+</ul>
+```
+
+Notes:
+- Use the Django URL name 'plans_index' (ensure you have path("plans/", plans.plans_index, name="plans_index") in core/urls.py).  
+- If you prefer a client-side activation (SPA-like), keep href but also attach a small script to avoid page reload and toggle active classes.
+
+Minimal JS to ensure click navigates and sets active class (drop into your global script file or base template):
+
+```javascript
+// filepath: static/js/sidebar.js (or inline <script> in base.html)
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('sidebar-link-plans');
+  if (!el) return;
+  el.addEventListener('click', (ev) => {
+    // Default behavior: navigate to the plans page (href)
+    // If you want client-side handling (no full reload), call ev.preventDefault()
+    // and use history.pushState + dynamic content load.
+
+    // Visually mark active
+    document.querySelectorAll('.sidebar .nav-link.active').forEach(a => a.classList.remove('active'));
+    el.classList.add('active');
+  });
+});
+```
+
+If you already use a sidebar rendering mechanism (server-side active detection), prefer server-side logic:
+
+```django
+<a class="nav-link {% if request.path == '/plans/' %}active{% endif %}" href="{% url 'plans_index' %}">Plans</a>
+```
+
+Finally, ensure the Plans view exists at /plans/ (core/views/plans.py -> plans_index) and is referenced in core/urls.py with name='plans_index'. Once the sidebar anchor is present and the view/URL exist, clicking "Plans" will load the plans page.
 
 ### Main Content Area
 
@@ -317,6 +356,663 @@ Each component has `endpoint_status()` returning:
 
 ## Real-time Activity Notifications
 
+### Architecture Overview
+
+The MAST GUI implements a real-time notification system using Server-Sent Events (SSE) to push status updates from backend machines to the browser without polling.
+
+#### System Components
+
+**Backend Machines (Units, Specs):**
+- Generate notifications for status changes (position updates, activity changes, errors)
+- Send notifications to Backend Controller via `Notifier().send_update()`
+- Use `common/notifications.py` module
+
+**Backend Controller (`mast-*-control`):**
+- Receives notifications from all machines via POST `/api/notifications`
+- Forwards notifications to Django GUI server
+- Acts as central notification hub
+
+**Django GUI Server:**
+- Receives notifications via POST `/api/notifications` endpoint
+- Updates in-memory cache (`_MAST_CACHE`)
+- Sends SSE events to connected browsers
+- Filters notifications by user session (site/unit selection)
+
+**Browser:**
+- Maintains SSE connection to Django
+- Receives filtered notification events
+- Updates DOM elements without page reload
+- Displays toast cards for important events
+
+#### Communication Flow
+
+```
+Unit/Spec Machine
+    ↓ (Notifier.send_update())
+Backend Controller
+    ↓ (POST /api/notifications)
+Django GUI Server
+    ↓ (notification_handler())
+    ├─→ Update _MAST_CACHE
+    ├─→ Filter by session
+    └─→ Send SSE events
+        ↓
+Browser (EventSource)
+    ├─→ Update DOM elements
+    └─→ Display toast cards
+```
+
+### Notification Data Structure
+
+#### Backend Notification (Python)
+
+```python
+from common.notifications import Notifier
+
+# Send status update notification
+Notifier().send_update(
+    path=['focuser', 'position'],           # Component-relative path
+    value=12345,                             # New value
+    update_cache=True,                       # Update cached status
+    update_dom_as='text',                    # 'text' or 'badge'
+    update_card={                            # Optional toast card
+        'type': 'info',                      # 'info'|'warning'|'error'|'start'|'end'
+        'message': 'Focuser moved',
+        'details': ['From 10000 to 12345'],
+        'duration': '2.3s'                   # For 'end' type
+    }
+)
+```
+
+#### Notification Packet Structure
+
+```python
+class NotificationUpdateData(BaseModel):
+    """Complete notification sent from backend to Django"""
+    initiator: NotificationInitiator  # Site, machine_type, machine_name
+    type: Literal["status_update"]
+    value: list[str] | str | int | float | bool | None
+    cache: dict = {}   # Cache update info
+    dom: dict = {}     # DOM update info
+    card: dict = {}    # Toast card info
+
+# Example: Focuser position update from unit 'mastw' at site 'wis'
+{
+    "initiator": {
+        "site": "wis",
+        "machine_type": "unit",
+        "machine_name": "mastw",
+        "project": "mast"
+    },
+    "type": "status_update",
+    "value": 12345,
+    "cache": {
+        "path": ["wis", "unit", "mastw", "focuser", "position"]
+    },
+    "dom": {
+        "id": "id-focuser-position",
+        "render_as": "text"
+    },
+    "card": {}  # Empty = no toast
+}
+```
+
+### Cache Update Logic
+
+The notification handler updates the Django context processor's in-memory cache:
+
+```python
+def update_cache(notification):
+    """
+    Navigate cache structure and update leaf value
+    Path format: [site, machine_type, machine_name?, component, ..., field]
+    """
+    path = notification['cache']['path']
+    
+    # Parse path components
+    site = path[0]              # 'wis'
+    machine_type = path[1]      # 'unit', 'spec', 'controller'
+    
+    if machine_type == 'unit':
+        machine = path[2]       # 'mastw'
+        dict_path = path[3:]    # ['focuser', 'position']
+    else:
+        machine = None
+        dict_path = path[2:]    # remaining path
+    
+    # Navigate to target in cache
+    target = _MAST_CACHE['status'][site]
+    
+    if machine_type == 'unit':
+        target = target['units'][machine]
+    elif machine_type == 'spec':
+        target = target['spec']
+    elif machine_type == 'controller':
+        target = target['controller']
+    
+    # Walk dict_path to leaf
+    for key in dict_path[:-1]:
+        if hasattr(target, key):
+            target = getattr(target, key)
+        else:
+            target = target[key]
+    
+    # Set final value
+    final_key = dict_path[-1]
+    if hasattr(target, final_key):
+        setattr(target, final_key, notification['value'])
+    else:
+        target[final_key] = notification['value']
+    
+    # Update cache timestamp
+    _MAST_CACHE['last_refresh'] = time.time()
+```
+
+### DOM Update Logic
+
+The notification handler sends pre-rendered content to browsers via SSE:
+
+```python
+def send_dom_update(notification, user_sessions):
+    """
+    Pre-render content and send to matching user sessions
+    """
+    if not notification['dom']:
+        return
+    
+    # Extract initiator info
+    initiator = notification['initiator']
+    notif_site = initiator['site']
+    notif_machine_type = initiator['machine_type']
+    notif_machine_name = initiator.get('machine_name')
+    
+    # Pre-render content based on render_as
+    value = notification['value']
+    render_as = notification['dom']['render_as']
+    
+    if render_as == 'text':
+        rendered = str(value)
+    elif render_as == 'badge':
+        # Create badge HTML for each value
+        badges = []
+        values = value if isinstance(value, list) else [value]
+        for v in values:
+            badge_class = get_activity_badge_class(v)
+            badges.append(f'<span class="badge {badge_class}">{v}</span>')
+        rendered = ' '.join(badges)
+    
+    # Send to each matching user session
+    for session in user_sessions:
+        selected_site = session.get('selected_site')
+        selected_unit = session.get('selected_unit')
+        
+        # Filter by site
+        if notif_site != selected_site:
+            continue
+        
+        # Filter by machine (units only)
+        if notif_machine_type == 'unit' and notif_machine_name != selected_unit:
+            continue
+        
+        # Send SSE event
+        send_sse_to_user(session, 'dom_update', {
+            'html_id': notification['dom']['id'],
+            'rendered': rendered,
+            'initiator': initiator
+        })
+```
+
+### Toast Card Logic
+
+```python
+def send_toast_card(notification, user_sessions):
+    """
+    Send toast card notification to all users viewing the site
+    """
+    if not notification['card']:
+        return
+    
+    card = notification['card']
+    initiator = notification['initiator']
+    notif_site = initiator['site']
+    
+    # Send to users viewing this site
+    for session in user_sessions:
+        selected_site = session.get('selected_site')
+        
+        if notif_site != selected_site:
+            continue
+        
+        # Build card data
+        card_data = {
+            'type': card.get('type', 'info'),
+            'message': card.get('message'),
+            'details': card.get('details', []),
+            'component': card.get('component'),
+            'duration': card.get('duration'),
+            'initiator': initiator
+        }
+        
+        send_sse_to_user(session, 'toast_card', card_data)
+```
+
+### SSE Event Types
+
+**1. DOM Update Event**
+```javascript
+// Event: 'dom_update'
+{
+    "html_id": "focuser-position",      // Component-relative ID
+    "rendered": "12345",                 // Pre-rendered HTML/text
+    "initiator": {
+        "site": "wis",
+        "machine_type": "unit",
+        "machine_name": "mastw"
+    }
+}
+```
+
+**2. Toast Card Event**
+```javascript
+// Event: 'toast_card'
+{
+    "type": "warning",                   // 'info'|'warning'|'error'|'start'|'end'
+    "message": "Focuser movement timeout",
+    "details": [
+        "Target: 15000",
+        "Current: 12340"
+    ],
+    "component": "focuser",              // Optional
+    "duration": "5.2s",                  // Optional (for 'end' type)
+    "initiator": {
+        "site": "wis",
+        "machine_type": "unit",
+        "machine_name": "mastw"
+    }
+}
+```
+
+### Client-Side JavaScript
+
+```javascript
+// Establish SSE connection
+const eventSource = new EventSource('/api/sse');
+
+// Store selected site/unit from page data
+const selectedSite = document.body.dataset.site;
+const selectedUnit = document.body.dataset.unit;
+
+// Handle DOM updates
+eventSource.addEventListener('dom_update', function(e) {
+    const data = JSON.parse(e.data);
+    
+    // Filter by site (safety check, already filtered server-side)
+    if (data.initiator.site !== selectedSite) return;
+    
+    // Filter by machine if on unit page
+    if (data.initiator.machine_type === 'unit' && 
+        data.initiator.machine_name !== selectedUnit) return;
+    
+    // Update DOM element
+    const element = document.getElementById(data.html_id);
+    if (element) {
+        element.innerHTML = data.rendered;
+    }
+});
+
+// Handle toast cards
+eventSource.addEventListener('toast_card', function(e) {
+    const data = JSON.parse(e.data);
+    
+    // Filter by site
+    if (data.initiator.site !== selectedSite) return;
+    
+    // Display toast with appropriate icon and color
+    showToast(data);
+});
+
+// Toast display function
+function showToast(data) {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${data.type}`;
+    
+    // Icon based on type
+    const icons = {
+        'info': 'bi-info-circle',
+        'warning': 'bi-exclamation-triangle',
+        'error': 'bi-x-circle',
+        'start': 'bi-play-circle',
+        'end': 'bi-check-circle'
+    };
+    const icon = icons[data.type] || 'bi-info-circle';
+    
+    let html = `
+        <div class="toast-header">
+            <i class="bi ${icon}"></i>
+            <strong>${data.message || 'Notification'}</strong>
+            <button type="button" class="btn-close" onclick="this.closest('.toast').remove()"></button>
+        </div>
+    `;
+    
+    if (data.component || data.details || data.duration) {
+        html += '<div class="toast-body">';
+        if (data.component) html += `<div>Component: ${data.component}</div>`;
+        if (data.details) {
+            data.details.forEach(detail => {
+                html += `<div>${detail}</div>`;
+            });
+        }
+        if (data.duration) html += `<div>Duration: ${data.duration}</div>`;
+        html += '</div>';
+    }
+    
+    toast.innerHTML = html;
+    
+    // Add to toast container (bottom-right)
+    const container = document.getElementById('toast-container');
+    container.appendChild(toast);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => toast.remove(), 5000);
+}
+```
+
+### HTML Template Structure
+
+**Component IDs (component-relative, no site/unit prefix):**
+
+```html
+<!-- Focuser accordion in templates/units/components/focuser_accordion.html -->
+<div class="accordion-item">
+    <h2 class="accordion-header">
+        <button class="accordion-button collapsed">
+            <div class="d-flex w-100 align-items-center">
+                <div><strong>Focuser</strong></div>
+                
+                <!-- Status indicators -->
+                <div id="focuser-powered">
+                    {% if focuser.powered %}✓{% else %}➖{% endif %}
+                </div>
+                
+                <!-- Position display -->
+                <div>
+                    <span id="focuser-position">{{ focuser.position }}</span>
+                </div>
+                
+                <!-- Activity badges -->
+                <div id="focuser-activities">
+                    {% for activity in focuser.activities_verbal %}
+                        <span class="badge bg-warning">{{ activity }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </button>
+    </h2>
+</div>
+```
+
+**Toast container in base template:**
+
+```html
+<!-- templates/base.html -->
+<body data-site="{{ current_site }}" data-unit="{{ selected_unit }}">
+    <!-- ...existing content... -->
+    
+    <!-- Toast container (bottom-right corner) -->
+    <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
+        <!-- Toasts dynamically inserted here -->
+    </div>
+    
+    <script src="{% static 'js/notifications.js' %}"></script>
+</body>
+```
+
+### Django Endpoint Implementation
+
+```python
+# MAST_gui/urls.py
+urlpatterns = [
+    # ...existing patterns...
+    path('api/notifications', views.handle_notification, name='api_notifications'),
+    path('api/sse', views.sse_stream, name='api_sse'),
+]
+
+# MAST_gui/views.py
+from django.http import JsonResponse, StreamingHttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
+import time
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def handle_notification(request):
+    """
+    Receive notifications from backend controller
+    Process: update cache, send SSE to browsers
+    """
+    try:
+        notification = json.loads(request.body)
+        
+        # 1. Update cache if requested
+        if notification.get('cache'):
+            update_cache(notification)
+        
+        # 2. Send DOM update if requested
+        if notification.get('dom'):
+            send_dom_update(notification, get_active_sse_sessions())
+        
+        # 3. Send toast card if requested
+        if notification.get('card'):
+            send_toast_card(notification, get_active_sse_sessions())
+        
+        return JsonResponse({'success': True})
+    
+    except Exception as e:
+        logger.error(f"Notification handling error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def sse_stream(request):
+    """
+    Server-Sent Events stream for real-time updates
+    """
+    def event_stream():
+        # Register this connection
+        session_id = request.session.session_key
+        register_sse_connection(session_id, request.session)
+        
+        try:
+            while True:
+                # Check for events in queue for this session
+                events = get_pending_events(session_id)
+                
+                for event in events:
+                    yield f"event: {event['type']}\n"
+                    yield f"data: {json.dumps(event['data'])}\n\n"
+                
+                # Send keepalive every 30 seconds
+                yield ": keepalive\n\n"
+                time.sleep(30)
+        
+        finally:
+            # Unregister on disconnect
+            unregister_sse_connection(session_id)
+    
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
+```
+
+### Backend Notification Examples
+
+**Example 1: Focuser Position Update**
+
+```python
+# In unit focuser code
+from common.notifications import Notifier
+
+def on_position_changed(new_position):
+    Notifier().send_update(
+        path=['focuser', 'position'],
+        value=new_position,
+        update_cache=True,
+        update_dom_as='text'
+    )
+```
+
+**Example 2: Activity Start (with toast)**
+
+```python
+def start_slewing(target_ra, target_dec):
+    Notifier().send_update(
+        path=['mount', 'activities_verbal'],
+        value=['Slewing'],
+        update_cache=True,
+        update_dom_as='badge',
+        update_card={
+            'type': 'start',
+            'message': 'Mount slewing started',
+            'details': [f'RA: {target_ra}', f'Dec: {target_dec}']
+        }
+    )
+```
+
+**Example 3: Activity End (with duration)**
+
+```python
+def slewing_complete(duration_seconds):
+    Notifier().send_update(
+        path=['mount', 'activities_verbal'],
+        value=['Idle'],
+        update_cache=True,
+        update_dom_as='badge',
+        update_card={
+            'type': 'end',
+            'message': 'Mount slewing completed',
+            'duration': f'{duration_seconds:.1f}s'
+        }
+    )
+```
+
+**Example 4: Error Notification**
+
+```python
+def on_focuser_timeout(target, current):
+    Notifier().send_update(
+        path=['focuser', 'activities_verbal'],
+        value=['Error: Timeout'],
+        update_cache=True,
+        update_dom_as='badge',
+        update_card={
+            'type': 'error',
+            'message': 'Focuser movement timeout',
+            'details': [
+                f'Target: {target}',
+                f'Current: {current}',
+                'Manual intervention required'
+            ]
+        }
+    )
+```
+
+### Path Structure Examples
+
+All paths follow the format: `[site, machine_type, machine_name?, component, ..., field]`
+
+```python
+# Unit paths (include machine_name)
+["wis", "unit", "mastw", "focuser", "position"]          # Unit focuser position
+["wis", "unit", "mastw", "mount", "ra_j2000_hours"]      # Mount RA coordinate
+["wis", "unit", "mastw", "camera", "U", "temperature"]   # Camera U-band temp
+["wis", "unit", "mastw", "stage", "position"]            # Stage position
+["wis", "unit", "mastw", "covers", "state"]              # Covers state
+
+# Spec paths (no machine_name for single spec per site)
+["wis", "spec", "highspec", "calibration", "lamp_on"]    # Calibration lamp state
+["wis", "spec", "deepspec", "grating", "position"]       # Grating position
+
+# Controller paths (no machine_name)
+["wis", "controller", "operational"]                      # Controller status
+["wis", "controller", "scheduler", "running"]             # Scheduler state
+```
+
+### Performance Considerations
+
+**Cache Updates:**
+- Single Django worker = thread-safe in-memory cache
+- No race conditions (sequential processing)
+- Max 30s stale data acceptable (polling fallback)
+
+**SSE Scalability:**
+- One SSE connection per browser tab
+- Server-side filtering reduces bandwidth
+- Keepalive prevents connection timeout
+
+**Notification Queue:**
+- Backend uses deque with max size (10 messages)
+- Auto-retry on failure
+- Oldest messages dropped if queue full
+
+### Error Handling
+
+**Missing DOM Elements:**
+- Client silently ignores updates for missing IDs
+- Best-effort approach (preserves UI state)
+- No error thrown
+
+**Cache Path Not Found:**
+- Server logs warning
+- Notification dropped
+- No crash, system continues
+
+**SSE Connection Lost:**
+- Browser auto-reconnects
+- Missed notifications caught by next 30s polling refresh
+- Graceful degradation
+
+### Testing Notifications
+
+**Manual Testing:**
+
+```python
+# In Django shell or test script
+from common.notifications import Notifier
+
+# Test focuser position update
+Notifier().send_update(
+    path=['focuser', 'position'],
+    value=99999,
+    update_cache=True,
+    update_dom_as='text',
+    update_card={
+        'type': 'info',
+        'message': 'Test notification',
+        'details': ['Position updated to 99999']
+    }
+)
+```
+
+**Browser Console Testing:**
+
+```javascript
+// Check SSE connection
+eventSource.readyState  // 0=CONNECTING, 1=OPEN, 2=CLOSED
+
+// Manually trigger DOM update
+const testEvent = new MessageEvent('dom_update', {
+    data: JSON.stringify({
+        html_id: 'focuser-position',
+        rendered: '12345',
+        initiator: {site: 'wis', machine_type: 'unit', machine_name: 'mastw'}
+    })
+});
+eventSource.dispatchEvent(testEvent);
+```
+
 ### WebSocket Integration
 
 - **Trigger**: Activity start/end events
@@ -348,1288 +1044,8 @@ Each component has `endpoint_status()` returning:
 **Behavior:**
 
 - Shows component name
-- Auto-dismiss after timeout (5-10 seconds)
+- Auto-dismiss after timeout (5 seconds)
 - Manual close button [×]
-- Stack vertically, newest on top
+- Stack vertically in bottom-right corner, newest on top
 - Fade in/out animations
-- No jump to component on click
-
------
-
-## Plans & Assignments System
-
-### Overview
-
-The MAST observation system separates **scientific goals** (Plans) from **execution attempts** (Assignments):
-
-- **Plans**: Persistent entities defining **what** to observe (target, constraints, requirements)
-- **Assignments**: Transient execution wrappers defining **how** observations are attempted (unit allocations, timing)
-
-**Key Principle**: Plans survive assignment failures and can be rescheduled into new assignments with different resource allocations.
-
-**Relationship**: 
-- **One plan = One target** (1:1 relationship between plan and target)
-- **One assignment = Multiple plans** (1:N relationship between assignment and plans)
-- Plans can participate in multiple assignments over time
-- Failed plans automatically return to eligible state for rescheduling
-
-### Architecture Flow
-
-```
-Researcher creates Plan (M87 observation)
-    ↓
-PlanManager approves Plan
-    ↓
-Scheduler evaluates constraints (moon, airmass, seeing, time window)
-    ↓
-Scheduler creates Assignment (combines multiple plans with current conditions)
-    - Plan A (M87) + Plan B (NGC1234) + Plan C (Crab)
-    - Allocates: wis:w, ns:2, ns:5, ns:7
-    ↓
-Assignment executes (some plans may fail)
-    - Plan A: Succeeded (units reached guiding)
-    - Plan B: Succeeded
-    - Plan C: Failed (guiding timeout)
-    ↓
-Failed plans return to Approved state (eligible for rescheduling)
-Succeeded plans: observations_completed++
-    ↓
-Scheduler creates new Assignment (Plan C + Plan D + Plan E)
-```
-
----
-
-## Plans
-
-### Concept
-
-**A Plan defines one target with observation requirements and constraints.**
-
-- One plan = one target (immutable association)
-- Plans are persistent (survive assignment failures)
-- Plans define scientific goals independent of execution details
-- Plans can be re-observed multiple times (numbered or indefinite)
-- Plans maintain links to all assignment attempts (success and failure)
-
-### Plan Lifecycle
-
-```
-Draft (user editing)
-  ↓ [Submit]
-Submitted (awaiting approval)
-  ↓ [PlanManager approves/rejects]
-Approved (eligible for scheduling) / Rejected
-  ↓ [Scheduler creates assignment]
-Scheduled (included in assignment)
-  ↓ [Assignment executes]
-Succeeded / Failed
-  ↓ [Owner/PlanManager can re-submit]
-Approved (for additional observations)
-  ↓ [When all observations complete]
-Completed (archived)
-```
-
-### Plan States
-
-- **Draft**: User creating/editing, not visible to scheduler
-- **Submitted**: Awaiting review by PlanManager
-- **Approved**: Eligible for scheduling by scheduler
-- **Rejected**: Declined by PlanManager (with reasons)
-- **Scheduled**: Currently included in an active assignment
-- **Succeeded**: Observation completed successfully (linked to assignment)
-- **Failed**: Assignment attempt failed (linked to assignment)
-- **Completed**: All requested observations finished (archived)
-
-**State Transitions After Assignment:**
-- **Assignment succeeds** → Plan moves to `Succeeded`
-  - `observations_completed` incremented
-  - Link to successful assignment added to `assignment_history`
-  - If `observations_completed < observations_requested` → Plan returns to `Approved` (eligible for more observations)
-  - If `observations_completed >= observations_requested` → Plan moves to `Completed` (archived)
-  
-- **Assignment fails** → Plan moves to `Failed`
-  - Link to failed assignment added to `assignment_history`
-  - Plan **automatically** returns to `Approved` (eligible for rescheduling)
-  - Merit may be raised (prioritizes retry)
-
-### Plan TOML Structure
-
-**File Pattern**: `PLN_<ULID>.toml`
-
-**Location**: `/data/plans/<status>/PLN_<ULID>.toml`
-
-```toml
-[plan]
-ulid = "01kk6rzhvkve6ta6xj9jm4cjpw"
-name = "M87 Deep Spectroscopy"
-owner = "john.doe"
-merit = 5
-status = "approved"  # draft/submitted/approved/rejected/scheduled/succeeded/failed/completed
-quorum = 3  # Minimum operational units required
-timeout_to_guiding = 600  # Seconds for units to reach guiding state
-observations_requested = 3  # Number of observations requested (null = indefinite)
-observations_completed = 1  # Number successfully completed
-
-# Timestamps (state snapshots)
-created_at = "2024-12-01T10:00:00Z"
-created_by = "john.doe"
-submitted_at = "2024-12-01T12:30:00Z"
-approved_at = "2024-12-01T14:00:00Z"
-approved_by = "admin"
-last_modified = "2024-12-06T23:30:00Z"
-
-# Links to assignments that attempted this plan
-assignment_history = ["01mm...", "01nn...", "01oo..."]
-
-[target]
-name = "M87"
-ra = "12:30:49.4"  # Sexagesimal or decimal degrees
-dec = "+12:23:28"   # Decimal degrees
-
-[spec]
-instrument = "deepspec"  # or "highspec"
-exposure = 300.0  # seconds
-
-[spec.camera]
-binning = { x=2, y=3 }
-# ... other camera settings ...
-
-[spec.camera.U]
-# Band-specific overrides for deepspec
-binning = { x=1 }
-
-[constraints]
-# All optional - missing constraint = no restriction
-
-[constraints.moon]
-max_phase = 0.3        # 0=new, 1=full
-min_distance = 30.0    # degrees from target
-
-[constraints.airmass]
-max = 2.0              # Maximum airmass
-
-[constraints.seeing]
-max = 2.5              # arcseconds
-
-[constraints.time_window]
-start = "2024-12-01T00:00:00Z"
-end = "2024-12-31T23:59:59Z"
-```
-
-**Note**: No `[[event]]` sections in TOML - detailed events stored in MongoDB.
-
----
-
-## Assignments
-
-### Concept
-
-**An Assignment is an execution wrapper combining multiple plans that satisfy current constraints.**
-
-- One assignment = multiple plans (targets)
-- Assignments are transient (created, executed, archived)
-- Assignments allocate specific units to specific plans
-- Assignments execute when conditions permit
-- Assignment success/failure tracked at both assignment and individual plan level
-
-### Plan-Assignment Relationship
-
-**Key Points:**
-- Plans are **reusable** - same plan can be in multiple assignments over time
-- Assignments **combine** plans that share:
-  - Compatible time windows
-  - Similar constraints (moon, airmass, seeing)
-  - Same instrument requirements
-  - Current favorable conditions
-
-**Example Timeline:**
-```
-Night 1:
-  Assignment #42: [Plan A, Plan B, Plan C]
-    → Plan A: Succeeded
-    → Plan B: Succeeded  
-    → Plan C: Failed (timeout)
-
-Night 2:
-  Assignment #43: [Plan C, Plan D]  # Plan C rescheduled
-    → Plan C: Succeeded
-    → Plan D: Failed (spec failure)
-
-Night 3:
-  Assignment #44: [Plan D, Plan E, Plan F]  # Plan D rescheduled
-    → All succeeded
-```
-
-### Assignment Lifecycle
-
-```
-Created (by scheduler)
-  ↓
-InProgress (executing)
-  ↓
-Completed (with individual plan results)
-```
-
-**No separate "Failed" state** - assignments always reach `Completed` with individual plan success/failure tracked.
-
-### Assignment Execution Logic
-
-**Pre-Execution Checks:**
-
-1. **Spectrograph check**:
-   - If spec NOT operational → Assignment fails immediately
-   - All plans in assignment → Failed
-   - Plans return to Approved state
-
-2. **Unit allocation**:
-   - Each plan attempts to acquire its required quorum of units
-   - Units must reach "Guiding" state within `timeout_to_guiding`
-   
-3. **Assignment viability**:
-   - If **zero plans** achieve quorum → Assignment ends, all plans Failed
-   - If **at least one plan** achieves quorum → Assignment proceeds
-
-**During Execution:**
-
-**Unit timeout behavior:**
-- Unit has `timeout_to_guiding` seconds to reach "Guiding" state
-- If timeout expires:
-  - Unit removed from operational count for that plan
-  - Remaining units recounted
-  - If remaining ≥ quorum → plan proceeds with fewer units
-  - If remaining < quorum → plan fails
-
-**Spectrograph failure:**
-- If spec fails during observation → **all plans in assignment fail immediately**
-- Partial observations discarded
-- All plans return to Approved state
-
-**Plan-level outcomes within assignment:**
-- ✅ **Succeeded**: Units reached guiding, observation completed
-- ❌ **Failed (quorum)**: Insufficient units operational at start
-- ❌ **Failed (timeout)**: Units didn't reach guiding in time
-- ❌ **Failed (spec)**: Spectrograph failure during observation
-
-**Post-Execution:**
-
-For each plan in assignment:
-1. Update plan status (Succeeded/Failed)
-2. Add assignment ULID to plan's `assignment_history`
-3. If succeeded: increment `observations_completed`
-4. If failed OR (succeeded but more observations requested): return plan to Approved state
-5. Update plan TOML file
-6. Log detailed events to MongoDB
-
-### Assignment TOML Structure
-
-**File Pattern**: `ASN_<ULID>.toml`
-
-**Location**: `/data/assignments/<status>/ASN_<ULID>.toml`
-
-```toml
-[assignment]
-ulid = "01mm6rzhvkve6ta6xj9jm4cjpw"
-status = "completed"  # created/inprogress/completed
-
-# Timestamps (execution record)
-created = "2024-12-05T22:00:00Z"
-scheduled_start = "2024-12-05T22:00:00Z"
-actual_start = "2024-12-05T22:00:15Z"
-completed = "2024-12-05T22:15:45Z"
-duration = 945  # seconds
-
-# Plans included in this assignment
-plan_ulids = ["01kk...", "01ll...", "01nn..."]
-
-[spectrograph]
-instrument = "deepspec"
-operational_at_start = true
-failed_during_observation = false
-failure_time = null  # timestamp if failed
-failure_reason = null  # error message if failed
-
-# Individual plan results
-[[plan_result]]
-plan_ulid = "01kk..."  # M87
-plan_name = "M87 Deep Spectroscopy"
-status = "succeeded"
-units_assigned = ["wis:w", "ns:2", "ns:5"]
-units_reached_guiding = ["wis:w", "ns:2", "ns:5"]
-units_timed_out = []
-observation_start = "2024-12-05T22:10:30Z"
-observation_end = "2024-12-05T22:15:30Z"
-quorum_required = 3
-quorum_achieved = 3
-data_path = "/data/observations/2024-12-05/ASN_01mm/PLN_01kk"
-
-[[plan_result]]
-plan_ulid = "01ll..."  # NGC1234
-plan_name = "NGC1234 Survey"
-status = "succeeded"
-units_assigned = ["ns:3", "ns:7"]
-units_reached_guiding = ["ns:3", "ns:7"]
-units_timed_out = []
-observation_start = "2024-12-05T22:05:00Z"
-observation_end = "2024-12-05T22:10:00Z"
-quorum_required = 2
-quorum_achieved = 2
-data_path = "/data/observations/2024-12-05/ASN_01mm/PLN_01ll"
-
-[[plan_result]]
-plan_ulid = "01nn..."  # Crab Nebula
-plan_name = "Crab Nebula Multi-Unit"
-status = "failed"
-failure_reason = "guiding_timeout"
-units_assigned = ["ns:1", "ns:4", "ns:8", "ns:10", "ns:12"]
-units_reached_guiding = ["ns:1", "ns:4"]
-units_timed_out = ["ns:8", "ns:10", "ns:12"]
-timeout_period = 600  # seconds
-quorum_required = 5
-quorum_achieved = 2
-data_path = null  # no data collected
-```
-
----
-
-## Event Logging: Hybrid Approach
-
-### Design Rationale
-
-**Problem**: Should events be stored in TOML files or MongoDB?
-
-**Solution**: Hybrid approach balancing self-contained snapshots with queryable audit trails.
-
-### Storage Strategy
-
-**TOML Files (State Snapshots)**:
-- ✅ Store current state, not event history
-- ✅ Timestamps for major lifecycle changes
-- ✅ Self-contained backups (TOML files include all needed info)
-- ✅ Fast UI loading (parse one file)
-- ✅ Links to related entities (`assignment_history`)
-
-**MongoDB (Event Stream)**:
-- ✅ Store detailed event-by-event history
-- ✅ Granular actions (user edits, unit timeouts, spec failures)
-- ✅ Cross-entity queries ("What happened today?")
-- ✅ Analytics and reporting
-- ✅ Real-time monitoring data
-
-### MongoDB Event Schema
-
-```python
-# Collection: events
-{
-  "_id": ObjectId("..."),
-  "timestamp": datetime,
-  "event_type": str,  # "plan_created", "plan_approved", "unit_timeout", "plan_failed", etc.
-  "entity_type": str,  # "plan" or "assignment"
-  "entity_ulid": str,
-  "actor": str,  # username or "system" or "scheduler"
-  "related_entities": {
-    "plan_ulid": str,
-    "assignment_ulid": str,
-    "unit": str
-  },
-  "details": dict  # Event-specific data
-}
-```
-
-### Example Events
-
-**Plan created:**
-```python
-{
-  "timestamp": "2024-12-01T10:00:00Z",
-  "event_type": "plan_created",
-  "entity_type": "plan",
-  "entity_ulid": "01kk...",
-  "actor": "john.doe",
-  "details": {
-    "target_name": "M87",
-    "instrument": "deepspec",
-    "quorum": 3
-  }
-}
-```
-
-**Plan succeeded in assignment:**
-```python
-{
-  "timestamp": "2024-12-05T22:15:30Z",
-  "event_type": "plan_succeeded",
-  "entity_type": "plan",
-  "entity_ulid": "01kk...",
-  "actor": "system",
-  "related_entities": {
-    "plan_ulid": "01kk...",
-    "assignment_ulid": "01mm..."
-  },
-  "details": {
-    "units_used": ["wis:w", "ns:2", "ns:5"],
-    "observation_duration": 300,
-    "data_path": "/data/observations/2024-12-05/ASN_01mm/PLN_01kk"
-  }
-}
-```
-
-**Plan failed (timeout) in assignment:**
-```python
-{
-  "timestamp": "2024-12-05T22:10:00Z",
-  "event_type": "plan_failed",
-  "entity_type": "plan",
-  "entity_ulid": "01nn...",
-  "actor": "system",
-  "related_entities": {
-    "plan_ulid": "01nn...",
-    "assignment_ulid": "01mm..."
-  },
-  "details": {
-    "failure_reason": "guiding_timeout",
-    "units_assigned": 5,
-    "units_guiding": 2,
-    "units_timed_out": ["ns:8", "ns:10", "ns:12"],
-    "timeout_period": 600
-  }
-}
-```
-
-**Unit timeout during assignment:**
-```python
-{
-  "timestamp": "2024-12-05T22:10:00Z",
-  "event_type": "unit_timeout",
-  "entity_type": "assignment",
-  "entity_ulid": "01mm...",
-  "actor": "system",
-  "related_entities": {
-    "plan_ulid": "01nn...",
-    "assignment_ulid": "01mm...",
-    "unit": "ns:10"
-  },
-  "details": {
-    "timeout_period": 600,
-    "elapsed": 600,
-    "last_status": "acquiring",
-    "target": "Crab Nebula"
-  }
-}
-```
-
-**Spectrograph failure during assignment:**
-```python
-{
-  "timestamp": "2024-12-05T22:12:30Z",
-  "event_type": "spectrograph_failed",
-  "entity_type": "assignment",
-  "entity_ulid": "01mm...",
-  "actor": "system",
-  "details": {
-    "instrument": "deepspec",
-    "error_message": "Communication lost with spec",
-    "affected_plans": ["01kk...", "01ll...", "01nn..."],
-    "observations_in_progress": 2
-  }
-}
-```
-
-### Implementation Guidelines
-
-**When to write TOML:**
-- Plan state changes (created, approved, succeeded, failed, completed)
-- Assignment creation and completion
-- Metadata updates (`observations_completed`, `merit`, `assignment_history`)
-
-**When to write MongoDB:**
-- All granular events (unit timeouts, user actions, edits, approvals)
-- Real-time monitoring data
-- Audit trail for compliance
-- Cross-entity relationships
-
-**Consistency mechanism:**
-```python
-def update_plan_after_assignment(plan_ulid, assignment_ulid, outcome, details):
-    # 1. Update TOML (source of truth for state)
-    plan = Plan.from_toml(f"PLN_{plan_ulid}.toml")
-    
-    if outcome == "succeeded":
-        plan.status = "succeeded"
-        plan.observations_completed += 1
-        # Check if more observations needed
-        if (plan.observations_requested is not None and 
-            plan.observations_completed >= plan.observations_requested):
-            plan.status = "completed"
-        else:
-            plan.status = "approved"  # Ready for more observations
-    else:
-        plan.status = "failed"
-        # Auto-return to approved
-        plan.status = "approved"
-        plan.merit += 1  # Raise priority
-    
-    plan.assignment_history.append(assignment_ulid)
-    plan.last_modified = datetime.now()
-    plan.to_toml(f"PLN_{plan_ulid}.toml")
-    
-    # 2. Log detailed event to MongoDB
-    mongo.events.insert_one({
-        "timestamp": datetime.now(),
-        "event_type": f"plan_{outcome}",
-        "entity_type": "plan",
-        "entity_ulid": plan_ulid,
-        "actor": "system",
-        "related_entities": {
-            "plan_ulid": plan_ulid,
-            "assignment_ulid": assignment_ulid
-        },
-        "details": details
-    })
-```
-
----
-
-## Scheduler
-
-### Behavior
-
-**Planning Phase (before observing night):**
-- Evaluates all approved plans against forecasted conditions
-- Creates time-ordered projection of proposed assignments
-- Example: "20:00 Assignment A (Plans 1,2,3), 22:00 Assignment B (Plans 4,5)"
-- Projection is a **guideline**, not committed execution
-
-**Real-Time Execution:**
-- Only **one assignment in-progress** at a time
-- After assignment completes:
-  - Updates all plan states (succeeded/failed)
-  - Re-evaluates current conditions (weather, seeing, moon)
-  - Creates next assignment based on updated constraints
-  - May deviate from projected schedule if conditions changed
-
-### Merit System
-
-- **Purpose**: Tiebreaker when multiple plans equally satisfy constraints
-- **Initial value**: User-settable (1-10 scale, default=5)
-- **Auto-adjustment**: Merit raised (+1) after assignment failure (prioritizes retry)
-- **Decay**: Merit may decrease over time if repeatedly scheduled but not executed
-- **Not fully defined**: Exact algorithm TBD
-
-### Constraint Evaluation
-
-Plans with optional constraints:
-- **Missing constraint** = no restriction (soft)
-- **Present constraint** = must satisfy (hard)
-
-Example:
-```toml
-[constraints]
-moon.max_phase = 0.3      # HARD: moon must be < 30% illuminated
-airmass.max = 2.0         # HARD: airmass < 2.0 required
-# seeing.max not specified # SOFT: any seeing acceptable
-```
-
-### Assignment Creation Logic
-
-```python
-def create_assignment(eligible_plans, current_conditions):
-    # 1. Filter plans by hard constraints
-    viable_plans = []
-    for plan in eligible_plans:
-        if satisfies_constraints(plan, current_conditions):
-            viable_plans.append(plan)
-    
-    # 2. Group by instrument (can't mix deepspec and highspec)
-    deepspec_plans = [p for p in viable_plans if p.spec.instrument == "deepspec"]
-    highspec_plans = [p for p in viable_plans if p.spec.instrument == "highspec"]
-    
-    # 3. Select plans with highest merit (tiebreaker)
-    selected_plans = select_by_merit(deepspec_plans, max_plans=10)
-    
-    # 4. Check resource availability
-    total_required_units = sum(p.quorum for p in selected_plans)
-    if total_required_units > available_units():
-        # Reduce plan set
-        selected_plans = optimize_plan_set(selected_plans)
-    
-    # 5. Create assignment
-    assignment = Assignment(
-        plan_ulids=[p.ulid for p in selected_plans],
-        instrument=selected_plans[0].spec.instrument,
-        created=datetime.now()
-    )
-    
-    return assignment
-```
-
----
-
-## Plans Page
-
-### UI Structure
-
-**Tabs:**
-- **My Plans**: Current user's plans (if has `canManagePlans`)
-- **All Plans**: All plans (visible to all with `canView`)
-- **Filter dropdowns**: Status, Instrument, Owner, Date range
-
-### Accordion Display
-
-**Collapsed View:**
-```
-[ULID icon] PLN-01kk... | M87 (12:30:49, +12:23:28) | john.doe | Approved | Merit: 5 | Obs: 1/3
-```
-
-**Expanded View:**
-```
-Plan: M87 Deep Spectroscopy (PLN-01kk...)
-
-━━━ Target Information ━━━
-Name: M87
-RA: 12:30:49.4
-Dec: +12:23:28
-
-━━━ Observation Requirements ━━━
-Instrument: deepspec
-Exposure: 300s
-Quorum: 3 units
-Timeout to guiding: 600s
-Observations: 1 of 3 completed
-Merit: 5
-
-━━━ Constraints ━━━
-Moon phase: < 30%
-Moon distance: > 30°
-Airmass: < 2.0
-Seeing: < 2.5"
-Time window: 2024-12-01 to 2024-12-31
-
-━━━ Status ━━━
-Created: 2024-12-01 10:00 by john.doe
-Submitted: 2024-12-01 12:30
-Approved: 2024-12-01 14:00 by admin
-Last modified: 2024-12-06 23:30
-
-━━━ Assignment History ━━━
-• ASN-01mm... (2024-12-05 22:00) - Failed
-  Reason: Guiding timeout (2 of 5 units)
-  [View Details]
-  
-• ASN-01nn... (2024-12-06 23:00) - Succeeded
-  Units: wis:w, ns:2, ns:5
-  Data: /data/observations/2024-12-06/ASN_01nn/PLN_01kk
-  [View Data] [View Details]
-
-[Edit] [Delete] [Re-submit for N observations] [Archive]
-```
-
-**Buttons (permission-based):**
-- **Edit**: Owner or `canManagePlans` (only for Draft/Rejected/Failed plans)
-- **Delete**: Owner or `canManagePlans` + confirmation
-- **Re-submit**: Owner or `canManagePlans` (for Succeeded/Failed plans)
-- **Archive**: Owner or `canManagePlans` (manual completion)
-
-**Re-submission dialog:**
-```
-Re-submit plan "M87 Deep Spectroscopy" for additional observations:
-
-Current: 1 observation completed
-
-○ 1 additional observation (total: 2)
-○ 3 additional observations (total: 4)
-○ 10 additional observations (total: 11)
-○ Indefinite (continue until manually stopped)
-
-[Submit] [Cancel]
-```
-
-### Detailed Event History (Optional Drill-Down)
-
-Clicking "View Details" on assignment loads from MongoDB:
-
-```
-━━━ Assignment ASN-01mm Execution Timeline ━━━
-22:00:00 | Assignment created by scheduler
-22:00:15 | Assignment started
-22:00:15 | Plan: M87 - Units assigned: wis:w, ns:2, ns:5, ns:8, ns:10
-
-22:05:30 | Plan: M87 - Unit ns:2 reached guiding
-22:06:15 | Plan: M87 - Unit wis:w reached guiding
-22:08:45 | Plan: M87 - Unit ns:5 reached guiding
-22:10:00 | Plan: M87 - Unit ns:8 timeout (acquiring → timeout)
-22:10:00 | Plan: M87 - Unit ns:10 timeout (acquiring → timeout)
-22:10:00 | Plan: M87 - Quorum check: 3 of 5 required, 3 achieved ✓
-22:10:30 | Plan: M87 - Observation started
-22:15:30 | Plan: M87 - Observation completed ✓
-22:15:45 | Assignment completed
-```
-
----
-
-## Assignments Page
-
-### UI Structure
-
-**Tabs:**
-- **Scheduled**: Created by scheduler, awaiting execution
-- **In Progress**: Currently executing (usually 0 or 1)
-- **Completed**: Finished (with individual plan results)
-
-**Filter dropdowns**: Date range, Instrument, Success/Partial/Failed
-
-### Accordion Display
-
-**Collapsed View:**
-```
-[ULID icon] ASN-01mm... | 2024-12-05 22:00 | 3 plans | Completed | Success: 2, Failed: 1
-```
-
-**Expanded View:**
-```
-Assignment: ASN-01mm6rzhvkve6ta6xj9jm4cjpw
-
-━━━ Execution Summary ━━━
-Created: 2024-12-05 22:00:00
-Started: 2024-12-05 22:00:15
-Completed: 2024-12-05 22:15:45
-Duration: 15m 30s
-Status: Completed
-
-━━━ Spectrograph ━━━
-Instrument: deepspec
-Status at start: Operational ✓
-Status during observation: Operational ✓
-
-━━━ Plan Results ━━━
-
-[✓] M87 Deep Spectroscopy (PLN-01kk...)
-    Owner: john.doe
-    Units assigned: wis:w, ns:2, ns:5, ns:8, ns:10 (5 total)
-    Units guiding: wis:w, ns:2, ns:5 (3 of 3 required)
-    Units timeout: ns:8, ns:10
-    Observation: 22:10:30 - 22:15:30 (5m 0s)
-    Data: /data/observations/2024-12-05/ASN_01mm/PLN_01kk
-    [View Plan] [View Data]
-
-[✓] NGC1234 Survey (PLN-01ll...)
-    Owner: jane.smith
-    Units assigned: ns:3, ns:7 (2 total)
-    Units guiding: ns:3, ns:7 (2 of 2 required)
-    Observation: 22:05:00 - 22:10:00 (5m 0s)
-    Data: /data/observations/2024-12-05/ASN_01mm/PLN_01ll
-    [View Plan] [View Data]
-
-[✗] Crab Nebula Multi-Unit (PLN-01nn...)
-    Owner: bob.jones
-    Failure reason: Guiding timeout
-    Units assigned: ns:1, ns:4, ns:8, ns:10, ns:12 (5 total)
-    Units guiding: ns:1, ns:4 (2 of 5 required)
-    Units timeout: ns:8, ns:10, ns:12
-    Timeout period: 600s
-    
-    → Plan returned to Approved state for rescheduling
-    [View Plan]
-
-[View Complete Execution Log]
-```
-
-**No edit/delete buttons** - assignments are immutable execution records
-
-### Detailed Execution Log (Optional Drill-Down)
-
-Loads from MongoDB events:
-
-```
-━━━ Complete Execution Timeline ━━━
-22:00:00 | Assignment created by scheduler
-         | Plans included: M87, NGC1234, Crab Nebula
-         | Instrument: deepspec
-         | Units available: 12 operational
-
-22:00:15 | Assignment execution started
-         | Spectrograph status: operational ✓
-
-22:00:15 | Plan: M87 - Unit allocation started
-         | Assigned: wis:w, ns:2, ns:5, ns:8, ns:10
-
-22:00:15 | Plan: NGC1234 - Unit allocation started
-         | Assigned: ns:3, ns:7
-
-22:00:15 | Plan: Crab Nebula - Unit allocation started
-         | Assigned: ns:1, ns:4, ns:8, ns:10, ns:12
-
-[Continues with detailed timeline...]
-```
-
----
-
-## Permissions & Capabilities
-
-### New Capabilities
-
-**`canManagePlans`**:
-- **Group**: `PlanManagers`
-- **Rights**:
-  - Create, edit, delete own plans
-  - View all plans
-  - Approve/reject submitted plans (if in PlanManagers group)
-  - Edit/delete any plan (if in PlanManagers group)
-  - Re-submit plans for additional observations
-
-**`canManageAssignments`**:
-- **Rights**:
-  - View all assignments and detailed execution logs
-  - View assignment execution history
-  - Future: Manually trigger scheduler
-  - No editing of assignment records (immutable history)
-
-### Viewing Rights
-
-**All users with `canView`:**
-- View all plans (read-only)
-- View all assignments (read-only)
-- Cannot create or modify plans/assignments
-- Cannot approve/reject plans
-
----
-
-## File Organization
-
-```
-/data/
-├── plans/
-│   ├── draft/
-│   │   └── PLN_<ULID>.toml
-│   ├── submitted/
-│   │   └── PLN_<ULID>.toml
-│   ├── approved/
-│   │   └── PLN_<ULID>.toml
-│   ├── rejected/
-│   │   └── PLN_<ULID>.toml
-│   ├── scheduled/
-│   │   └── PLN_<ULID>.toml
-│   ├── succeeded/
-│   │   └── PLN_<ULID>.toml
-│   ├── failed/
-│   │   └── PLN_<ULID>.toml
-│   └── completed/
-│       └── PLN_<ULID>.toml
-│
-├── assignments/
-│   ├── scheduled/
-│   │   └── ASN_<ULID>.toml
-│   ├── inprogress/
-│   │   └── ASN_<ULID>.toml (max 1 file at a time)
-│   └── completed/
-│       └── ASN_<ULID>.toml
-│
-└── observations/
-    └── YYYY-MM-DD/
-        └── ASN_<ULID>/
-            ├── PLN_<ULID>/
-            │   └── [FITS files, logs, etc.]
-            └── assignment_summary.json
-```
-
-**File movement**: Plans/assignments move between folders as state changes, preserving ULID.
-
----
-
-## Example Workflows
-
-### Workflow 1: Successful Plan Execution
-
-```
-1. User creates plan:
-   - Draft: Target M87, quorum=3, observations_requested=3
-   - Save → PLN_01kk.toml in /data/plans/draft/
-   - MongoDB event: plan_created
-
-2. User submits:
-   - Status: Draft → Submitted
-   - Move to /data/plans/submitted/
-   - MongoDB event: plan_submitted
-
-3. PlanManager approves:
-   - Status: Submitted → Approved
-   - Move to /data/plans/approved/
-   - MongoDB event: plan_approved
-
-4. Night 1 - Scheduler creates assignment:
-   - Conditions: airmass=1.8, moon=45° ✓
-   - Assignment ASN_01mm: Plan A (M87) + Plan B (NGC1234)
-   - Units allocated: wis:w, ns:2, ns:5
-   - Plan A status: Approved → Scheduled
-   - Move PLN_01kk.toml to /data/plans/scheduled/
-
-5. Assignment executes:
-   - Assignment status: Scheduled → InProgress
-   - Units acquire targets
-   - 3 units reach guiding ✓
-   - Observation completes ✓
-   - Data saved to /data/observations/2024-12-05/ASN_01mm/PLN_01kk/
-
-6. Post-execution:
-   - Plan A status: Scheduled → Succeeded
-   - observations_completed: 0 → 1
-   - assignment_history: ["01mm..."]
-   - Since 1 < 3 requested: Status Succeeded → Approved
-   - Move PLN_01kk.toml to /data/plans/approved/ (ready for more)
-   - MongoDB events: plan_succeeded, observation_completed
-   
-7. Night 2 - Plan rescheduled:
-   - Scheduler includes Plan A in new assignment
-   - Process repeats...
-   
-8. After 3rd success:
-   - observations_completed: 3
-   - Since 3 >= 3 requested: Status → Completed
-   - Move to /data/plans/completed/ (archived)
-```
-
-### Workflow 2: Failed Assignment with Recovery
-
-```
-1. Night 1 - Assignment ASN_01nn created:
-   - Plan C (Crab, quorum=5)
-   - Units allocated: ns:1, ns:4, ns:8, ns:10, ns:12
-
-2. Execution starts:
-   - Assignment: Scheduled → InProgress
-   - Plan C: Approved → Scheduled
-   - 5 units attempt guiding
-
-3. Guiding timeout (600s):
-   - Only 2 units reach guiding: ns:1, ns:4
-   - 3 units timeout: ns:8, ns:10, ns:12
-   - Quorum check: 2 < 5 required ❌
-
-4. Plan C fails:
-   - Plan C status: Scheduled → Failed
-   - assignment_history: ["01nn..."]
-   - MongoDB events: unit_timeout (×3), plan_failed
-
-5. Automatic recovery:
-   - Plan C status: Failed → Approved
-   - Merit: 5 → 6 (raised priority)
-   - Move PLN_01cc.toml to /data/plans/approved/
-   - Plan eligible for next assignment
-
-6. Night 2 - Plan C rescheduled:
-   - Scheduler creates ASN_01oo
-   - Includes Plan C + Plan D
-   - Different unit allocation (better seeing conditions)
-   - Plan C succeeds ✓
-```
-
-### Workflow 3: Spectrograph Failure
-
-```
-1. Assignment ASN_01pp executing:
-   - Plan E (in progress, 400s of 600s complete)
-   - Plan F (in progress, 100s of 300s complete)
-   - Plan G (not yet started)
-
-2. Spectrograph fails at t=400s:
-   - Communication lost with deepspec
-   - MongoDB event: spectrograph_failed
-
-3. Immediate assignment termination:
-   - All plans in assignment → Failed
-   - Plan E: Failed (incomplete observation)
-   - Plan F: Failed (incomplete observation)
-   - Plan G: Failed (never started)
-   - Partial data discarded
-
-4. Automatic recovery:
-   - All 3 plans → Approved state
-   - Merit raised for all (not their fault)
-   - Plans eligible for rescheduling
-   - MongoDB events logged for each plan
-
-5. Next night (after spec repair):
-   - Plans E, F, G rescheduled
-   - Fresh attempt with operational spec
-```
-
------
-
-## Safety Page
-
-### Graphs Sub-page
-
-- **Full-page iframe** embedding Grafana dashboard
-- Shows weather graphs
-
-### Data Sub-page
-
-- **Collapsible JSON trees** showing:
-  - Stations (from safety service API)
-  - Sensors with values
-- Loaded via HTMX from FastAPI safety service
-- Bootstrap accordion for collapsible structure
-
------
-
-## Form Controls & Validation
-
-### Visual Design
-
-- **Border radius**: Slightly rounded corners (0.375rem)
-- **All controls**: form inputs, selects, buttons
-
-### State-based Borders
-
-- ⚪ **Normal** (unchanged): Default border color
-- 🟢 **Valid + Changed**: Green border (#28a745)
-- 🔴 **Invalid**: Red border (#dc3545)
-
-### Tooltips
-
-- Show on hover
-- Contain field descriptions, hints, valid ranges
-- Defined in Pydantic field metadata
-
-### Validation Error Display
-
-- **Position**: Beneath the control
-- **Style**: Red text, small font (0.875rem)
-- **Multiple errors**: Stacked if needed
-
-### Submit Button Behavior
-
-- **Disabled** while ANY validation errors exist
-- **Visual**: Grayed out, `cursor: not-allowed`
-- **Re-enables**: When all fields valid
-
-### Client-side Validation
-
-- Real-time validation using Alpine.js
-- Checks as user types
-- Visual feedback immediate
-
-### Server-side Validation
-
-- Pydantic model validation
-- Returns errors to display in form
-- Security layer (never trust client)
-
------
-
-## Pydantic Form Generation
-
-### Field Metadata Structure
-
-Fields use `json_schema_extra` for UI behavior.  
-**UI-related fields are grouped under a `ui` key, and do not use the `ui_` prefix.**
-
-```python
-from pydantic import BaseModel, Field
-
-class ComponentConfig(BaseModel):
-    # Dropdown selector field
-    home_position: str = Field(
-        default="Home",
-        json_schema_extra={
-            'ui': {
-                'editable': True,
-                'widget': 'select',
-                'options': ['Home', 'Fiber', 'ThAr', 'Flat', 'Dark'],
-                'tooltip': 'Default home position for stage'
-            },
-            'required_capability': 'canChangeConfiguration'
-        }
-    )
-    
-    # Numeric field
-    max_position: int = Field(
-        default=10000,
-        description="Maximum position",
-        ge=0,
-        le=50000,
-        json_schema_extra={
-            'ui': {
-                'editable': True,
-                'widget': 'number',
-                'unit': 'steps',
-                'tooltip': 'Maximum allowed position',
-                'error_message': 'Position must be 0-50000'
-            }
-        }
-    )
-    
-    # Boolean checkbox field
-    auto_home: bool = Field(
-        default=True,
-        json_schema_extra={
-            'ui': {
-                'editable': True,
-                'widget': 'checkbox',
-                'tooltip': 'Automatically home on startup'
-            }
-        }
-    )
-
-    # Read-only field
-    current_position: int = Field(
-        default=0,
-        json_schema_extra={
-            'ui': {
-                'editable': False,
-                'widget': 'readonly'
-            }
-        }
-    )
-
-    # Hidden field
-    internal_id: str = Field(
-        json_schema_extra={
-            'ui': {
-                'hidden': True
-            }
-        }
-    )
-
-    # Admin-only field
-    calibration: float = Field(
-        json_schema_extra={
-            'ui': {
-                'editable': True
-            },
-            'required_capability': 'canChangeAdvancedConfig'
-        }
-    )
-```
-
-### Metadata Fields
-
-- **`ui`**: Dictionary containing all UI-related metadata:
-    - **`editable`**: Boolean, whether user can edit
-    - **`hidden`**: Boolean, hide from UI entirely
-    - **`widget`**: Input control type (see Widget Types below)
-    - **`options`**: List of strings for dropdown/select widgets
-    - **`unit`**: Display unit (°C, steps, mm/s, etc.)
-    - **`format`**: String format for display (e.g., '.1f', '.2f')
-    - **`tooltip`**: Help text shown on hover
-    - **`error_message`**: Custom validation error message
-- **`required_capability`**: MAST capability needed to edit (outside `ui`)
-
-### Widget Types (`widget`)
-
-Alpine.js will render different HTML controls based on `widget`:
-
-**Text Inputs:**
-- `'text'` → `<input type="text">`
-- `'email'` → `<input type="email">`
-- `'password'` → `<input type="password">`
-- `'url'` → `<input type="url">`
-- `'tel'` → `<input type="tel">`
-
-**Numeric Inputs:**
-- `'number'` → `<input type="number">`
-- `'range'` → `<input type="range">`
-
-**Date/Time:**
-- `'date'` → `<input type="date">`
-- `'time'` → `<input type="time">`
-- `'datetime-local'` → `<input type="datetime-local">`
-
-**Selection:**
-- `'select'` → `<select>` (requires `options` list)
-- `'checkbox'` → `<input type="checkbox">`
-
-**Text Area:**
-- `'textarea'` → `<textarea>`
-
-**Other:**
-- `'color'` → `<input type="color">`
-- `'file'` → `<input type="file">`
-- `'readonly'` → `<span>`
-
-### Form Field Display Rules
-
-1. **Hidden fields** (`ui['hidden']: True`): Not rendered
-2. **Read-only fields** (`ui['editable']: False`): Rendered as plain text
-3. **Permission-based**: Check `required_capability` against user
-4. **Dropdown fields** (`ui['widget']: 'select'`): Require `ui['options']` list
-5. **Validation**: Min/max from Pydantic constraints → HTML attributes
-
-### Example: Complete Configuration Model
-
-```python
-from pydantic import BaseModel, Field
-
-class StageConfig(BaseModel):
-    # Dropdown selector
-    home_position: str = Field(
-        default="Home",
-        json_schema_extra={
-            'ui': {
-                'editable': True,
-                'widget': 'select',
-                'options': ['Home', 'Fiber', 'ThAr', 'Flat', 'Dark'],
-                'tooltip': 'Default home position for stage'
-            }
-        }
-    )
-    
-    # Number input with range
-    max_speed: float = Field(
-        default=10.0,
-        ge=1.0,
-        le=50.0,
-        json_schema_extra={
-            'ui': {
-                'editable': True,
-                'widget': 'number',
-                'unit': 'mm/s',
-                'tooltip': 'Maximum stage movement speed'
-            }
-        }
-    )
-    
-    # Checkbox
-    auto_home_on_startup: bool = Field(
-        default=True,
-        json_schema_extra={
-            'ui': {
-                'editable': True,
-                'widget': 'checkbox',
-                'tooltip': 'Automatically home stage when unit starts'
-            }
-        }
-    )
-    
-    # Multi-line text
-    calibration_notes: str = Field(
-        default="",
-        json_schema_extra={
-            'ui': {
-                'editable': True,
-                'widget': 'textarea',
-                'tooltip': 'Notes about stage calibration'
-            }
-        }
-    )
-    
-    # Read-only
-    serial_number: str = Field(
-        default="STG-001",
-        json_schema_extra={
-            'ui': {
-                'editable': False,
-                'widget': 'readonly'
-            }
-        }
-    )
-    
-    # Hidden from UI
-    internal_calibration_offset: float = Field(
-        default=0.0,
-        json_schema_extra={
-            'ui': {
-                'hidden': True
-            }
-        }
-    )
-```
+- Click does not jump to component (static notification)
