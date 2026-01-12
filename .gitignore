@@ -50,3 +50,8 @@ Thumbs.db
 /logs/
 
 static/js9/
+docs/how_to_make_favicon.md
+docs/social_auth_google.md
+docs/social_signup_flow.md
+MAST_gui/# Code Citations.md
+templates/units/# Code Citations.md
