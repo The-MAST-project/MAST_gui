@@ -1,26 +1,25 @@
 {% extends 'base.html' %}
+{% csrf_token %}
 
 {% block title %}System Resources - MAST GUI{% endblock %}
 
-{% block breadcrumb %}
-    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
-    <li class="breadcrumb-item">Admin</li>
-    <li class="breadcrumb-item active">Resources</li>
-{% endblock %}
-
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h2>System Resources Monitoring</h2>
-        <p class="text-muted">Real-time system metrics from Netdata</p>
-        
-        <div class="card mt-3">
-            <div class="card-body p-0">
-                <iframe 
-                    src="{{ proxy_url }}" 
-                    style="width: 100%; height: calc(100vh - 300px); border: none;"
-                    title="Netdata System Monitoring"
-                ></iframe>
+<div class="container-fluid">
+    <h1>System Resources</h1>
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>Netdata Monitoring</strong>
+        </div>
+        <div class="card-body">
+            <iframe src="{{ proxy_url }}" width="100%" height="800" frameborder="0" style="border:1px solid #ccc; border-radius: 4px; background: #fff;">
+                Your browser does not support iframes.
+            </iframe>
+            <div class="mt-2">
+                <small>
+                    Monitoring host: <code>{{ netdata_host }}</code>
+                    &mdash;
+                    <a href="{{ netdata_url }}" target="_blank" rel="noopener">Open Netdata in new tab</a>
+                </small>
             </div>
         </div>
     </div>
