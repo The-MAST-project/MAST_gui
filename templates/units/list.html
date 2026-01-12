@@ -29,6 +29,13 @@
                                             <div class="card unit-card {% if unit.deployed %}deployed{% else %}planned{% endif %}">
                                                 <div class="card-body text-center p-2">
                                                     <h6 class="mb-1">{{ unit.full_name }}</h6>
+                                                    {% if unit.activities_verbal %}
+                                                        <div class="mb-1">
+                                                            {% for activity in unit.activities_verbal %}
+                                                                <span class="badge bg-info text-dark">{{ activity }}</span>
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% endif %}
                                                     {% if unit.deployed %}
                                                         <span class="badge bg-success">Deployed</span>
                                                         <div class="mt-1">
@@ -58,6 +65,13 @@
                                             <div class="card unit-card {% if unit.deployed %}deployed{% else %}planned{% endif %}">
                                                 <div class="card-body text-center p-2">
                                                     <h6 class="mb-1">{{ unit.full_name }}</h6>
+                                                    {% if unit.activities_verbal %}
+                                                        <div class="mb-1">
+                                                            {% for activity in unit.activities_verbal %}
+                                                                <span class="badge bg-info text-dark">{{ activity }}</span>
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% endif %}
                                                     {% if unit.deployed %}
                                                         <span class="badge bg-success">Deployed</span>
                                                         <div class="mt-1">
@@ -86,6 +100,13 @@
                                             <div class="card unit-card {% if unit.deployed %}deployed{% else %}planned{% endif %}">
                                                 <div class="card-body text-center p-2">
                                                     <h6 class="mb-1">{{ unit.full_name }}</h6>
+                                                    {% if unit.activities_verbal %}
+                                                        <div class="mb-1">
+                                                            {% for activity in unit.activities_verbal %}
+                                                                <span class="badge bg-info text-dark">{{ activity }}</span>
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% endif %}
                                                     {% if unit.deployed %}
                                                         <span class="badge bg-success">Deployed</span>
                                                         <div class="mt-1">
@@ -143,6 +164,28 @@
             modal.hide();
         }, 3000);
     }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Periodically refresh the units status section every 30 seconds
+    function refreshUnits() {
+        fetch(window.location.pathname, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(resp => resp.text())
+            .then(html => {
+                // Replace only the units/buildings section if possible
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newSection = doc.querySelector('#units-buildings-section');
+                const oldSection = document.querySelector('#units-buildings-section');
+                if (newSection && oldSection) {
+                    oldSection.innerHTML = newSection.innerHTML;
+                } else {
+                    // fallback: reload the whole page
+                    window.location.reload();
+                }
+            });
+    }
+    setInterval(refreshUnits, 30000); // 30 seconds
+});
 </script>
 
 <style>
@@ -151,23 +194,50 @@
         transition: all 0.3s;
         min-height: 100px;
     }
-    
     .unit-card.deployed {
         border-color: #28a745;
     }
-    
     .unit-card.planned {
         border-color: #6c757d;
         opacity: 0.7;
     }
-    
     .unit-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
-    
     .unit-card h6 {
         font-size: 0.9rem;
+    }
+    /* Subdued badge backgrounds for all pages */
+    .badge {
+        background-color: #e9ecef !important;
+        color: #333 !important;
+        border-radius: 0.375rem !important;
+        font-weight: 500;
+    }
+    .badge.bg-success {
+        background-color: #d1e7dd !important;
+        color: #0f5132 !important;
+    }
+    .badge.bg-secondary {
+        background-color: #e2e3e5 !important;
+        color: #41464b !important;
+    }
+    .badge.bg-info {
+        background-color: #cff4fc !important;
+        color: #055160 !important;
+    }
+    .badge.bg-warning {
+        background-color: #fff3cd !important;
+        color: #664d03 !important;
+    }
+    .badge.bg-danger {
+        background-color: #f8d7da !important;
+        color: #842029 !important;
+    }
+    .badge.bg-primary {
+        background-color: #cfe2ff !important;
+        color: #084298 !important;
     }
 </style>
 {% endblock %}

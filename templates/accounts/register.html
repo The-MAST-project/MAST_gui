@@ -7,7 +7,7 @@
             <h2>Register for MAST Access</h2>
             <p class="text-muted">Create an account to access the Multiple Aperture Spectroscopic Telescope system.</p>
             
-            <form method="post" class="mt-4">
+            <form method="post">
                 {% csrf_token %}
                 
                 <!-- Personal Information -->
@@ -67,6 +67,16 @@
                     <div class="card-body">
                         {{ form.agree_terms.as_field_group }}
                         {{ form.agree_citation.as_field_group }}
+                    </div>
+                </div>
+                
+                <!-- Groups -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Select Groups</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ form.groups }}
                     </div>
                 </div>
                 

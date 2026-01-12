@@ -36,3 +36,17 @@
         </form>
     </td>
 </tr>
+<tr>
+    <td>{{ user.username }}</td>
+    <td>{{ user.full_name }}</td>
+    <td>{{ user.email }}</td>
+    <td>{{ user.affiliation }}</td>
+    <td>
+        {% for group in user.groups.all %}
+            <span class="badge bg-secondary">{{ group.name }}</span>
+        {% endfor %}
+    </td>
+    <td>
+        <span class="text-success">Approved</span>
+    </td>
+</tr>

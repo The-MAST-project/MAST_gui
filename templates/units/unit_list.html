@@ -1,0 +1,141 @@
+"""
+Plans views - Observation plans.
+"""
+import logging
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from mast_utils.permissions import capability_required
+
+logger = logging.getLogger('mast.plans')
+
+
+@login_required
+@capability_required('canView')
+def plan_list(request):
+    """List observation plans."""
+    # TODO: Fetch from database/API
+    plans = []
+    
+    context = {
+        'plans': plans,
+        'page_title': 'Observation Plans',
+    }
+    
+    return render(request, 'plans/list.html', context)
+
+
+@login_required
+@capability_required('canView')
+def plan_detail(request, plan_id):
+    """Show plan details (HTMX partial)."""
+    # TODO: Fetch plan by ID
+    context = {
+        'plan_id': plan_id,
+    }
+    
+    return render(request, 'plans/partials/plan_detail.html', context)
+
+
+@login_required
+@capability_required('canChangeConfiguration')
+def plan_edit(request, plan_id):
+    """Edit plan (HTMX partial)."""
+    # TODO: Handle POST to save changes
+    context = {
+        'plan_id': plan_id,
+    }
+    
+    return render(request, 'plans/partials/plan_edit.html', context)
+
+<style>
+/* Subdued badge backgrounds for all pages */
+.badge {
+    background-color: #e9ecef !important;
+    color: #333 !important;
+    border-radius: 0.375rem !important;
+    font-weight: 500;
+}
+.badge.bg-success {
+    background-color: #d1e7dd !important;
+    color: #0f5132 !important;
+}
+.badge.bg-secondary {
+    background-color: #e2e3e5 !important;
+    color: #41464b !important;
+}
+.badge.bg-info {
+    background-color: #cff4fc !important;
+    color: #055160 !important;
+}
+.badge.bg-warning {
+    background-color: #fff3cd !important;
+    color: #664d03 !important;
+}
+.badge.bg-danger {
+    background-color: #f8d7da !important;
+    color: #842029 !important;
+}
+.badge.bg-primary {
+    background-color: #cfe2ff !important;
+    color: #084298 !important;
+}
+@keyframes pulse {
+  0% { text-shadow: 0 0 0 #28a745; }
+  50% { text-shadow: 0 0 8px #28a745, 0 0 16px #28a745; }
+  100% { text-shadow: 0 0 0 #28a745; }
+}
+.pulse-activity {
+  animation: pulse 2s infinite;
+}
+</style>
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <button class="sidebar-toggle" id="sidebar-toggle">
+            <i class="bi bi-list"></i>
+        </button>
+    </div>
+    
+    <div class="sidebar-menu">
+        <!-- Units -->
+        <a href="{% url 'units:list' %}" class="sidebar-item {% if request.resolver_match.app_name == 'units' %}active{% endif %}">
+            <i class="bi bi-gear"></i>
+            <span class="sidebar-item-text">Units</span>
+        </a>
+        
+        <!-- Specs -->
+        <!-- <a href="{% url '#' %}" class="sidebar-item {% if request.resolver_match.app_name == 'specs' %}active{% endif %}">
+            <i class="bi bi-box"></i>
+            <span class="sidebar-item-text">Specs</span>
+        </a> -->
+        
+        <!-- Safety (with submenu) -->
+        <div class="sidebar-item" data-submenu="safety-submenu">
+            <i class="bi bi-shield-check"></i>
+            <span class="sidebar-item-text">Safety</span>
+            <i class="bi bi-chevron-right sidebar-item-arrow"></i>
+        </div>
+        <div class="sidebar-submenu" id="safety-submenu">
+            <a href="{% url 'safety:graphs' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'graphs' %}active{% endif %}">
+                Graphs
+            </a>
+            <a href="{% url 'safety:data' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'data' %}active{% endif %}">
+                Data
+            </a>
+        </div>
+        
+        <!-- Assignments -->
+        <a href="{% url 'assignments:list' %}" class="sidebar-item {% if request.resolver_match.app_name == 'assignments' %}active{% endif %}">
+            <i class="bi bi-clipboard-check"></i>
+            <span class="sidebar-item-text">Assignments</span>
+        </a>
+        
+        <!-- Plans -->
+        <a id="sidebar-link-plans" href="{% url 'plans_index' %}" class="sidebar-item {% if request.resolver_match.url_name == 'plans_index' %}active{% endif %}">
+            <i class="bi bi-calendar-event"></i>
+            <span class="sidebar-item-text">Plans</span>
+        </a>
+    </div>
+    <!-- User menu in toolbar -->
+    <div class="sidebar-user-menu mt-4">
+        <div class="dropdown">
+            <button class="btn btn-light dropdown-toggle" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false">

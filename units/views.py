@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from common.config import Config
 from common.api import ControllerApi
 from common.dlipowerswitch import PowerSwitchStatus
-from common.models.statuses import UnitStatus, ShortUnitStatus, FullUnitStatus
+from common.models.statuses import UnitStatus, ShortStatus, FullUnitStatus
 import asyncio
 from django.http import JsonResponse, FileResponse
 from django.views.decorators.http import require_http_methods
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 def units_list(request):
     """
     Units page - shows all units for selected site with selector
+    Periodic refresh of unit status is handled client-side via JS polling.
     """
     # Get current site from session
     current_site = request.session.get('selected_site', 'wis')
@@ -76,19 +77,24 @@ def units_list(request):
             
             # Get unit status from controller API using discriminated union
             controller = ControllerApi(site_name=current_site)
-            response = asyncio.run(controller.client.get(f"unit/{unit_id}/status"))
+            response = asyncio.run(controller.client.get(f"unit/{current_site}/{unit_id}/status"))
             
             operational_status = 'unknown'
+            activities_verbal = []
             if response.succeeded and response.value:
-                # response.value is discriminated union UnitStatus
                 unit_status: UnitStatus = response.value
-                
-                if isinstance(unit_status, ShortUnitStatus):
+                if isinstance(unit_status, ShortStatus):
                     # Controller couldn't reach unit
                     operational_status = 'operational' if unit_status.operational else 'offline'
+                    activities_verbal = getattr(unit_status, 'activities_verbal', []) or []
+                    if isinstance(activities_verbal, str):
+                        activities_verbal = [activities_verbal]
                 elif isinstance(unit_status, FullUnitStatus):
                     # Full status from unit
                     operational_status = 'operational' if unit_status.operational else 'error'
+                    activities_verbal = getattr(unit_status, 'activities_verbal', []) or []
+                    if isinstance(activities_verbal, str):
+                        activities_verbal = [activities_verbal]
             
             unit_data = {
                 'name': unit_id,
@@ -96,7 +102,8 @@ def units_list(request):
                 'deployed': unit_id in site.deployed_units,
                 'status': operational_status,
                 'status_text': status_text,
-                'building': display_name
+                'building': display_name,
+                'activities_verbal': activities_verbal,
             }
             buildings_data[display_name]['units'].append(unit_data)
         
@@ -134,12 +141,23 @@ def unit_detail(request, unit_name):
     # Get current site from session
     current_site = request.session.get('selected_site', 'wis')
     
+    # --- Find building name for this unit ---
+    config = Config()
+    sites = config.get_sites()
+    site_obj = next((s for s in sites if s.name == current_site), None)
+    building_name = None
+    if site_obj:
+        for building in getattr(site_obj, 'buildings', []):
+            if unit_name in getattr(building, 'units', []):
+                building_name = building.names[0] if getattr(building, 'names', []) else "Unknown"
+                break
+
     # Check if user has control permissions
     user_can_control = request.user.has_perm('auth.canUseControls')
     
     # Get unit status from ControllerApi (for unit operational info)
     controller = ControllerApi(site_name=current_site)
-    status_response = asyncio.run(controller.client.get(f"unit/{unit_name}/status"))
+    status_response = asyncio.run(controller.client.get(f"unit/{current_site}/{unit_name}/status"))
     
     unit_operational = False
     unit_info = {}
@@ -147,10 +165,10 @@ def unit_detail(request, unit_name):
     
     if status_response.succeeded and status_response.value:
         # response.value is discriminated union UnitStatus
-        logger.info(f"Unit {unit_name} status response: {status_response.value}")
-        unit_status = ShortUnitStatus(**status_response.value) if status_response.value['type'] == 'short' else FullUnitStatus(**status_response.value)
+        # logger.info(f"Unit {unit_name} status response: {status_response.value}")
+        unit_status = ShortStatus(**status_response.value) if status_response.value['type'] == 'short' else FullUnitStatus(**status_response.value)
         
-        if isinstance(unit_status, ShortUnitStatus):
+        if isinstance(unit_status, ShortStatus):
             # Controller couldn't reach unit - show limited info
             unit_operational = unit_status.operational
             unit_info = {
@@ -272,7 +290,7 @@ def unit_detail(request, unit_name):
     
     # Always get power switch status from controller endpoint
     # (separate from unit status, works even when unit not operational)
-    power_response = asyncio.run(controller.client.get(f"unit/{unit_name}/power_switch/status"))
+    power_response = asyncio.run(controller.client.get(f"unit/{current_site}/{unit_name}/power_switch/status"))
     
     outlets = []
     if power_response.succeeded and power_response.value:
@@ -350,10 +368,11 @@ def unit_detail(request, unit_name):
                 focuser_config_values = getattr(focuser_obj, '__dict__', {})
             focuser_config_schema = extract_field_metadata(FocuserConfig)
 
-    print(f"unit_details: {focuser_config_values=}\n{focuser_config_schema=}")
+    # print(f"unit_details: {focuser_config_values=}\n{focuser_config_schema=}")
     return render(request, 'units/detail.html', {
         'unit_name': unit_name,
         'site': current_site,
+        'building_name': building_name,
         'outlets': outlets,
         'unit_operational': unit_operational,
         'unit_info': unit_info,
@@ -383,7 +402,7 @@ def toggle_outlet(request, unit_name, outlet_id):
     # Returns the new state directly
     controller = ControllerApi(site_name=current_site)
     response = asyncio.run(
-        controller.client.put(f"unit/{unit_name}/power_switch/set_outlet/{outlet_id}/toggle")
+        controller.client.put(f"unit/{current_site}/{unit_name}/power_switch/set_outlet/{outlet_id}/toggle")
     )
     
     if not response.succeeded:
@@ -396,7 +415,7 @@ def toggle_outlet(request, unit_name, outlet_id):
         new_state = 'on' if response.value else 'off'
     
     # Get power switch status to get outlet name
-    power_response = asyncio.run(controller.client.get(f"unit/{unit_name}/power_switch/status"))
+    power_response = asyncio.run(controller.client.get(f"unit/{current_site}/{unit_name}/power_switch/status"))
     
     if power_response.succeeded and power_response.value:
         power_switch_status = PowerSwitchStatus(**power_response.value)
@@ -482,16 +501,16 @@ def save_component_config(request, unit_name, component):
         return JsonResponse({'error': str(e)}, status=400)
 
 
-@login_required
-def controller_status_check(request):
-    """
-    Endpoint for polling controller status.
-    Returns basic health/status info for the controller.
-    """
-    # You can expand this with real health checks as needed
-    status = {
-        "controller": "online",
-        "message": "Controller is running",
-        "timestamp": str(datetime.datetime.utcnow()),
-    }
-    return JsonResponse(status)
+# @login_required
+# def controller_status_check(request):
+#     """
+#     Endpoint for polling controller status.
+#     Returns basic health/status info for the controller.
+#     """
+#     # You can expand this with real health checks as needed
+#     status = {
+#         "controller": "online",
+#         "message": "Controller is running",
+#         "timestamp": str(datetime.datetime.utcnow()),
+#     }
+#     return JsonResponse(status)

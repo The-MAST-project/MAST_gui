@@ -1,141 +1,85 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block title %}User Management{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h2>User Management</h2>
-        
-        <!-- Sign-up Requests Tab -->
-        <ul class="nav nav-tabs mt-4" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#signup-requests" type="button">
-                    Sign-up Requests
-                    {% if signup_requests.count > 0 %}
-                        <span class="badge bg-danger">{{ signup_requests.count }}</span>
+<div class="container mt-4">
+    <h2>User Management</h2>
+    <table class="table table-bordered table-hover mt-4 align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Username</th>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Affiliation</th>
+                <th>Status</th>
+                <th>Groups</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td>{{ user.first_name }} {{ user.last_name }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.affiliation|default:"—" }}</td>
+                <td>
+                    {% if user.is_active %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
                     {% endif %}
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#users" type="button">
-                    Users
-                    <span class="badge bg-secondary">{{ users.count }}</span>
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#groups" type="button">
-                    Groups
-                    <span class="badge bg-secondary">{{ groups.count }}</span>
-                </button>
-            </li>
-        </ul>
-        
-        <div class="tab-content mt-3">
-            <!-- Sign-up Requests -->
-            <div class="tab-pane fade show active" id="signup-requests">
-                <div class="card">
-                    <div class="card-body">
-                        {% if signup_requests.count > 0 %}
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Username</th>
-                                            <th>Email</th>
-                                            <th>Requested</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for user in signup_requests %}
-                                        <tr>
-                                            <td>{{ user.username }}</td>
-                                            <td>{{ user.email }}</td>
-                                            <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
-                                            <td>
-                                                <button class="btn btn-sm btn-success">Approve</button>
-                                                <button class="btn btn-sm btn-danger">Reject</button>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        {% else %}
-                            <p class="text-muted">No pending sign-up requests</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Users -->
-            <div class="tab-pane fade" id="users">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Username</th>
-                                        <th>Email</th>
-                                        <th>Groups</th>
-                                        <th>Status</th>
-                                        <th>Last Login</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for user in users %}
-                                        {% include 'admin/partials/user_row.html' %}
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Groups -->
-            <div class="tab-pane fade" id="groups">
-                <div class="card">
-                    <div class="card-body">
-                        <button class="btn btn-primary mb-3">
-                            <i class="bi bi-plus-circle"></i> Create New Group
-                        </button>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Group Name</th>
-                                        <th>Members</th>
-                                        <th>Permissions</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for group in groups %}
-                                    <tr>
-                                        <td><strong>{{ group.name }}</strong></td>
-                                        <td>{{ group.user_set.count }} user{{ group.user_set.count|pluralize }}</td>
-                                        <td>{{ group.permissions.count }} permission{{ group.permissions.count|pluralize }}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-primary">Edit</button>
-                                            <button class="btn btn-sm btn-danger">Delete</button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                </td>
+                <td>
+                    {% for group in user.groups.all %}
+                        <span class="badge bg-info">{{ group.name }}</span>
+                    {% empty %}
+                        <span class="badge bg-secondary">None</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            hx-get="{% url 'admin_user_edit' user.id %}"
+                            hx-target="#profile-modal-container"
+                            hx-swap="innerHTML">
+                        Edit
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
+<style>
+/* Subdued badge backgrounds */
+.badge, .badge.bg-success, .badge.bg-secondary, .badge.bg-info {
+    background-color: #e9ecef !important;
+    color: #333 !important;
+    border-radius: 0.375rem !important;
+    font-weight: 500;
+}
+.badge.bg-success { background-color: #d1e7dd !important; color: #0f5132 !important; }
+.badge.bg-secondary { background-color: #e2e3e5 !important; color: #41464b !important; }
+.badge.bg-info { background-color: #cff4fc !important; color: #055160 !important; }
 
-<!-- Modal Container for HTMX -->
-<div id="modal-container"></div>
+/* Subdued buttons */
+.btn, .btn-outline-secondary, .btn-outline-danger, .btn-outline-primary {
+    background-color: #f8f9fa !important;
+    color: #333 !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 0.375rem !important;
+    font-weight: 500;
+    box-shadow: none !important;
+}
+.btn-outline-secondary {
+    background-color: #e2e3e5 !important;
+    color: #41464b !important;
+    border-color: #d3d6d8 !important;
+}
+.btn:active, .btn:focus, .btn:hover {
+    filter: brightness(0.97);
+    box-shadow: none !important;
+}
+</style>
 {% endblock %}

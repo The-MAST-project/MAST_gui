@@ -25,3 +25,7 @@
         </button>
     {% endif %}
 </div>
+<form method="post">
+    {% csrf_token %}
+    <!-- ...existing form fields... -->
+</form>

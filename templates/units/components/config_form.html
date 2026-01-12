@@ -35,173 +35,176 @@ document.addEventListener('DOMContentLoaded', function() {
     </details>
 </div> -->
 
-<div
-    x-data="configForm(
-        '{{ component_name }}',
-        '{{ unit_name }}',
-        '{{ config_values|escapejs }}',
-        '{{ config_schema|escapejs }}'
-    )"
->
-    <!-- DEBUG: Show Alpine.js reactive data -->
-    <!-- <div class="alert alert-info mb-3">
-        <strong>Debug Info:</strong>
-        <pre style="color: #212529; background: transparent;" x-text="'VALUES: ' + JSON.stringify($data.values, null, 2)"></pre>
-        <pre style="color: #212529; background: transparent;" x-text="'SCHEMA: ' + JSON.stringify($data.schema, null, 2)"></pre>
-        <pre style="color: #212529; background: transparent;" x-text="'TEST STRING'"></pre>
-    </div> -->
-    
-    <!-- Edit button (permission-based) -->
-    <!-- {% if perms.auth.canChangeConfiguration %}
-        <button x-show="!editing" 
-                @click="editing = true" 
-                class="btn btn-primary btn-sm mb-3">
-            <i class="bi bi-pencil"></i> Edit
-        </button>
-    {% endif %} -->
-
-
-    <!-- Form fields -->
-    <div class="row">
-        <table style="width:100%; border-collapse:collapse; border:none;">
-            <tbody>
-            <template x-for="(fieldMeta, fieldName) in $data.schema" :key="fieldName">
-                <tr x-show="!(fieldMeta.ui && fieldMeta.ui.hidden)" style="border:none; vertical-align:baseline;">
-                    <!-- Required asterisk column -->
-                    <td style="width:20px; border:none; vertical-align:baseline; text-align:center;">
-                        <span x-show="(fieldMeta.ui && fieldMeta.ui.required)" style="color:#dc3545;">*</span>
-                    </td>
-                    <!-- Label column: fixed width 300px -->
-                    <td style="width:300px; white-space:nowrap; border:none; vertical-align:baseline;">
-                        <label class="form-label mb-0" style="vertical-align:baseline;">
-                            <strong x-text="fieldMeta.ui && fieldMeta.ui.label ? fieldMeta.ui.label : fieldMeta.name"></strong>
-                            <span x-show="fieldMeta.ui && fieldMeta.ui.tooltip" 
-                                  class="ms-1"
-                                  data-bs-toggle="tooltip" 
-                                  :title="fieldMeta.ui.tooltip">
-                                <i class="bi bi-info-circle text-muted"></i>
-                            </span>
-                            <small x-show="fieldMeta.ui && fieldMeta.ui.unit" 
-                                   class="text-muted"
-                                   x-text="'(' + fieldMeta.ui.unit + ')'"></small>
-                        </label>
-                    </td>
-                    <!-- Value column: input width adapts to value/options -->
-                    <td style="border:none; vertical-align:baseline;">
-                        <!-- Read-only view -->
-                        <div x-show="!editing">
-                            <span class="form-control-plaintext" 
-                                  x-text="$data.values[fieldName]"></span>
-                        </div>
-                        <!-- Edit mode input -->
-                        <div x-show="editing && fieldMeta.ui.editable">
-                            <!-- Text/Number/Email inputs -->
-                            <template x-if="['text', 'number', 'email', 'url', 'tel'].includes(fieldMeta.ui.widget)">
-                                <input 
-                                    :type="fieldMeta.ui.widget"
-                                    x-model="$data.values[fieldName]"
-                                    @input="validate(fieldName)"
-                                    class="form-control form-control-sm"
-                                    :class="{
-                                        'border-danger': errors[fieldName],
-                                        'border-success': !errors[fieldName] && hasChanged(fieldName)
-                                    }"
-                                    :min="fieldMeta.min"
-                                    :max="fieldMeta.max"
-                                    :size="String($data.values[fieldName]).length > 10 ? String($data.values[fieldName]).length : 10"
-                                    style="width:auto; min-width:80px;"
-                                >
-                            </template>
-                            <!-- Textarea -->
-                            <template x-if="fieldMeta.ui.widget === 'textarea'">
-                                <textarea 
-                                    x-model="$data.values[fieldName]"
-                                    @input="validate(fieldName)"
-                                    class="form-control form-control-sm"
-                                    :class="{
-                                        'border-danger': errors[fieldName],
-                                        'border-success': !errors[fieldName] && hasChanged(fieldName)
-                                    }"
-                                    rows="3"
-                                    style="width:auto; min-width:120px;"
-                            ></textarea>
-                            </template>
-                            <!-- Select dropdown -->
-                            <template x-if="fieldMeta.ui.widget === 'select'">
-                                <select 
-                                    x-model="$data.values[fieldName]"
-                                    @change="validate(fieldName)"
-                                    class="form-select form-select-sm"
-                                    :class="{
-                                        'border-danger': errors[fieldName],
-                                        'border-success': !errors[fieldName] && hasChanged(fieldName)
-                                    }"
-                                    :style="'width:' + (fieldMeta.ui.options ? Math.max(...fieldMeta.ui.options.map(o => o.length)) * 10 + 40 : 120) + 'px;'"
-                                >
-                                    <template x-for="option in fieldMeta.ui.options" :key="option">
-                                        <option :value="option" x-text="option"></option>
-                                    </template>
-                                </select>
-                            </template>
-                            <!-- Checkbox -->
-                            <template x-if="fieldMeta.ui.widget === 'checkbox'">
-                                <input 
-                                    type="checkbox"
-                                    x-model="$data.values[fieldName]"
-                                    @change="validate(fieldName)"
-                                    class="form-check-input"
-                                    style="width:20px;"
-                                >
-                            </template>
-                            <!-- Error message -->
-                            <div style="min-height:1.5em;">
-                                <small x-show="errors[fieldName]" 
-                                       x-text="errors[fieldName]" 
-                                       class="text-danger d-block mt-1"></small>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            </template>
-            </tbody>
-        </table>
-    </div>
-    
-    <!-- Action buttons row: Save/Cancel only if editing and hasChanges, Edit button if not editing and user is authorized -->
-    <div class="mt-3 d-flex justify-content-end align-items-center" style="gap: 12px;">
-        <span style="min-width:90px;">
-            <button x-show="editing && hasChanges()" 
-                    @click="cancel()" 
-                    class="btn btn-secondary btn-sm" style="min-width:90px;">
-                <i class="bi bi-x-circle"></i> Cancel
-            </button>
-        </span>
-        <span style="min-width:90px;">
-            <button x-show="editing && hasChanges()" 
-                    @click="save()"
-                    :disabled="hasErrors()"
-                    :title="hasErrors() ? 'Fix validation errors first' : ''"
-                    class="btn btn-primary btn-sm" style="min-width:90px;">
-                <i class="bi bi-save"></i> Save
-            </button>
-        </span>
-        {% if perms.auth.canChangeConfiguration %}
-        <span style="min-width:90px;">
+<form method="post">
+    {% csrf_token %}
+    <div
+        x-data="configForm(
+            '{{ component_name }}',
+            '{{ unit_name }}',
+            '{{ config_values|escapejs }}',
+            '{{ config_schema|escapejs }}'
+        )"
+    >
+        <!-- DEBUG: Show Alpine.js reactive data -->
+        <!-- <div class="alert alert-info mb-3">
+            <strong>Debug Info:</strong>
+            <pre style="color: #212529; background: transparent;" x-text="'VALUES: ' + JSON.stringify($data.values, null, 2)"></pre>
+            <pre style="color: #212529; background: transparent;" x-text="'SCHEMA: ' + JSON.stringify($data.schema, null, 2)"></pre>
+            <pre style="color: #212529; background: transparent;" x-text="'TEST STRING'"></pre>
+        </div> -->
+        
+        <!-- Edit button (permission-based) -->
+        <!-- {% if perms.auth.canChangeConfiguration %}
             <button x-show="!editing" 
                     @click="editing = true" 
-                    class="btn btn-primary btn-sm" style="min-width:90px;">
+                    class="btn btn-primary btn-sm mb-3">
                 <i class="bi bi-pencil"></i> Edit
             </button>
-        </span>
-        {% endif %}
+        {% endif %} -->
+
+
+        <!-- Form fields -->
+        <div class="row">
+            <table style="width:100%; border-collapse:collapse; border:none;">
+                <tbody>
+                <template x-for="(fieldMeta, fieldName) in $data.schema" :key="fieldName">
+                    <tr x-show="!(fieldMeta.ui && fieldMeta.ui.hidden)" style="border:none; vertical-align:baseline;">
+                        <!-- Required asterisk column -->
+                        <td style="width:20px; border:none; vertical-align:baseline; text-align:center;">
+                            <span x-show="(fieldMeta.ui && fieldMeta.ui.required)" style="color:#dc3545;">*</span>
+                        </td>
+                        <!-- Label column: fixed width 300px -->
+                        <td style="width:300px; white-space:nowrap; border:none; vertical-align:baseline;">
+                            <label class="form-label mb-0" style="vertical-align:baseline;">
+                                <strong x-text="fieldMeta.ui && fieldMeta.ui.label ? fieldMeta.ui.label : fieldMeta.name"></strong>
+                                <span x-show="fieldMeta.ui && fieldMeta.ui.tooltip" 
+                                      class="ms-1"
+                                      data-bs-toggle="tooltip" 
+                                      :title="fieldMeta.ui.tooltip">
+                                    <i class="bi bi-info-circle text-muted"></i>
+                                </span>
+                                <small x-show="fieldMeta.ui && fieldMeta.ui.unit" 
+                                       class="text-muted"
+                                       x-text="'(' + fieldMeta.ui.unit + ')'"></small>
+                            </label>
+                        </td>
+                        <!-- Value column: input width adapts to value/options -->
+                        <td style="border:none; vertical-align:baseline;">
+                            <!-- Read-only view -->
+                            <div x-show="!editing">
+                                <span class="form-control-plaintext" 
+                                      x-text="$data.values[fieldName]"></span>
+                            </div>
+                            <!-- Edit mode input -->
+                            <div x-show="editing && fieldMeta.ui.editable">
+                                <!-- Text/Number/Email inputs -->
+                                <template x-if="['text', 'number', 'email', 'url', 'tel'].includes(fieldMeta.ui.widget)">
+                                    <input 
+                                        :type="fieldMeta.ui.widget"
+                                        x-model="$data.values[fieldName]"
+                                        @input="validate(fieldName)"
+                                        class="form-control form-control-sm"
+                                        :class="{
+                                            'border-danger': errors[fieldName],
+                                            'border-success': !errors[fieldName] && hasChanged(fieldName)
+                                        }"
+                                        :min="fieldMeta.min"
+                                        :max="fieldMeta.max"
+                                        :size="String($data.values[fieldName]).length > 10 ? String($data.values[fieldName]).length : 10"
+                                        style="width:auto; min-width:80px;"
+                                    >
+                                </template>
+                                <!-- Textarea -->
+                                <template x-if="fieldMeta.ui.widget === 'textarea'">
+                                    <textarea 
+                                        x-model="$data.values[fieldName]"
+                                        @input="validate(fieldName)"
+                                        class="form-control form-control-sm"
+                                        :class="{
+                                            'border-danger': errors[fieldName],
+                                            'border-success': !errors[fieldName] && hasChanged(fieldName)
+                                        }"
+                                        rows="3"
+                                        style="width:auto; min-width:120px;"
+                                ></textarea>
+                                </template>
+                                <!-- Select dropdown -->
+                                <template x-if="fieldMeta.ui.widget === 'select'">
+                                    <select 
+                                        x-model="$data.values[fieldName]"
+                                        @change="validate(fieldName)"
+                                        class="form-select form-select-sm"
+                                        :class="{
+                                            'border-danger': errors[fieldName],
+                                            'border-success': !errors[fieldName] && hasChanged(fieldName)
+                                        }"
+                                        :style="'width:' + (fieldMeta.ui.options ? Math.max(...fieldMeta.ui.options.map(o => o.length)) * 10 + 40 : 120) + 'px;'"
+                                    >
+                                        <template x-for="option in fieldMeta.ui.options" :key="option">
+                                            <option :value="option" x-text="option"></option>
+                                        </template>
+                                    </select>
+                                </template>
+                                <!-- Checkbox -->
+                                <template x-if="fieldMeta.ui.widget === 'checkbox'">
+                                    <input 
+                                        type="checkbox"
+                                        x-model="$data.values[fieldName]"
+                                        @change="validate(fieldName)"
+                                        class="form-check-input"
+                                        style="width:20px;"
+                                    >
+                                </template>
+                                <!-- Error message -->
+                                <div style="min-height:1.5em;">
+                                    <small x-show="errors[fieldName]" 
+                                           x-text="errors[fieldName]" 
+                                           class="text-danger d-block mt-1"></small>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Action buttons row: Save/Cancel only if editing and hasChanges, Edit button if not editing and user is authorized -->
+        <div class="mt-3 d-flex justify-content-end align-items-center" style="gap: 12px;">
+            <span style="min-width:90px;">
+                <button x-show="editing && hasChanges()" 
+                        @click="cancel()" 
+                        class="btn btn-secondary btn-sm" style="min-width:90px;">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </button>
+            </span>
+            <span style="min-width:90px;">
+                <button x-show="editing && hasChanges()" 
+                        @click="save()"
+                        :disabled="hasErrors()"
+                        :title="hasErrors() ? 'Fix validation errors first' : ''"
+                        class="btn btn-primary btn-sm" style="min-width:90px;">
+                    <i class="bi bi-save"></i> Save
+                </button>
+            </span>
+            {% if perms.auth.canChangeConfiguration %}
+            <span style="min-width:90px;">
+                <button x-show="!editing" 
+                        @click="editing = true" 
+                        class="btn btn-primary btn-sm" style="min-width:90px;">
+                    <i class="bi bi-pencil"></i> Edit
+                </button>
+            </span>
+            {% endif %}
+        </div>
     </div>
-</div>
+</form>
 
 <!-- Alpine.js component definition -->
 <script>
 function configForm(component, unit, configValuesStr, configSchemaStr) {
     // Debug: log arguments to the browser console
-    console.log("configForm args (raw):", { component, unit, configValuesStr, configSchemaStr });
+    // console.log("configForm args (raw):", { component, unit, configValuesStr, configSchemaStr });
 
     // Parse JSON strings
     let configValues = {};
@@ -218,7 +221,7 @@ function configForm(component, unit, configValuesStr, configSchemaStr) {
     }
 
     // Debug: log parsed objects
-    console.log("configForm args (parsed):", { configValues, configSchema });
+    // console.log("configForm args (parsed):", { configValues, configSchema });
 
     return {
         component: component,

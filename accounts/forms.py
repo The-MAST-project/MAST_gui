@@ -1,8 +1,17 @@
 from django import forms
 from django.core.validators import EmailValidator
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import UserCreationForm
+from accounts.models import User
+from django.contrib.auth.models import Group
 
-class UserRegistrationForm(forms.Form):
+PREFIX_CHOICES = [
+    ('', '---'),
+    ('Mr', 'Mr'), ('Ms', 'Ms'), ('Mrs', 'Mrs'), ('Dr', 'Dr'), ('Prof', 'Prof'),
+]
+
+class RegistrationForm(forms.ModelForm):
     """
     Comprehensive academic user registration form
     Supports international naming conventions and academic affiliations
@@ -21,19 +30,9 @@ class UserRegistrationForm(forms.Form):
         })
     )
     
-    TITLE_CHOICES = [
-        ('', '-- Select Title (Optional) --'),
-        ('dr', _('Dr.')),
-        ('prof', _('Prof.')),
-        ('prof_dr', _('Prof. Dr.')),
-        ('mr', _('Mr.')),
-        ('ms', _('Ms.')),
-        ('mx', _('Mx.')),
-    ]
-    
     title = forms.ChoiceField(
         label=_("Title"),
-        choices=TITLE_CHOICES,
+        choices=PREFIX_CHOICES,
         required=False,
         help_text=_("Optional: Academic or professional title")
     )
@@ -93,20 +92,18 @@ class UserRegistrationForm(forms.Form):
         })
     )
     
-    POSITION_CHOICES = [
-        ('', '-- Select Position --'),
-        ('undergrad', _('Undergraduate Student')),
-        ('graduate', _('Graduate Student')),
-        ('postdoc', _('Postdoctoral Researcher')),
-        ('staff', _('Staff Scientist/Engineer')),
-        ('faculty', _('Faculty/Principal Investigator')),
-        ('emeritus', _('Emeritus/Retired')),
-        ('other', _('Other'))
-    ]
-    
     position = forms.ChoiceField(
         label=_("Position"),
-        choices=POSITION_CHOICES,
+        choices=[
+            ('', '-- Select Position --'),
+            ('undergrad', _('Undergraduate Student')),
+            ('graduate', _('Graduate Student')),
+            ('postdoc', _('Postdoctoral Researcher')),
+            ('staff', _('Staff Scientist/Engineer')),
+            ('faculty', _('Faculty/Principal Investigator')),
+            ('emeritus', _('Emeritus/Retired')),
+            ('other', _('Other'))
+        ],
         required=True,
         help_text=_("Your current academic or research position")
     )
@@ -149,19 +146,17 @@ class UserRegistrationForm(forms.Form):
     )
     
     # === Account Purpose ===
-    INTENDED_USE_CHOICES = [
-        ('', '-- Select Primary Use --'),
-        ('observation', _('Active observations')),
-        ('data_analysis', _('Data access and analysis')),
-        ('collaboration', _('Collaboration/co-investigator')),
-        ('education', _('Educational purposes')),
-        ('technical', _('Technical support/development')),
-        ('other', _('Other'))
-    ]
-    
     intended_use = forms.ChoiceField(
         label=_("Intended Use"),
-        choices=INTENDED_USE_CHOICES,
+        choices=[
+            ('', '-- Select Primary Use --'),
+            ('observation', _('Active observations')),
+            ('data_analysis', _('Data access and analysis')),
+            ('collaboration', _('Collaboration/co-investigator')),
+            ('education', _('Educational purposes')),
+            ('technical', _('Technical support/development')),
+            ('other', _('Other'))
+        ],
         required=True,
         help_text=_("How do you plan to use MAST?")
     )
@@ -193,3 +188,88 @@ class UserRegistrationForm(forms.Form):
             'required': _('Citation agreement is required')
         }
     )
+
+    # === Additional Registration Fields ===
+    prefix = forms.ChoiceField(
+        label=_("Prefix"),
+        choices=PREFIX_CHOICES,
+        required=False,
+        help_text=_("Optional: Select your prefix/title")
+    )
+    
+    full_name = forms.CharField(
+        label=_("Full Name"),
+        max_length=128,
+        required=True,
+        help_text=_("Your full name as it should appear in records"),
+        widget=forms.TextInput(attrs={
+            'placeholder': 'John Doe',
+            'autocomplete': 'name'
+        })
+    )
+    
+    username = forms.CharField(
+        label=_("Username"),
+        max_length=64,
+        required=True,
+        help_text=_("Choose a unique username for your account"),
+        widget=forms.TextInput(attrs={
+            'placeholder': 'johndoe',
+            'autocomplete': 'username'
+        })
+    )
+    
+    groups = forms.ModelMultipleChoiceField(
+        queryset=Group.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        initial=lambda: Group.objects.filter(name='everybody'),
+        label=_("User Groups"),
+        help_text=_("Optional: Select groups you wish to join")
+    )
+
+    class Meta:
+        model = get_user_model()
+        fields = ['username', 'prefix', 'full_name', 'email', 'institution', 'department', 'position', 'orcid', 'research_interests', 'country', 'intended_use', 'additional_info', 'agree_terms', 'agree_citation', 'groups']
+
+class LocalSignupForm(UserCreationForm):
+    email = forms.EmailField(
+        max_length=254,
+        required=True,
+        label="Email address",
+        help_text="Required. This will be used as your username."
+    )
+    first_name = forms.CharField(max_length=30, required=True, label="First name")
+    last_name = forms.CharField(max_length=30, required=True, label="Last name")
+    affiliation = forms.CharField(max_length=100, required=True, label="Affiliation")
+    phone = forms.CharField(max_length=30, required=False, label="Phone number")
+    country = forms.CharField(max_length=50, required=False, label="Country")
+    city = forms.CharField(max_length=50, required=False, label="City")
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = (
+            "email", "first_name", "last_name", "affiliation",
+            "phone", "country", "city", "password1", "password2"
+        )
+
+class ProfileForm(forms.ModelForm):
+    email = forms.EmailField(
+        max_length=254,
+        required=True,
+        label="Email address",
+        help_text="This will be used as your username."
+    )
+    first_name = forms.CharField(max_length=30, required=True, label="First name")
+    last_name = forms.CharField(max_length=30, required=True, label="Last name")
+    affiliation = forms.CharField(max_length=100, required=True, label="Affiliation")
+    phone = forms.CharField(max_length=30, required=False, label="Phone number")
+    country = forms.CharField(max_length=50, required=False, label="Country")
+    city = forms.CharField(max_length=50, required=False, label="City")
+
+    class Meta:
+        model = User
+        fields = (
+            "email", "first_name", "last_name", "affiliation",
+            "phone", "country", "city"
+        )

@@ -18,25 +18,25 @@ def index(request):
     try:
         # Get current site from session
         current_site = request.session.get('selected_site', 'wis')
-        
-        # Get site configuration
-        config = Config()
-        sites = config.get_sites()
+        # Get mast context from context processor
+        mast = request.context.get('mast') if hasattr(request, 'context') else None
+        if not mast:
+            from MAST_gui.context_processors import mast as mast_cp
+            mast = mast_cp(request)['mast']
+        sites = mast['sites']
         site = next((s for s in sites if s.name == current_site), None)
-        
         if not site:
             return render(request, 'dashboard/index.html', {
                 'error': f'Site {current_site} not found'
             })
+        # Get status dict for all sites
+        status_dict = mast['status']
+        site_status = status_dict.get(current_site, {})
         
-        # Get unit statuses using discriminated union
-        controller = ControllerApi(site_name=current_site)
         units_status = []
         
         for building in site.buildings:
             for unit_id in building.units:
-                response = asyncio.run(controller.client.get(f"unit/{unit_id}/status"))
-                
                 status_info = {
                     'name': unit_id,
                     'building': building.names[0] if building.names else "Unknown",
@@ -44,24 +44,22 @@ def index(request):
                     'deployed': unit_id in site.deployed_units
                 }
                 
-                if response.succeeded and response.value:
-                    unit_status: UnitStatus = response.value
-                    
-                    if isinstance(unit_status, ShortUnitStatus):
-                        # Controller couldn't reach unit
-                        status_info['status'] = 'operational' if unit_status.operational else 'offline'
-                        status_info['powered'] = unit_status.powered
-                        status_info['detected'] = unit_status.detected
-                        
-                    elif isinstance(unit_status, FullUnitStatus):
-                        # Full status from unit
-                        status_info['status'] = 'operational' if unit_status.operational else 'error'
-                        status_info['powered'] = unit_status.powered
-                        status_info['detected'] = unit_status.detected
-                        status_info['guiding'] = unit_status.guiding
-                        status_info['autofocusing'] = unit_status.autofocusing
-                        status_info['why_not_operational'] = unit_status.why_not_operational or []
-                        status_info['activities_verbal'] = unit_status.activities_verbal or []
+                unit_status = next((us for us in site_status.get('units', []) if us['name'] == unit_id), None)
+                logger.info(unit_status)
+                if unit_status:
+                    status_info['status'] = 'operational' if unit_status['operational'] else 'error'
+                    status_info['powered'] = unit_status['powered']
+                    status_info['detected'] = unit_status['detected']
+                    status_info['guiding'] = unit_status.get('guiding', False)
+                    status_info['autofocusing'] = unit_status.get('autofocusing', False)
+                    status_info['why_not_operational'] = unit_status.get('why_not_operational', [])
+                    # Only set activities_verbal if present and not Idle
+                    activities = unit_status.get('activities_verbal', [])
+                    if isinstance(activities, str):
+                        activities = [activities]
+                    # Filter out Idle and empty values
+                    filtered_activities = [a for a in activities if a.strip() and a.strip() != "Idle"]
+                    status_info['activities_verbal'] = filtered_activities
                 
                 units_status.append(status_info)
         

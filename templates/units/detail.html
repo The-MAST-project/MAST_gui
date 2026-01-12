@@ -4,7 +4,14 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h2>Unit: {{ unit_name }}</h2>
+    <h1>
+        Unit: {{ unit_name }}
+    </h1>
+    {% if building_name %}
+    <h3 class="mb-4 text-muted" style="font-size:1.2rem;">
+        Enclosure: {{ building_name }}
+    </h3>
+    {% endif %}
     
     <!-- Power Supply Section - Compact Single Line -->
     <div class="card mb-3">
@@ -119,7 +126,7 @@
     {% elif unit_info.type == 'short' %}
         <div class="alert alert-info">
             <i class="bi bi-info-circle"></i>
-            No unit information. Controller cannot communicate with unit {{unit_name}}.
+            No unit information. Controller cannot communicate with unit '{{unit_name}}'.
         </div>
     {% endif %}
 </div>

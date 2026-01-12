@@ -13,14 +13,11 @@ logger = logging.getLogger('mast.safety')
 @capability_required('canView')
 def graphs(request):
     """Show Grafana dashboard iframe."""
-    # TODO: Configure Grafana URL
-    grafana_url = "http://10.23.1.25:3000"
-    
+    grafana_url = "http://10.23.1.25:3000/grafana/d/dk8DxsWVz/neot-smadar-weather?orgId=1&refresh=10s"
     context = {
         'grafana_url': grafana_url,
         'page_title': 'Safety - Graphs',
     }
-    
     return render(request, 'safety/graphs.html', context)
 
 

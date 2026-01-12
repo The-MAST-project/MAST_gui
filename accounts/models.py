@@ -2,8 +2,9 @@
 Custom permissions for MAST system.
 All authorization handled by Django's built-in Groups & Permissions.
 """
-from django.contrib.auth.models import User, Group, Permission
+from django.contrib.auth.models import AbstractUser, User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 
 
 class MASTPermissions:
@@ -40,3 +41,20 @@ def user_has_mast_permission(self, permission_code: str) -> bool:
     return self.has_perm(get_permission_full_name(permission_code))
 
 User.add_to_class('has_mast_permission', user_has_mast_permission)
+
+
+class User(AbstractUser):
+    is_registered = models.BooleanField(default=False)
+    prefix = models.CharField(max_length=16, blank=True)
+    full_name = models.CharField(max_length=128, blank=True)
+    affiliation = models.CharField(max_length=128, blank=True)
+    # Add other fields as needed
+
+    class Meta:
+        permissions = [
+            ("can_view", "Can view MAST pages"),
+            ("can_change_configuration", "Can change configuration"),
+            ("can_use_controls", "Can use controls"),
+            ("can_manage_users", "Can manage users"),
+            ("can_manage_plans", "Can manage plans"),
+        ]

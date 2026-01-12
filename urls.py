@@ -15,23 +15,7 @@ from django.db import IntegrityError
 import logging
 from views.urls import get_dynamic_url
 
-from accounts.models import User
-
 logger = logging.getLogger(__name__)
-
-
-@require_http_methods(["POST"])
-def select_site(request):
-    """
-    Handle site selection from dropdown
-    Stores selection in session and redirects to units page
-    """
-    site_name = request.POST.get('site')
-    if site_name:
-        request.session['selected_site'] = site_name
-    
-    # Redirect to units page for the new site
-    return redirect(get_dynamic_url(request, 'units:list'))
 
 
 def dashboard(request):
@@ -48,13 +32,14 @@ def admin_users(request):
     User management page for admins
     Requires can_manage_users permission
     """
-    # Use the custom User model directly, do NOT call get_user_model() here
+    User = get_user_model()
     users = User.objects.all().order_by('username')
     groups = Group.objects.all().order_by('name')
     
     # TODO: Implement actual signup request system
     # For now, show pending users (inactive users) as "signup requests"
     signup_requests = User.objects.filter(is_active=False).order_by('-date_joined')
+    
     return render(request, 'admin/users.html', {
         'users': users,
         'groups': groups,
@@ -67,18 +52,19 @@ def admin_resources(request):
     """
     System resources monitoring page (Netdata iframe)
     """
-    # Use the new Netdata URL
-    netdata_url = (
-        "http://localhost:19999/spaces/theblumz-space/rooms/mast-wis-control-local/nodes"
-        "#metrics_correlation=false&after=-900&before=0&utc=Asia%2FJerusalem"
-        "&offset=%2B2&timezoneName=Jerusalem&modal=&modalTab=&_o=zc7BCoJAGATgd9lzP6it69oLRBBdii4R8rs7pqAuuKsR0btH0qFbhy7dZmAYvrswNQ9hxx1o4lasRId-LPY3H9BRJBYC0KrUcU5VJi3JJAVprZhSqdnkMkYm5alHsBy44Av6ULTOcHsm-nbdO4uNPbi1-xxsmwmFH8u5ZKmOqiwtCXmiSFbRkrSxMS0Tm8dJBGWN-gn5Mvhjg-uc_kfjMUwYPAVn9uDB1G-UeDwB"
-    )
-    proxy_url = netdata_url  # No proxy, direct link
+    # Use selected site's control machine
+    site = request.session.get('selected_site')
+    if not site:
+        messages.error(request, "No site selected.")
+        return redirect(get_dynamic_url(request, 'dashboard'))
+    netdata_host = f"mast-{site}-control"
+    netdata_url = f"http://{netdata_host}:8000/mast-netdata"
+    proxy_url = f"/manage/netdata-proxy/?host={netdata_host}"
 
-    return render(request, 'admin/resources.html', {
+    return render(request, get_dynamic_url(request, 'admin/resources.html'), {
         'netdata_url': netdata_url,
         'proxy_url': proxy_url,
-        'netdata_host': "mast-wis-control",
+        'netdata_host': netdata_host,
     })
 
 
@@ -90,55 +76,48 @@ def netdata_proxy(request, netdata_path=''):
     This fetches from Netdata server-side and returns to client.
     Handles both root path and sub-paths like /api/v1/registry
     """
-    host = request.GET.get('host', 'mast-wis-control')
-    
-    # Build the full URL with path and query string
-    netdata_url = f"http://{host}:19999/{netdata_path}"
-    
+    # Use selected site's control machine
+    site = request.session.get('selected_site')
+    if not site:
+        return HttpResponse("No site selected", status=400)
+    host = f"{site}-control"
+
+    # Build the full URL with mast-netdata root and path
+    netdata_url = f"http://{host}:8000/mast-netdata/{netdata_path}"
+
     # Preserve query string (but remove 'host' param as it's not for Netdata)
     query_string = request.META.get('QUERY_STRING', '')
     if query_string:
-        # Remove 'host' parameter from query string
         from urllib.parse import parse_qs, urlencode
         params = parse_qs(query_string)
         params.pop('host', None)
         if params:
             netdata_url += f'?{urlencode(params, doseq=True)}'
-    
+
     try:
-        # Forward the request with the same method (GET/POST/etc)
         method = request.method.lower()
         req_func = getattr(requests, method)
-        
-        # Forward headers (excluding host-specific ones)
         headers = {
             key: value for key, value in request.headers.items()
             if key.lower() not in ['host', 'cookie', 'authorization']
         }
-        
-        # Make the request
         response = req_func(
             netdata_url,
             headers=headers,
             data=request.body if request.method == 'POST' else None,
             timeout=10,
-            allow_redirects=False  # Don't follow redirects automatically
+            allow_redirects=False
         )
-        
-        # Return the response
         django_response = HttpResponse(
             response.content,
             content_type=response.headers.get('content-type', 'text/html'),
             status=response.status_code
         )
-        
-        # Forward important headers
         for header in ['location', 'set-cookie']:
             if header in response.headers:
                 django_response[header] = response.headers[header]
-        
         return django_response
-        
+
     except requests.RequestException as e:
         return HttpResponse(f"Error connecting to Netdata: {e}", status=502)
 
@@ -149,7 +128,6 @@ def admin_user_edit(request, user_id):
     """
     Edit user details (HTMX modal)
     """
-    # Use the correct User model import (do not reassign User)
     user = get_object_or_404(User, id=user_id)
     groups = Group.objects.all().order_by('name')
     

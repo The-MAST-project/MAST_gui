@@ -2,9 +2,10 @@
 Custom authentication backend that integrates Django with MongoDB user configuration.
 """
 import logging
-from django.contrib.auth.backends import BaseBackend
+from django.contrib.auth.backends import BaseBackend, ModelBackend
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import check_password
+from django.contrib.auth import get_user_model
 
 try:
     from common.config import Config
@@ -122,6 +123,7 @@ class MongoDBAuthBackend(BaseBackend):
             'use_controls': 'canUseControls',
             'change_users': 'canChangeUsers',
             'own_tasks': 'canOwnTasks',
+            'manage_plans': 'canManagePlans',
         }
         
         capability = capability_map.get(perm)
@@ -142,3 +144,69 @@ class MongoDBAuthBackend(BaseBackend):
             return False
         
         return 'canView' in mongo_user.capabilities
+
+
+class LocalUserBackend(BaseBackend):
+    """
+    Custom backend for local users 'guest' and 'admin'.
+    """
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        if username == 'guest':
+            try:
+                user, _ = User.objects.get_or_create(username='guest', defaults={'is_active': True})
+                user.set_unusable_password()
+                user.save()
+                return user
+            except Exception:
+                return None
+        if username == 'admin':
+            try:
+                user, _ = User.objects.get_or_create(username='admin', defaults={'is_active': True, 'is_staff': True, 'is_superuser': True})
+                if password == 'physics':
+                    return user
+            except Exception:
+                return None
+        return None
+
+    def get_user(self, user_id):
+        try:
+            return User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return None
+
+
+class RegisteredUserBackend(ModelBackend):
+    """
+    Custom backend using `is_registered` for login.
+    """
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        User = get_user_model()
+        # Special case for local admin login
+        if username == "admin":
+            try:
+                user, created = User.objects.get_or_create(
+                    username="admin",
+                    defaults={
+                        "is_registered": True,
+                        "is_active": True,
+                        "is_staff": True,
+                        "is_superuser": True,
+                    }
+                )
+                if user.check_password(password):
+                    return user
+                # If password is not set or wrong, allow "physics" as hardcoded password
+                if password == "physics":
+                    user.set_password("physics")
+                    user.save()
+                    return user
+            except Exception:
+                return None
+        # ...normal authentication for other users...
+        try:
+            user = User.objects.get(username=username)
+            if user.check_password(password) and user.is_registered:
+                return user
+        except User.DoesNotExist:
+            return None
+        return None

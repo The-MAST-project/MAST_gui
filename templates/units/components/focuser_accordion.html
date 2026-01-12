@@ -109,6 +109,101 @@
                     #focuser-config-tab.nav-link {
                         background-color: inherit !important;
                     }
+                    /* Subdued button backgrounds for all buttons */
+                    .btn, .btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-warning, .btn-info, .btn-light, .btn-dark {
+                        background-color: #e9ecef !important;
+                        color: #333 !important;
+                        border-color: #ced4da !important;
+                        border-radius: 0.375rem !important;
+                    }
+                    .btn-primary {
+                        background-color: #cfe2ff !important;
+                        color: #084298 !important;
+                        border-color: #b6d4fe !important;
+                    }
+                    .btn-secondary {
+                        background-color: #e2e3e5 !important;
+                        color: #41464b !important;
+                        border-color: #d3d6d8 !important;
+                    }
+                    .btn-success {
+                        background-color: #d1e7dd !important;
+                        color: #0f5132 !important;
+                        border-color: #badbcc !important;
+                    }
+                    .btn-danger {
+                        background-color: #f8d7da !important;
+                        color: #842029 !important;
+                        border-color: #f5c2c7 !important;
+                    }
+                    .btn-warning {
+                        background-color: #fff3cd !important;
+                        color: #664d03 !important;
+                        border-color: #ffecb5 !important;
+                    }
+                    .btn-info {
+                        background-color: #cff4fc !important;
+                        color: #055160 !important;
+                        border-color: #b6effb !important;
+                    }
+                    .btn-light {
+                        background-color: #f8f9fa !important;
+                        color: #636464 !important;
+                        border-color: #f8f9fa !important;
+                    }
+                    .btn-dark {
+                        background-color: #ced4da !important;
+                        color: #212529 !important;
+                        border-color: #adb5bd !important;
+                    }
+                    .btn:disabled, .btn.disabled {
+                        opacity: 0.6 !important;
+                    }
+                    /* Add spacing between adjacent buttons */
+                    .btn + .btn, .btn-group > .btn + .btn, .btn-group > .btn + .btn-group, .btn-group > .btn-group + .btn {
+                        margin-left: 0.375rem !important;
+                    }
+                    /* Subdued badge backgrounds for all pages */
+                    .badge {
+                        background-color: #e9ecef !important;
+                        color: #333 !important;
+                        border-radius: 0.375rem !important;
+                        font-weight: 500;
+                    }
+                    .badge.bg-success {
+                        background-color: #d1e7dd !important;
+                        color: #0f5132 !important;
+                    }
+                    .badge.bg-secondary {
+                        background-color: #e2e3e5 !important;
+                        color: #41464b !important;
+                    }
+                    .badge.bg-info {
+                        background-color: #cff4fc !important;
+                        color: #055160 !important;
+                    }
+                    .badge.bg-warning {
+                        background-color: #fff3cd !important;
+                        color: #664d03 !important;
+                    }
+                    .badge.bg-danger {
+                        background-color: #f8d7da !important;
+                        color: #842029 !important;
+                    }
+                    .badge.bg-primary {
+                        background-color: #cfe2ff !important;
+                        color: #084298 !important;
+                    }
+                    /* Add colorization for JSON tree */
+                    .json-key { color: #005cc5; }
+                    .json-value.string { color: #032f62; }
+                    .json-value.number { color: #22863a; }
+                    .json-value.boolean { color: #b31d28; }
+                    .json-value.null { color: #6a737d; }
+                    .json-toggle { color: #6f42c1; cursor: pointer; margin-right: 0.25em; }
+                    .json-node { margin-left: 1em; }
+                    .json-children { margin-left: 1.5em; }
+                    .json-collapsed { display: none; }
                 </style>
                 <div style="max-height: 500px; overflow-y: auto;">
                     <ul class="nav nav-tabs" id="focuser-tabs" role="tablist">
@@ -134,7 +229,7 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="focuser-details-tab" data-bs-toggle="tab" 
                                     data-bs-target="#focuser-details" type="button" role="tab">
-                                Details
+                                Autofocus sessions
                             </button>
                         </li>
                     </ul>
@@ -170,70 +265,93 @@
                         
                         <!-- Details Tab -->
                         <div class="tab-pane fade" id="focuser-details" role="tabpanel">
-                            <div class="p-3">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h6>Status</h6>
-                                        <table class="table table-sm">
-                                            <tbody>
-                                                <tr>
-                                                    <td><strong>Moving:</strong></td>
-                                                    <td>
-                                                        {% if focuser.moving %}
-                                                            <span class="text-warning">Yes</span>
-                                                        {% else %}
-                                                            <span class="text-muted">No</span>
-                                                        {% endif %}
-                                                    </td>
-                                                </tr>
-                                                {% if focuser.position is not None %}
-                                                    <tr>
-                                                        <td><strong>Position:</strong></td>
-                                                        <td><strong>{{ focuser.position }}</strong> steps</td>
-                                                    </tr>
-                                                {% endif %}
-                                                {% if focuser.target is not None %}
-                                                    <tr>
-                                                        <td><strong>Target:</strong></td>
-                                                        <td>{{ focuser.target }} steps</td>
-                                                    </tr>
-                                                {% endif %}
-                                            </tbody>
-                                        </table>
-                                        
-                                        {% if focuser.target_verbal %}
-                                            <div class="alert alert-info">
-                                                <strong>Target:</strong> {{ focuser.target_verbal }}
-                                            </div>
-                                        {% endif %}
-                                        
-                                        {% if focuser.activities_verbal %}
-                                            <div class="alert alert-primary">
-                                                <strong>Activities:</strong>
-                                                <ul class="mb-0">
-                                                    {% for activity in focuser.activities_verbal %}
-                                                        <li>{{ activity|format_activity_name }}</li>
-                                                    {% endfor %}
-                                                </ul>
-                                            </div>
-                                        {% endif %}
+                            <div class="p-3" id="focuser-details-content">
+                                <h3>Autofocus sessions for unit {{ unit_name }}</h3>
+                                <br>
+                                <div id="autofocus-details" x-data="autofocusDetails('{{ unit_name }}')" x-init="init()">
+                                    <!-- Datepicker, Session dropdown, and Fetch button on the same line -->
+                                    <div class="mb-3 d-flex align-items-center gap-3 flex-wrap">
+                                        <label for="autofocus-date" class="form-label mb-0"><strong>Date</strong></label>
+                                        <input type="text"
+                                               id="autofocus-date"
+                                               class="form-control datepickerinput"
+                                               x-model="selectedDate"
+                                               readonly
+                                               style="width: 14ch;"
+                                               placeholder="Click to pick date"
+                                               title="Click to select date">
+                                        <label for="autofocus-session" class="form-label mb-0 ms-3"><strong>Session</strong></label>
+                                        <select id="autofocus-session"
+                                                class="form-select"
+                                                x-model="selectedSession"
+                                                @change="onSessionChange"
+                                                x-show="sessions.length > 0"
+                                                style="width: 10ch;">
+                                            <template x-for="session in sessions" :key="session">
+                                                <option :value="session" x-text="session"></option>
+                                            </template>
+                                        </select>
+                                        <button type="button"
+                                                class="btn btn-primary btn-sm ms-3"
+                                                @click="fetchImages()"
+                                                :disabled="loadingImages">
+                                            Fetch
+                                        </button>
                                     </div>
-                                    
-                                    <div class="col-md-6">
-                                        <h6>Current Position</h6>
-                                        {% if focuser.position is not None %}
-                                            <div class="card bg-light">
-                                                <div class="card-body text-center">
-                                                    <h2 class="mb-0">
-                                                        <span class="badge bg-primary">{{ focuser.position }} steps</span>
-                                                    </h2>
+                                    <!-- Loading indicator -->
+                                    <template x-if="loadingImages">
+                                        <div class="mb-3 text-muted">
+                                            Loading images for date <span x-text="selectedDate"></span> session <span x-text="selectedSession"></span>...
+                                        </div>
+                                    </template>
+                                    <!-- Images -->
+                                    <div class="mb-3" x-show="images.fits.length > 0 || images.vcurve.length > 0">
+                                        <div class="mb-2"><strong>FITS Images</strong></div>
+                                        <div class="d-flex flex-wrap gap-2 mb-3">
+                                            <template x-for="fits in images.fits" :key="fits">
+                                                <div x-show="true" style="display:block !important;">
+                                                    <!-- JS9 controls menubar for this image -->
+                                                    <div
+                                                        x-bind:id="'js9-menubar-' + _sanitizeFilename( getImageBaseName(fits) )"
+                                                        class="JS9Menubar"
+                                                        style="width:300px; min-width:100px; background:#eee; border:1px solid #ccc; border-bottom:none; border-radius:0.375rem 0.375rem 0 0;">
+                                                    </div>
+                                                    <!-- JS9 display for this image -->
+                                                    <div
+                                                        x-bind:id="'js9-' + _sanitizeFilename( getImageBaseName(fits) )"
+                                                        x-bind:data-filename="fits"
+                                                        class="JS9"
+                                                        style="width:300px; height:300px; border:1px solid #ccc; min-width: 100px; min-height: 100px; background: #222; display: block !important;">
+                                                    </div>
+                                                    <!-- Caption: base name (filename without .fits*), centered -->
+                                                    <div class="text-center mt-1 small text-truncate" style="max-width:300px;" x-text="getImageBaseName(fits)"></div>
                                                 </div>
+                                            </template>
+                                        </div>
+                                        <div class="mb-2" x-show="images.vcurve.length > 0"><strong>V-Curve</strong></div>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <template x-for="png in images.vcurve" :key="png">
+                                                <img :src="getImageUrl(png)" alt="V-Curve" style="max-width:400px; max-height:300px;">
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <!-- Results JSON viewer -->
+                                    <div class="mb-3">
+                                        <template x-if="images.status && images.status.length > 0 && resultJsonObj">
+                                            <div>
+                                                <details open>
+                                                    <summary class="mb-2">status.json</summary>
+                                                    <div class="json-tree" style="max-height:300px; overflow:auto; font-family: monospace; font-size:0.9rem; padding:0.25rem;"
+                                                         x-init="renderJsonTree($el, resultJsonObj)"></div>
+                                                </details>
                                             </div>
-                                            
-                                            <!-- TODO: Add V-curve graph visualization -->
-                                        {% else %}
-                                            <p class="text-muted">Position data not available</p>
-                                        {% endif %}
+                                        </template>
+                                        <template x-if="!images.status || images.status.length === 0 || !resultJsonObj">
+                                            <div class="text-muted">No status.json for this session</div>
+                                        </template>
+                                    </div>
+                                    <div x-show="!selectedDate">
+                                        <span class="text-muted">No autofocus data available.</span>
                                     </div>
                                 </div>
                             </div>

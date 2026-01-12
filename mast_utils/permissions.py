@@ -8,7 +8,7 @@ from django.http import HttpResponseForbidden
 
 def capability_required(capability):
     """
-    Decorator to check if user has a specific MAST capability.
+    Decorator to check if user has a specific Django permission (capability).
     
     Usage:
         @capability_required('canChangeConfiguration')
@@ -19,17 +19,8 @@ def capability_required(capability):
         @wraps(view_func)
         @login_required
         def wrapped_view(request, *args, **kwargs):
-            # Get MongoDB user
-            mongo_user = getattr(request.user, 'mongo_user', None)
-            if not mongo_user:
-                from accounts.backends import MongoDBAuthBackend
-                backend = MongoDBAuthBackend()
-                mongo_user = backend.get_mongo_user(request.user)
-                request.user.mongo_user = mongo_user
-            
-            if mongo_user and capability in mongo_user.capabilities:
+            if request.user.has_perm(f'accounts.{capability}'):
                 return view_func(request, *args, **kwargs)
-            
             return HttpResponseForbidden("You don't have permission to access this resource.")
         
         return wrapped_view
@@ -38,17 +29,10 @@ def capability_required(capability):
 
 def has_capability(user, capability):
     """
-    Check if user has a specific capability.
+    Check if user has a specific Django permission (capability).
     
     Usage:
         if has_capability(request.user, 'canUseControls'):
             ...
     """
-    mongo_user = getattr(user, 'mongo_user', None)
-    if not mongo_user:
-        from accounts.backends import MongoDBAuthBackend
-        backend = MongoDBAuthBackend()
-        mongo_user = backend.get_mongo_user(user)
-        user.mongo_user = mongo_user
-    
-    return mongo_user and capability in mongo_user.capabilities
+    return user.has_perm(f'accounts.{capability}')
