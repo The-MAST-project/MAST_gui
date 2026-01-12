@@ -5,6 +5,12 @@ import logging
 import sys
 from pathlib import Path
 
+import time
+from common.config import Config
+from common.api import ControllerApi
+from datetime import datetime
+import asyncio
+
 logger = logging.getLogger(__name__)
 
 # Add common submodule to Python path
@@ -58,10 +64,6 @@ def site_data(request):
 """
 Context processors for adding global template variables.
 """
-import logging
-from datetime import datetime
-from common.api import ControllerApi
-import asyncio
 
 logger = logging.getLogger('mast.context_processors')
 
@@ -125,3 +127,57 @@ def controller_status(request):
         }
     
     return {'controller_status': status}
+
+logger = logging.getLogger('mast.context_processors')
+
+# In-memory cache for config and status (simple, per-process)
+_MAST_CACHE = {
+    'sites': [],
+    'status': {},
+    'last_refresh': 0,
+    'ttl': 30,  # seconds
+}
+
+def mast(request):
+    """
+    Provides 'mast' context:
+      mast.sites: list of all configured sites
+      mast.status: dict {site_name: status}
+    """
+    now = time.time()
+    cache = _MAST_CACHE
+    needs_refresh = (now - cache['last_refresh'] > cache['ttl']) or not cache['sites']
+
+    if needs_refresh:
+        try:
+            config = Config()
+            sites = config.get_sites()
+            cache['sites'] = sites
+            # Query status for all sites via ControllerApi('status')
+            # Use the first controller found (assume all sites managed by it)
+            if sites:
+                controller = ControllerApi()
+                resp = controller.client.get("status")
+                # If resp is a coroutine, run it
+                if hasattr(resp, '__await__'):
+                    import asyncio
+                    resp = asyncio.run(resp)
+                if resp and getattr(resp, 'succeeded', False) and isinstance(resp.value, dict):
+                    cache['status'] = resp.value
+                else:
+                    cache['status'] = {}
+            else:
+                cache['status'] = {}
+            cache['last_refresh'] = now
+        except Exception as e:
+            logger.warning(f"Error refreshing mast context: {e}")
+            cache['status'] = {}
+            cache['sites'] = []
+            cache['last_refresh'] = now
+
+    return {
+        'mast': {
+            'sites': cache['sites'],
+            'status': cache['status'],
+        }
+    }
