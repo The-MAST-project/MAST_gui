@@ -175,8 +175,18 @@ def refresh_cache():
                     else:
                         _MAST_CACHE['status'] = resp.value  # Already a SitesStatus object
                 
-                # logger.info("Status cache refreshed successfully")
-                logger.info(f"Sites in 'status' cache: {list(_MAST_CACHE['status'].sites.keys())}")
+                for site in _MAST_CACHE['status'].sites.keys():
+                    msg = f"Status cache: [{site}]: "
+                    site_status = _MAST_CACHE['status'].sites[site]
+                    controller_status = site_status.controller
+                    deepspec_status = site_status.deepspec
+                    highspec_status = site_status.highspec
+                    unit_statuses = site_status.units
+                    for comp_name, st in {'controller': controller_status, 'deepspec': deepspec_status, 'highspec': highspec_status}.items():
+                        msg += f"{comp_name}({type(st).__name__}), "
+                    for unit_name, unit_status in unit_statuses.items():
+                        msg += f"{unit_name}({type(unit_status).__name__}), "
+                    logger.info(msg)
             else:
                 logger.warning(f"Failed to fetch status from backend: {getattr(resp, 'errors', 'Unknown error')}")
                 _MAST_CACHE['status'] = None
