@@ -13,7 +13,7 @@ from django.contrib.auth.models import Group
 from django.contrib import messages
 from django.db import IntegrityError
 import logging
-import json
+from pydantic import ValidationError
 from views.urls import get_dynamic_url
 
 from accounts.models import User
@@ -27,14 +27,14 @@ logger = logging.getLogger(__name__)
 def select_site(request):
     """
     Handle site selection from dropdown
-    Stores selection in session and redirects to units page
+    Stores selection in session and redirects to site dashboard
     """
     site_name = request.POST.get('site')
     if site_name:
         request.session['selected_site'] = site_name
     
-    # Redirect to units page for the new site
-    return redirect(get_dynamic_url(request, 'units:list'))
+    # Redirect to site dashboard page
+    return redirect(get_dynamic_url(request, 'units:site_dashboard'))
 
 
 def dashboard(request):
@@ -303,14 +303,21 @@ def handle_notification(request):
     """
     Receive notifications from backend controller
     """
+    from common.notifications import NotificationUpdateData
     try:
-        notification = json.loads(request.body)
+        # notification = json.loads(request.body)
+        try:
+            notification = NotificationUpdateData.model_validate_json(request.body)
+        except ValidationError as ve:
+            logger.error(f"Notification validation error: {ve}")
+            return JsonResponse({'error': 'Invalid notification format'}, status=400)
         
-        logger.info(f"Received notification: {notification.get('type')}")
+        initiator = notification.initiator
+        logger.info(f"Received notification: {notification.type} from {initiator.site}:{initiator.machine_name}")
         
         success = False
         # Update cache
-        if notification.get('cache'):
+        if notification.cache:
             success = update_cache_from_notification(notification)
         
         # TODO: Implement SSE broadcast

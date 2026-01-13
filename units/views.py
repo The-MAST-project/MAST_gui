@@ -127,9 +127,42 @@ def units_list(request):
     # Sort buildings: clamshell first, then others
     buildings_sorted = dict(sorted(buildings_data.items(), key=lambda x: x[1]['sort_order']))
     
+    # Get site status from cache
+    from MAST_gui.context_processors import _MAST_CACHE
+    sites_status = _MAST_CACHE.get('status')
+    
+    # Prepare instrument room components
+    instrument_room = {
+        'deepspec': None,
+        'highspec': None,
+        'controller': None,
+    }
+    
+    if sites_status and hasattr(sites_status, 'sites') and current_site in sites_status.sites:
+        site_status = sites_status.sites[current_site]
+        
+        # Get each component's status
+        for comp_name in ['deepspec', 'highspec', 'controller']:
+            comp_status = getattr(site_status, comp_name, None)
+            # Format display name
+            if comp_name == 'deepspec':
+                display_name = 'Deepspec'
+            elif comp_name == 'highspec':
+                display_name = 'Highspec'
+            else:
+                display_name = 'Controller'
+            
+            instrument_room[comp_name] = {
+                'name': comp_name,
+                'display_name': display_name,
+                'detected': False if comp_status is None else getattr(comp_status, 'detected', False),
+                # 'activities_verbal': ['Unknown'] if comp_status is None else getattr(comp_status, 'activities_verbal', []) or [],
+            }
+    
     return render(request, 'units/list.html', {
         'buildings': buildings_sorted,
-        'site': site
+        'site': site,
+        'instrument_room': instrument_room,
     })
 
 

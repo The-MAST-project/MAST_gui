@@ -21,9 +21,18 @@
 }
 .sidebar-collapsed .sidebar-item-text,
 .sidebar-collapsed .sidebar-item-arrow,
-.sidebar-collapsed .sidebar-submenu,
-.sidebar-collapsed .sidebar-user-menu {
+.sidebar-collapsed .sidebar-submenu {
     display: none !important;
+}
+.sidebar-collapsed .sidebar-user-menu .btn {
+    padding: 0.5rem;
+    width: 100%;
+}
+.sidebar-collapsed .sidebar-user-menu .btn span {
+    display: none;
+}
+.sidebar-collapsed .sidebar-user-menu .btn .bi-caret-down-fill {
+    display: none;
 }
 .sidebar-collapsed .sidebar-item,
 .sidebar-collapsed .sidebar-subitem {
@@ -46,6 +55,11 @@
 .sidebar-menu {
     flex: 1 1 auto;
     padding: 1rem 0.5rem;
+}
+.sidebar-separator {
+    height: 1px;
+    background: #dee2e6;
+    margin: 1rem 0;
 }
 .sidebar-item, .sidebar-subitem {
     display: flex;
@@ -114,10 +128,10 @@
     </div>
     
     <div class="sidebar-menu">
-        <!-- Units -->
-        <a href="{% get_dynamic_url 'units:list' %}" class="sidebar-item {% if request.resolver_match.app_name == 'units' %}active{% endif %}">
-            <i class="bi bi-gear"></i>
-            <span class="sidebar-item-text">Units</span>
+        <!-- Sites -->
+        <a href="{% get_dynamic_url 'units:site_dashboard' %}" class="sidebar-item {% if request.resolver_match.app_name == 'units' %}active{% endif %}">
+            <i class="bi bi-building"></i>
+            <span class="sidebar-item-text">Sites</span>
         </a>
         
         <!-- Specs -->
@@ -152,35 +166,38 @@
             <i class="bi bi-calendar-event"></i>
             <span class="sidebar-item-text">Plans</span>
         </a>
-    </div>
-    <!-- User menu in toolbar -->
-    <div class="sidebar-user-menu mt-4">
-        <div class="dropdown">
-            <button class="btn btn-light dropdown-toggle" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-person-circle"></i>
-                {% if request.user.is_authenticated %}
-                    {{ request.user.username }}
-                {% else %}
-                    Guest
-                {% endif %}
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="userMenuDropdown">
-                {% if request.user.is_authenticated %}
+        
+        <!-- Separator -->
+        
+        <!-- User menu -->
+        <div class="sidebar-user-menu mt-4">
+            <div class="dropdown">
+                <button class="btn btn-light dropdown-toggle" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-person-circle"></i>
+                    {% if request.user.is_authenticated %}
+                        {{ request.user.username }}
+                    {% else %}
+                        Guest
+                    {% endif %}
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="userMenuDropdown">
+                    {% if request.user.is_authenticated %}
+                        <li>
+                            <form id="logout-form" method="post" action="{% get_dynamic_url 'logout' %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item">Logout</button>
+                            </form>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a class="dropdown-item" href="{% get_dynamic_url 'login' %}">Login</a>
+                        </li>
+                    {% endif %}
                     <li>
-                        <form id="logout-form" method="post" action="{% get_dynamic_url 'logout' %}" style="display:inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="dropdown-item">Logout</button>
-                        </form>
+                        <a class="dropdown-item" href="{% get_dynamic_url 'signup' %}">Signup</a>
                     </li>
-                {% else %}
-                    <li>
-                        <a class="dropdown-item" href="{% get_dynamic_url 'login' %}">Login</a>
-                    </li>
-                {% endif %}
-                <li>
-                    <a class="dropdown-item" href="{% get_dynamic_url 'signup' %}">Signup</a>
-                </li>
-            </ul>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
