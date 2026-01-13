@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.github',
     'django.contrib.sites',
+    'django_q',  # Add this for django-q2 task queue
+    'MAST_gui',  # ← Django finds MastGuiConfig in MAST_gui/apps.py
 ]
 
 AUTH_USER_MODEL = 'accounts.User'  # Make sure this is set to your custom user model
@@ -277,6 +279,18 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+# Django-Q2 Configuration (for background tasks and scheduled polling)
+Q_CLUSTER = {
+    'name': 'MAST_gui',
+    'workers': 2,
+    'recycle': 500,
+    'timeout': 60,
+    'retry': 120,
+    'queue_limit': 50,
+    'bulk': 10,
+    'orm': 'default',  # Use Django ORM as broker (simple setup)
 }
 
 # Development server configuration

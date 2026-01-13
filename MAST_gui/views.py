@@ -2,7 +2,7 @@
 Core views for site selection and basic pages
 """
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.csrf import csrf_exempt
@@ -13,9 +13,12 @@ from django.contrib.auth.models import Group
 from django.contrib import messages
 from django.db import IntegrityError
 import logging
+import json
 from views.urls import get_dynamic_url
 
 from accounts.models import User
+from .notification_handler import update_cache_from_notification
+from .context_processors import refresh_cache, _MAST_CACHE  # Add _MAST_CACHE here
 
 logger = logging.getLogger(__name__)
 
@@ -293,32 +296,93 @@ def admin_group_delete(request, group_id):
     # Return empty response
     return HttpResponse('')
 
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def handle_notification(request):
+    """
+    Receive notifications from backend controller
+    """
+    try:
+        notification = json.loads(request.body)
+        
+        logger.info(f"Received notification: {notification.get('type')}")
+        
+        success = False
+        # Update cache
+        if notification.get('cache'):
+            success = update_cache_from_notification(notification)
+        
+        # TODO: Implement SSE broadcast
+        # TODO: Implement toast card generation
+        
+        return JsonResponse({'success': success})
+    
+    except Exception as e:
+        logger.error(f"Notification handling error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def debug_cache(request):
+    """Debug endpoint to view cache contents"""
+    # Auto-refresh if cache is empty
+    if not _MAST_CACHE.get('status'):
+        logger.info("Cache empty, triggering refresh...")
+        refresh_cache()
+    
+    # Use Pydantic's built-in JSON serialization (handles Enums automatically)
+    status_data = None
+    if _MAST_CACHE.get('status'):
+        status_data = _MAST_CACHE['status'].model_dump(mode='json')
+    
+    cache_data = {
+        'last_refresh': _MAST_CACHE.get('last_refresh'),
+        'ttl': _MAST_CACHE.get('ttl'),
+        'status': status_data
+    }
+    
+    return JsonResponse(cache_data, safe=False, json_dumps_params={'indent': 2})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def refresh_cache_endpoint(request):
+    """Manually trigger cache refresh"""
+    success = refresh_cache()
+    
+    return JsonResponse({
+        'success': success,
+        'timestamp': _MAST_CACHE.get('last_refresh'),
+        'has_status': _MAST_CACHE.get('status') is not None
+    })
+
+
 # Django's built-in Group model fields:
 # - id: AutoField (primary key)
 # - name: CharField (unique, required)
 # - permissions: ManyToManyField to Permission
-
+#
 # Example:
-# from django.contrib.auth.models import Group
-# group = Group.objects.create(name="everybody")
-# group.permissions.add(permission_obj)
-# group.name  # group name
-# group.permissions.all()  # queryset of Permission objects
+#   from django.contrib.auth.models import Group
+#   group = Group.objects.create(name="everybody")
+#   group.permissions.add(permission_obj)
+#   group.name  # group name
+#   group.permissions.all()  # queryset of Permission objects
 
 # Django Permission model:
-# - Represents a specific action a user/group can perform (e.g., "add_user", "change_group").
+# - Represents a specific action a user/group can perform (e.g., "add_user", "change_group")
 # - Fields:
 #   - id: AutoField (primary key)
 #   - name: Human-readable name (e.g., "Can add user")
 #   - codename: Short string (e.g., "add_user")
 #   - content_type: ForeignKey to ContentType (the model this permission applies to)
 #
-# Permissions are assigned to users or groups.
-# Example:
-#   from django.contrib.auth.models import Permission
 #   perm = Permission.objects.get(codename="add_user")
 #   user.user_permissions.add(perm)
 #   group.permissions.add(perm)
 #
+# Django auto-creates add/change/delete/view permissions for each model.
+# Custom permissions can be defined in a model's Meta class.
 # Django auto-creates add/change/delete/view permissions for each model.
 # Custom permissions can be defined in a model's Meta class.

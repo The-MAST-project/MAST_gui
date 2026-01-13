@@ -4,12 +4,14 @@ Context processors to make data available to all templates
 import logging
 import sys
 from pathlib import Path
+from threading import Lock
 
 import time
 from common.config import Config
 from common.api import ControllerApi
 from datetime import datetime
 import asyncio
+from common.models.statuses import SitesStatus
 
 logger = logging.getLogger(__name__)
 
@@ -138,42 +140,68 @@ _MAST_CACHE = {
     'ttl': 30,  # seconds
 }
 
+_MAST_CACHE_LOCK: Lock = Lock()
+
+def refresh_cache():
+    """
+    Force refresh the cache from backend.
+    Call this on Django startup or when cache is empty.
+    """
+    # logger.info("Force refreshing cache from backend...")
+    
+    try:
+        config = Config()
+        sites = config.get_sites()
+        _MAST_CACHE['sites'] = sites
+        
+        # Query status from controller
+        if sites:
+            controller = ControllerApi()
+            
+            # Get status endpoint - returns SitesStatus
+            resp = controller.client.get("status")
+            
+            # Handle async response
+            if hasattr(resp, '__await__'):
+                resp = asyncio.run(resp)
+            
+            # Check if response succeeded and parse as SitesStatus
+            if resp and getattr(resp, 'succeeded', False) and resp.value:
+                # resp.value should be dict that can be parsed as SitesStatus
+
+                with _MAST_CACHE_LOCK:
+                    if isinstance(resp.value, dict):
+                        _MAST_CACHE['status'] = SitesStatus(**resp.value)
+                    else:
+                        _MAST_CACHE['status'] = resp.value  # Already a SitesStatus object
+                
+                # logger.info("Status cache refreshed successfully")
+                logger.info(f"Sites in 'status' cache: {list(_MAST_CACHE['status'].sites.keys())}")
+            else:
+                logger.warning(f"Failed to fetch status from backend: {getattr(resp, 'errors', 'Unknown error')}")
+                _MAST_CACHE['status'] = None
+        else:
+            logger.warning("No sites configured")
+            _MAST_CACHE['status'] = None
+            
+        _MAST_CACHE['last_refresh'] = time.time()
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error refreshing cache: {e}", exc_info=True)
+        _MAST_CACHE['status'] = None
+        _MAST_CACHE['sites'] = []
+        _MAST_CACHE['last_refresh'] = time.time()
+        return False
+
 def mast(request):
-    """
-    Provides 'mast' context:
-      mast.sites: list of all configured sites
-      mast.status: dict {site_name: status}
-    """
+    """Called automatically when rendering templates"""
     now = time.time()
     cache = _MAST_CACHE
-    needs_refresh = (now - cache['last_refresh'] > cache['ttl']) or not cache['sites']
+    needs_refresh = (now - cache['last_refresh'] > cache['ttl']) or not cache.get('status')
 
     if needs_refresh:
-        try:
-            config = Config()
-            sites = config.get_sites()
-            cache['sites'] = sites
-            # Query status for all sites via ControllerApi('status')
-            # Use the first controller found (assume all sites managed by it)
-            if sites:
-                controller = ControllerApi()
-                resp = controller.client.get("status")
-                # If resp is a coroutine, run it
-                if hasattr(resp, '__await__'):
-                    import asyncio
-                    resp = asyncio.run(resp)
-                if resp and getattr(resp, 'succeeded', False) and isinstance(resp.value, dict):
-                    cache['status'] = resp.value
-                else:
-                    cache['status'] = {}
-            else:
-                cache['status'] = {}
-            cache['last_refresh'] = now
-        except Exception as e:
-            logger.warning(f"Error refreshing mast context: {e}")
-            cache['status'] = {}
-            cache['sites'] = []
-            cache['last_refresh'] = now
+        refresh_cache()  # ← Called every 30s or if cache empty
 
     return {
         'mast': {
