@@ -2,10 +2,11 @@ import logging
 import time
 from .context_processors import _MAST_CACHE, _MAST_CACHE_LOCK
 from common.models.statuses import ShortStatus
+from common.notifications import NotificationUpdateData
 
 logger = logging.getLogger(__name__)
 
-def update_cache_from_notification(notification):
+def update_cache_from_notification(notification: NotificationUpdateData):
     """
     Update _MAST_CACHE based on notification path
     Path format: [site, machine_type, machine_name?, component, ..., field]
@@ -19,12 +20,12 @@ def update_cache_from_notification(notification):
     - UnitStatus.focuser → FocuserStatus (attribute)
     - FocuserStatus.position → int (attribute)
     """
-    if not notification.get('cache') or not notification['cache'].get('path'):
+    if not notification.cache or not notification.cache['path']:
         return False
     
     try:
-        path = notification['cache']['path']
-        value = notification.get('value')
+        path = notification.cache['path']
+        value = notification.value
         
         if not path or value is None:
             return False
