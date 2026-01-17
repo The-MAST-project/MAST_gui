@@ -235,7 +235,7 @@ def unit_detail(request, unit_name):
             # Extract component statuses from full status
             if unit_status.mount:
                 # Convert mount activities to list as well
-                mount_activities = unit_status.activities_verbal or []
+                mount_activities = unit_status.mount.activities_verbal or []
                 if isinstance(mount_activities, str):
                     mount_activities = [mount_activities]
                 
@@ -265,7 +265,7 @@ def unit_detail(request, unit_name):
                 }
             
             if unit_status.focuser:
-                focuser_activities = unit_status.activities_verbal or []
+                focuser_activities = unit_status.focuser.ctivities_verbal or []
                 if isinstance(focuser_activities, str):
                     focuser_activities = [focuser_activities]
                 
@@ -281,7 +281,7 @@ def unit_detail(request, unit_name):
                 }
             
             if unit_status.stage:
-                stage_activities = unit_status.activities_verbal or []
+                stage_activities = unit_status.stage.activities_verbal or []
                 if isinstance(stage_activities, str):
                     stage_activities = [stage_activities]
                 
@@ -296,7 +296,7 @@ def unit_detail(request, unit_name):
                 }
             
             if unit_status.covers:
-                covers_activities = unit_status.activities_verbal or []
+                covers_activities = unit_status.covers.activities_verbal or []
                 if isinstance(covers_activities, str):
                     covers_activities = [covers_activities]
                 

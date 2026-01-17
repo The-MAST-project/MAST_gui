@@ -2,23 +2,27 @@
 Core views for site selection and basic pages
 """
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
+import queue
+import uuid
+import time
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 import requests
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib import messages
 from django.db import IntegrityError
 import logging
 from pydantic import ValidationError
 from views.urls import get_dynamic_url
+import json
+from .sse_manager import sse_manager
 
 from accounts.models import User
-from .notification_handler import update_cache_from_notification
-from .context_processors import refresh_cache, _MAST_CACHE  # Add _MAST_CACHE here
+from .notification_handler import update_sse_message_from_update_request
+
+from .context_processors import refresh_cache, _MAST_CACHE
 
 logger = logging.getLogger(__name__)
 
@@ -303,31 +307,91 @@ def handle_notification(request):
     """
     Receive notifications from backend controller
     """
-    from common.notifications import NotificationUpdateData
+    from common.notifications import UiUpdateRequest
     try:
-        # notification = json.loads(request.body)
         try:
-            notification = NotificationUpdateData.model_validate_json(request.body)
+            update_request = UiUpdateRequest.model_validate_json(request.body)
         except ValidationError as ve:
             logger.error(f"Notification validation error: {ve}")
             return JsonResponse({'error': 'Invalid notification format'}, status=400)
         
-        initiator = notification.initiator
-        logger.info(f"Received notification: {notification.type} from {initiator.site}:{initiator.machine_name}")
+        initiator = update_request.initiator
+        logger.info(f"Received notification: {update_request.type} from {initiator.site}:{initiator.hostname}")
         
-        success = False
-        # Update cache
-        if notification.cache:
-            success = update_cache_from_notification(notification)
+        if sse_manager.client_count == 0:
+            logger.info("No SSE clients connected, skipping broadcast")
+            return JsonResponse({'broadcasted': False, 'reason': 'no_clients'})
         
-        # TODO: Implement SSE broadcast
-        # TODO: Implement toast card generation
+        sse_message = update_sse_message_from_update_request(update_request)
+        sse_manager.broadcast('notification', sse_message)
+        logger.info(f"Broadcast notification to {sse_manager.client_count} clients")
         
-        return JsonResponse({'success': success})
+        return JsonResponse({'broadcasted': True})
     
     except Exception as e:
         logger.error(f"Notification handling error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
+
+def sse_stream(request):
+    """
+    Server-Sent Events endpoint for real-time notifications
+    """
+    client_id = str(uuid.uuid4())
+    
+    # Get client IP (check proxy headers first)
+    client_ip = (
+        request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or
+        request.META.get('HTTP_X_REAL_IP', '') or
+        request.META.get('REMOTE_ADDR', 'unknown')
+    )
+    
+    user_agent = request.META.get('HTTP_USER_AGENT', 'unknown')[:50]
+    
+    logger.info(f"SSE client connecting: {client_id} from {client_ip} ({user_agent})")
+    client_queue = sse_manager.add_client(client_id)
+    
+    def event_stream():
+        """Generator that yields SSE formatted messages"""
+        start_time = time.time()
+        message_count = 0
+        
+        try:
+            # Send initial connection message
+            yield f"data: {json.dumps({'type': 'connected', 'client_id': client_id})}\n\n"
+            
+            while True:
+                try:
+                    # Wait for a message from the queue (with a timeout for keep-alive)
+                    message = client_queue.get(timeout=15)  # Changed from 30 to 15
+                    
+                    # Format as SSE
+                    event_type = message.get('event', 'message')
+                    data = json.dumps(message.get('data', {}))
+                    
+                    # Send the event
+                    yield f"event: {event_type}\n"
+                    yield f"data: {data}\n\n"
+                    message_count += 1
+                    
+                except queue.Empty:
+                    # Send keep-alive comment
+                    yield ": keep-alive\n\n"
+                
+        except GeneratorExit:
+            # Connection closed - log and cleanup (don't yield anything)
+            duration = time.time() - start_time
+            logger.info(f"SSE client {client_id} disconnected after {duration:.1f}s ({message_count} messages)")
+        finally:
+            sse_manager.remove_client(client_id)
+    
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'  # Disable nginx buffering
+    return response
 
 
 @csrf_exempt
@@ -357,39 +421,10 @@ def debug_cache(request):
 def refresh_cache_endpoint(request):
     """Manually trigger cache refresh"""
     success = refresh_cache()
-    
-    return JsonResponse({
+    data = {
         'success': success,
         'timestamp': _MAST_CACHE.get('last_refresh'),
         'has_status': _MAST_CACHE.get('status') is not None
-    })
+    }
+    return JsonResponse(data, safe=False, json_dumps_params={'indent': 2})
 
-
-# Django's built-in Group model fields:
-# - id: AutoField (primary key)
-# - name: CharField (unique, required)
-# - permissions: ManyToManyField to Permission
-#
-# Example:
-#   from django.contrib.auth.models import Group
-#   group = Group.objects.create(name="everybody")
-#   group.permissions.add(permission_obj)
-#   group.name  # group name
-#   group.permissions.all()  # queryset of Permission objects
-
-# Django Permission model:
-# - Represents a specific action a user/group can perform (e.g., "add_user", "change_group")
-# - Fields:
-#   - id: AutoField (primary key)
-#   - name: Human-readable name (e.g., "Can add user")
-#   - codename: Short string (e.g., "add_user")
-#   - content_type: ForeignKey to ContentType (the model this permission applies to)
-#
-#   perm = Permission.objects.get(codename="add_user")
-#   user.user_permissions.add(perm)
-#   group.permissions.add(perm)
-#
-# Django auto-creates add/change/delete/view permissions for each model.
-# Custom permissions can be defined in a model's Meta class.
-# Django auto-creates add/change/delete/view permissions for each model.
-# Custom permissions can be defined in a model's Meta class.

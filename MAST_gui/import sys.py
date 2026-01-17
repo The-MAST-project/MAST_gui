@@ -4,7 +4,7 @@ sys.path.insert(0, '/path/to/MAST_common')
 from common.notifications import Notifier
 
 # Test focuser position update
-Notifier().send_update(
+Notifier().ui_update(
     path=['focuser', 'position'],
     value=12345,
     update_cache=True,

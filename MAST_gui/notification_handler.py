@@ -1,133 +1,200 @@
 import logging
 import time
+from pydantic import BaseModel
 from .context_processors import _MAST_CACHE, _MAST_CACHE_LOCK
 from common.models.statuses import ShortStatus
-from common.notifications import NotificationUpdateData
+from common.notifications import UiUpdateRequest, UiUpdateMessage, NotificationInitiator, NotificationCardType
 
 logger = logging.getLogger(__name__)
 
-def update_cache_from_notification(notification: NotificationUpdateData):
+def update_cache_from_update_request(update_request: UiUpdateRequest):
     """
-    Update _MAST_CACHE based on notification path
-    Path format: [site, machine_type, machine_name?, component, ..., field]
-    
-    Cache structure (_MAST_CACHE['status'] is a SitesStatus object):
-    - status.sites[site_name] → SiteStatus (dict access)
-    - SiteStatus.units[unit_name] → UnitStatus (dict access)
-    - SiteStatus.deepspec → DeepSpecStatus (attribute)
-    - SiteStatus.highspec → HighSpecStatus (attribute)
-    - SiteStatus.controller → ControllerStatus (attribute)
-    - UnitStatus.focuser → FocuserStatus (attribute)
-    - FocuserStatus.position → int (attribute)
+    Update in-memory cache from notification update request
     """
-    if not notification.cache or not notification.cache['path']:
+        
+    # Get SitesStatus object
+    sites_status = _MAST_CACHE.get('status')
+    if not sites_status or not hasattr(sites_status, 'sites'):
+        logger.warning("Cache status not initialized")
         return False
     
+    # Do we have a cache entry for the update_request.initiator.site?
+    if update_request.initiator.site not in sites_status.sites:
+        logger.warning(f"Site {update_request.initiator.site} not found in cache")
+        return False
+    site_key = update_request.initiator.site
+    if site_key not in sites_status.sites:
+        logger.warning(f"Site {site_key} not found in cache")
+        return False
+    
+    site_status = sites_status.sites[site_key]
+    match update_request.initiator.type:
+        case 'unit':
+            type_key = 'units'
+        case 'controller' | 'deepspec' | 'highspec':
+            type_key = update_request.initiator.type
+        case _:
+            logger.warning(f"Unknown initiator type: {update_request.initiator.type}")
+            return False
+    if type_key not in site_status:
+        logger.warning(f"Type {type_key} not found in site status")
+        return False
+    
+    host_key = update_request.initiator.hostname
+    if host_key not in site_status[type_key]:
+        logger.warning(f"Host {host_key} not found in type {type_key}")
+        return False
+    
+    target = site_status[type_key][host_key] if type_key == 'units' else site_status[type_key]
+    if isinstance(target, ShortStatus):
+        logger.warning(f"Target for {type_key} {host_key} is ShortStatus, cannot update attributes")
+        return False
+    
+    for update_message in update_request.messages:
+        logger.debug(f"Update message: {update_message}")
+
+        if not update_message.cache:
+            logger.warning("No cache info in update message")
+            continue
+    
+        try:
+            dict_path = update_message.cache.path
+            value = update_message.cache.value
+        
+            # Walk dict_path to leaf (all attributes in Pydantic models)
+            for key in dict_path[:-1]:
+                if not hasattr(target, key):
+                    logger.warning(f"Attribute {key} not found on {type(target).__name__}")
+                    return False
+                target = getattr(target, key)
+                if target is None:
+                    logger.warning(f"Path element {key} is None")
+                    return False
+            
+            # Set final value (always attribute in Pydantic models)
+            final_key = dict_path[-1]
+            if not hasattr(target, final_key):
+                logger.warning(f"Final attribute {final_key} not found on {type(target).__name__}")
+                return False
+            
+            with _MAST_CACHE_LOCK:
+                setattr(target, final_key, value)        
+                # Update cache timestamp
+                _MAST_CACHE['last_refresh'] = time.time()
+                
+            logger.info(f"Cache updated: {'.'.join(map(str, dict_path))} = {value}")
+            return True
+        
+        except Exception as e:
+            logger.error(f"Cache update error: {e}", exc_info=True)
+            return False
+
+class CardSSEMessage(BaseModel):
+    """
+    Allows initiator to request a card notification be displayed in the UI
+    """
+    type: NotificationCardType = 'info'  # 'info'|'error'|'warning'|'start'|'end'
+    message: str | None = None
+    details: list[str] = []
+    duration: str | None = None  # For 'end' type cards
+
+def card_sses_from_update_request(update_request: UiUpdateRequest) -> list[CardSSEMessage] | None:
+    """
+    Generate toast card data from notification
+    
+    Returns dict with:
+        - type: 'info'|'error'|'warning'|'start'|'end'
+        - from: str
+        - message: str
+        - details: list[str] | None
+        - duration: str | None
+        - timestamp: float
+    """
+
+    for update_message in update_request.messages:
+        if not update_message.card:
+            continue  # No card in this message
+
+        try:
+            card_sse_message = CardSSEMessage(
+                type=update_message.card.get('type', 'info'),
+                message=update_message.card.get('message', 'no message'),
+                details=update_message.card.get('details', None),
+                duration=update_message.card.get('duration', None),
+            )
+                
+            return card_sse_message.model_dump()
+        
+        except Exception as e:
+            logger.error(f"Error generating toast card: {e}", exc_info=True)
+            return None
+
+class DomSSEMessage(BaseModel):
+    id: str
+    text: str | None = None
+    html: str | None = None
+
+def dom_sses_from_update_request(update_request: UiUpdateRequest) -> list[DomSSEMessage] | None:
+    """
+    Generate DOM update messages from notification
+    """
+    dom_sse_messages = []
+    
+    update_message: UiUpdateMessage | None = None
+    for update_message in update_request.messages:
+        if not update_message.dom:
+            continue  # No DOM update in this message
+        
+        dom_update_message = update_message.dom
+        
+        try:
+            id=dom_update_message.id
+            match dom_update_message.render_as:
+                case 'txt':
+                    dom_sse_message = DomSSEMessage(
+                        id=id,
+                        text=str(update_message.cache.value) if update_message.cache else '',
+                    )
+                case 'badge':
+                    badges = []
+                    for value in update_message.cache.value if update_message.cache else []:
+                        badges.append(f'<span class="badge bg-primary me-1">{str(value)}</span>')
+                    dom_sse_message = DomSSEMessage(
+                        id=id,
+                        html=''.join(badges),
+                    )
+                case _:
+                    logger.warning(f"Unknown DOM render_as: '{dom_update_message.render_as}'")
+                    continue
+                
+            dom_sse_messages.append(dom_sse_message.model_dump())
+        
+        except Exception as e:
+            logger.error(f"Error generating DOM update message: {e}", exc_info=True)
+            return None
+    
+    return dom_sse_messages if dom_sse_messages else None
+
+class UpdateSSEMessage(BaseModel):
+    initiator: NotificationInitiator | None = None
+    cards: list[CardSSEMessage] | None = None
+    doms: list[DomSSEMessage] | None = None
+
+def update_sse_message_from_update_request(update_request: UiUpdateRequest) -> UpdateSSEMessage | None:
+    """
+    Generate SSE message from notification update request
+    """
     try:
-        path = notification.cache['path']
-        value = notification.value
+        update_sse_message = UpdateSSEMessage(
+            initiator=update_request.initiator,
+            cards=card_sses_from_update_request(update_request),
+            doms=dom_sses_from_update_request(update_request)
+        )
+        if len(update_sse_message.cards or []) == 0 and len(update_sse_message.doms or []) == 0:
+            return None
         
-        if not path or value is None:
-            return False
-        
-        # Parse path components
-        site = path[0]
-        machine_type = path[1]
-        
-        # Get SitesStatus object
-        sites_status = _MAST_CACHE.get('status')
-        if not sites_status:
-            logger.warning("Cache status not initialized")
-            return False
-        
-        # Navigate to SiteStatus - sites is a dict attribute
-        if not hasattr(sites_status, 'sites') or site not in sites_status.sites:
-            logger.warning(f"Site {site} not found in cache")
-            return False
-        
-        site_status = sites_status.sites[site]
-        
-        # Handle different machine types
-        if machine_type == 'unit':
-            machine_name = path[2]
-            dict_path = path[3:]  # ['focuser', 'position']
-            
-            # Get unit from units dict (units is an attribute, then dict access)
-            if not hasattr(site_status, 'units') or not site_status.units:
-                logger.warning(f"No units found for site {site}")
-                return False
-            
-            if machine_name not in site_status.units:
-                logger.warning(f"Unit {machine_name} not found in site {site}")
-                return False
-            
-            if isinstance(site_status.units[machine_name], ShortStatus):
-                logger.warning(f"Cannot update short status for unit {machine_name}")
-                return False
-            
-            target = site_status.units[machine_name]
-        
-        elif machine_type == 'spec':
-            spec_name = path[2]  # 'deepspec' or 'highspec'
-            dict_path = path[3:]  # remaining path after spec name
-            
-            # Access spec as attribute
-            if not hasattr(site_status, spec_name):
-                logger.warning(f"Spec {spec_name} not found for site {site}")
-                return False
-            
-            if getattr(site_status, spec_name).type == 'short':
-                logger.warning(f"Cannot update short status for spec {spec_name}")
-                return False
-            
-            target = getattr(site_status, spec_name)
-        
-        elif machine_type == 'controller':
-            dict_path = path[2:]  # Everything after 'controller'
-            
-            # Access controller as attribute
-            if not hasattr(site_status, 'controller'):
-                logger.warning(f"Controller not found for site {site}")
-                return False
-            
-            if getattr(site_status, 'controller').type == 'short':
-                logger.warning(f"Cannot update short status for controller {site}")
-                return False
-            
-            target = site_status.controller
-        
-        else:
-            logger.warning(f"Unknown machine_type: {machine_type}")
-            return False
-        
-        if target is None:
-            logger.warning(f"Target is None for path: {path}")
-            return False
-        
-        # Walk dict_path to leaf (all attributes in Pydantic models)
-        for key in dict_path[:-1]:
-            if not hasattr(target, key):
-                logger.warning(f"Attribute {key} not found on {type(target).__name__}")
-                return False
-            target = getattr(target, key)
-            if target is None:
-                logger.warning(f"Path element {key} is None")
-                return False
-        
-        # Set final value (always attribute in Pydantic models)
-        final_key = dict_path[-1]
-        if not hasattr(target, final_key):
-            logger.warning(f"Final attribute {final_key} not found on {type(target).__name__}")
-            return False
-        
-        with _MAST_CACHE_LOCK:
-            setattr(target, final_key, value)        
-            # Update cache timestamp
-            _MAST_CACHE['last_refresh'] = time.time()
-            
-        logger.info(f"Cache updated: {'.'.join(map(str, path))} = {value}")
-        return True
+        return update_sse_message
     
     except Exception as e:
-        logger.error(f"Cache update error: {e}", exc_info=True)
-        return False
+        logger.error(f"Error generating SSE message from update request: {e}", exc_info=True)
+        return None
