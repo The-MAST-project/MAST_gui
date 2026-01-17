@@ -141,6 +141,7 @@ _MAST_CACHE = {
 }
 
 _MAST_CACHE_LOCK: Lock = Lock()
+_MAST_CACHE_TTL = 120  # Default TTL for periodic refresh
 
 def refresh_cache():
     """
