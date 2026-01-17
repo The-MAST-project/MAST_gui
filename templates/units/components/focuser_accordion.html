@@ -43,7 +43,7 @@
                 <div style="width: 40px;"></div>
                 
                 <!-- Details column (fixed width) -->
-                <div style="width: 400px;">
+                <div id="id-focuser-position" style="width: 400px;">
                     {% if focuser.position is not None %}
                         <span>
                             <small class="text-muted">Position:</small>
@@ -53,7 +53,7 @@
                 </div>
                 
                 <!-- Activities column -->
-                <div class="flex-fill d-flex gap-2">
+                <div id="id-focuser-activities" class="flex-fill d-flex gap-2">
                     {% if focuser.activities_verbal %}
                         {% for activity in focuser.activities_verbal %}
                             <span class="badge {{ activity|activity_badge_class }}">

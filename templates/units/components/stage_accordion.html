@@ -42,7 +42,7 @@
                 <div style="width: 40px;"></div>
                 
                 <!-- Details column (fixed width) -->
-                <div style="width: 400px;" class="d-flex gap-3">
+                <div id="id-stage-position" style="width: 400px;" class="d-flex gap-3">
                     {% if stage.position is not None %}
                         <span>
                             <small class="text-muted">Position:</small>
@@ -55,7 +55,7 @@
                 </div>
                 
                 <!-- Activities column -->
-                <div class="flex-fill d-flex gap-2">
+                <div id="id-stage-activities" class="flex-fill d-flex gap-2">
                     {% if stage.activities_verbal %}
                         {% for activity in stage.activities_verbal %}
                             <span class="badge {{ activity|activity_badge_class }}">
@@ -171,9 +171,9 @@
                                             </div>
                                         {% endif %}
                                         
+                                        <strong>Activities:</strong>
                                         {% if stage.activities_verbal %}
-                                            <div class="alert alert-primary">
-                                                <strong>Activities:</strong>
+                                            <div id="id-stage-activities" class="alert alert-primary">
                                                 <ul class="mb-0">
                                                     {% for activity in stage.activities_verbal %}
                                                         <li>{{ activity|format_activity_name }}</li>

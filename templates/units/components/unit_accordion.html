@@ -58,7 +58,7 @@
                 </div>
                 
                 <!-- Activities column -->
-                <div class="flex-fill d-flex gap-2">
+                <div id="id-unit-activities" class="flex-fill d-flex gap-2">
                     {% if unit.activities_verbal %}
                         {% for activity in unit.activities_verbal %}
                             <span class="badge {{ activity|activity_badge_class }}">
@@ -168,7 +168,7 @@
                                 </table>
                                 
                                 {% if unit.activities_verbal %}
-                                    <div class="alert alert-primary">
+                                    <div id="id-unit-activities" class="alert alert-primary">
                                         <strong>Activities:</strong>
                                         <ul class="mb-0">
                                             {% for activity in unit.activities_verbal %}

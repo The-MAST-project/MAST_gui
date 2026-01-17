@@ -52,7 +52,7 @@
                 </div>
                 
                 <!-- Activities column -->
-                <div class="flex-fill d-flex gap-2">
+                <div id="id-mount-activities" class="flex-fill d-flex gap-2">
                     {% if mount.activities_verbal %}
                         {% for activity in mount.activities_verbal %}
                             <span class="badge {{ activity|activity_badge_class }}">
@@ -177,7 +177,7 @@
                                         {% endif %}
                                         
                                         {% if mount.activities_verbal %}
-                                            <div class="alert alert-primary">
+                                            <div id="id-mount-activities" class="alert alert-primary">
                                                 <strong>Activities:</strong>
                                                 <ul class="mb-0">
                                                     {% for activity in mount.activities_verbal %}
