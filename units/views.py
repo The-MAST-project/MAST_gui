@@ -75,26 +75,28 @@ def units_list(request):
             else:
                 status_text = 'Planned'
             
-            # Get unit status from controller API using discriminated union
-            controller = ControllerApi(site_name=current_site)
-            response = asyncio.run(controller.client.get(f"unit/{current_site}/{unit_id}/status"))
-            
             operational_status = 'unknown'
             activities_verbal = []
-            if response.succeeded and response.value:
-                unit_status: UnitStatus = response.value
-                if isinstance(unit_status, ShortStatus):
-                    # Controller couldn't reach unit
-                    operational_status = 'operational' if unit_status.operational else 'offline'
-                    activities_verbal = getattr(unit_status, 'activities_verbal', []) or []
-                    if isinstance(activities_verbal, str):
-                        activities_verbal = [activities_verbal]
-                elif isinstance(unit_status, FullUnitStatus):
-                    # Full status from unit
-                    operational_status = 'operational' if unit_status.operational else 'error'
-                    activities_verbal = getattr(unit_status, 'activities_verbal', []) or []
-                    if isinstance(activities_verbal, str):
-                        activities_verbal = [activities_verbal]
+            if unit_id in site.deployed_units and unit_id not in site.units_in_maintenance:
+                # Get unit status from controller API using discriminated union
+                controller = ControllerApi(site_name=current_site)
+                response = asyncio.run(controller.client.get(f"unit/{current_site}/{unit_id}/status"))
+                
+                activities_verbal = []
+                if response.succeeded and response.value:
+                    unit_status: UnitStatus = response.value
+                    if isinstance(unit_status, ShortStatus):
+                        # Controller couldn't reach unit
+                        operational_status = 'operational' if unit_status.operational else 'offline'
+                        activities_verbal = getattr(unit_status, 'activities_verbal', []) or []
+                        if isinstance(activities_verbal, str):
+                            activities_verbal = [activities_verbal]
+                    elif isinstance(unit_status, FullUnitStatus):
+                        # Full status from unit
+                        operational_status = 'operational' if unit_status.operational else 'error'
+                        activities_verbal = getattr(unit_status, 'activities_verbal', []) or []
+                        if isinstance(activities_verbal, str):
+                            activities_verbal = [activities_verbal]
             
             unit_data = {
                 'name': unit_id,
@@ -265,7 +267,7 @@ def unit_detail(request, unit_name):
                 }
             
             if unit_status.focuser:
-                focuser_activities = unit_status.focuser.ctivities_verbal or []
+                focuser_activities = unit_status.focuser.activities_verbal or []
                 if isinstance(focuser_activities, str):
                     focuser_activities = [focuser_activities]
                 
