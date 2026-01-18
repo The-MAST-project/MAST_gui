@@ -1,0 +1,74 @@
+/* MAST Color Scheme - Subdued Palette */
+:root {
+    /* Notification/Status Colors */
+    --mast-info-bg: #cff4fc;
+    --mast-info-text: #055160;
+    --mast-info-border: #9eeaf9;
+    
+    --mast-success-bg: #d1e7dd;
+    --mast-success-text: #0f5132;
+    --mast-success-border: #a3cfbb;
+    
+    --mast-warning-bg: #fff3cd;
+    --mast-warning-text: #664d03;
+    --mast-warning-border: #ffe69c;
+    
+    --mast-danger-bg: #f8d7da;
+    --mast-danger-text: #842029;
+    --mast-danger-border: #f1aeb5;
+    
+    --mast-primary-bg: #cfe2ff;
+    --mast-primary-text: #084298;
+    --mast-primary-border: #9ec5fe;
+    
+    /* Semantic Aliases */
+    --mast-start-bg: var(--mast-primary-bg);
+    --mast-start-text: var(--mast-primary-text);
+    --mast-start-border: var(--mast-primary-border);
+    
+    --mast-end-bg: var(--mast-success-bg);
+    --mast-end-text: var(--mast-success-text);
+    --mast-end-border: var(--mast-success-border);
+    
+    --mast-error-bg: var(--mast-danger-bg);
+    --mast-error-text: var(--mast-danger-text);
+    --mast-error-border: var(--mast-danger-border);
+}
+
+/* Global Badge Styles */
+.badge {
+    background-color: #e9ecef !important;
+    color: #333 !important;
+    border-radius: 0.375rem !important;
+    font-weight: 500;
+}
+
+.badge.bg-info {
+    background-color: var(--mast-info-bg) !important;
+    color: var(--mast-info-text) !important;
+}
+
+.badge.bg-success {
+    background-color: var(--mast-success-bg) !important;
+    color: var(--mast-success-text) !important;
+}
+
+.badge.bg-warning {
+    background-color: var(--mast-warning-bg) !important;
+    color: var(--mast-warning-text) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--mast-danger-bg) !important;
+    color: var(--mast-danger-text) !important;
+}
+
+.badge.bg-primary {
+    background-color: var(--mast-primary-bg) !important;
+    color: var(--mast-primary-text) !important;
+}
+
+.badge.bg-secondary {
+    background-color: #e2e3e5 !important;
+    color: #41464b !important;
+}
