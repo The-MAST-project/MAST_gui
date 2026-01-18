@@ -97,19 +97,15 @@ class CardSSEMessage(BaseModel):
     message: str | None = None
     details: list[str] = []
     duration: str | None = None  # For 'end' type cards
+    component: str | None = None
 
 def card_sses_from_update_request(update_request: UiUpdateRequest) -> list[CardSSEMessage] | None:
     """
     Generate toast card data from notification
     
-    Returns dict with:
-        - type: 'info'|'error'|'warning'|'start'|'end'
-        - from: str
-        - message: str
-        - details: list[str] | None
-        - duration: str | None
-        - timestamp: float
+    Returns list of CardSSEMessage dicts
     """
+    card_sse_messages = []  # Change: create a list
 
     for update_message in update_request.messages:
         if not update_message.card:
@@ -117,17 +113,20 @@ def card_sses_from_update_request(update_request: UiUpdateRequest) -> list[CardS
 
         try:
             card_sse_message = CardSSEMessage(
-                type=update_message.card.get('type', 'info'),
-                message=update_message.card.get('message', 'no message'),
-                details=update_message.card.get('details', None),
-                duration=update_message.card.get('duration', None),
+                type=update_message.card.type,
+                message=update_message.card.message,
+                details=update_message.card.details,
+                duration=update_message.card.duration,
+                component=update_message.card.component,
             )
                 
-            return card_sse_message.model_dump()
+            card_sse_messages.append(card_sse_message.model_dump())  # Change: append to list
         
         except Exception as e:
             logger.error(f"Error generating toast card: {e}", exc_info=True)
-            return None
+            continue  # Change: continue to next message instead of return
+    
+    return card_sse_messages if card_sse_messages else None  # Change: return list or None
 
 class DomSSEMessage(BaseModel):
     id: str
@@ -156,12 +155,15 @@ def dom_sses_from_update_request(update_request: UiUpdateRequest) -> list[DomSSE
                         text=str(update_message.cache.value) if update_message.cache else '',
                     )
                 case 'badge':
-                    badges = []
-                    for value in update_message.cache.value if update_message.cache else []:
-                        badges.append(f'<span class="badge bg-primary me-1">{str(value)}</span>')
+                    html = ''
+                    if isinstance(update_message.cache.value, list):
+                        values = update_message.cache.value
+                        for value in values:
+                            html += f'<span class="badge bg-primary me-1">{str(value)}</span>'
+
                     dom_sse_message = DomSSEMessage(
                         id=id,
-                        html=''.join(badges),
+                        html=html if len(html) > 0 else '<span class="badge bg-secondary me-1">Idle</span>',
                     )
                 case _:
                     logger.warning(f"Unknown DOM render_as: '{dom_update_message.render_as}'")
