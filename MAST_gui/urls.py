@@ -64,7 +64,6 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     # Catch-all pattern for all non-static/media URLs
     # re_path(r'^.*$', mast_dash_redirect),
-    # path('api/notifications', views.handle_notification, name='api_notifications'), # Remove?
     path('api/debug/cache', views.debug_cache, name='debug_cache'),
     path('api/debug/refresh', views.refresh_cache_endpoint, name='refresh_cache'),
     
@@ -72,7 +71,7 @@ urlpatterns = [
     path('sse/stream/', views.sse_stream, name='sse_stream'),
     
     # Notification handler
-    path('api/notification/', views.handle_notification, name='handle_notification'),
+    path('api/notifications/', views.handle_notification, name='handle_notification'),  # ✅ KEEP this one
 ]
 
 if settings.DEBUG:
