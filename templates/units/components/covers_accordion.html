@@ -57,7 +57,7 @@
                 </div>
                 
                 <!-- Activities column -->
-                <div id="id-covers-activities" class="flex-fill d-flex gap-2">
+                <div id="id-covers-activities_verbal" class="flex-fill d-flex gap-2">
                     {% if covers.activities_verbal %}
                         {% for activity in covers.activities_verbal %}
                             <span class="badge {{ activity|activity_badge_class }}">
@@ -169,9 +169,9 @@
                                             </div>
                                         {% endif %}
                                         
+                                        <strong>Activities:</strong>
                                         {% if covers.activities_verbal %}
-                                            <div id="id-covers-activities" class="alert alert-primary">
-                                                <strong>Activities:</strong>
+                                            <div id="id-covers-activities_verbal" class="alert alert-primary">
                                                 <ul class="mb-0">
                                                     {% for activity in covers.activities_verbal %}
                                                         <li>{{ activity|format_activity_name }}</li>
