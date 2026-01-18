@@ -323,10 +323,15 @@ def handle_notification(request):
             return JsonResponse({'broadcasted': False, 'reason': 'no_clients'})
         
         sse_message = update_sse_message_from_update_request(update_request)
-        sse_manager.broadcast('notification', sse_message)
-        logger.info(f"Broadcast notification to {sse_manager.client_count} clients")
+        data = sse_message.model_dump_json() if sse_message else None
+        if data is not None:
+            sse_manager.broadcast('notification', data)
+            logger.info(f"Broadcast notification to {sse_manager.client_count} clients")
         
-        return JsonResponse({'broadcasted': True})
+            return JsonResponse({'broadcasted': True})
+        else:
+            logger.warning("No data to broadcast from notification")
+            return JsonResponse({'broadcasted': False, 'reason': 'no_data'})
     
     except Exception as e:
         logger.error(f"Notification handling error: {e}")
