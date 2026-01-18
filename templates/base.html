@@ -12,6 +12,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{% get_dynamic_static_url 'css/logo.css' %}">
+    <link rel="stylesheet" href="{% get_dynamic_static_url 'css/colors.css' %}">
     <link rel="stylesheet" href="{% get_dynamic_static_url 'css/notifications.css' %}">
     <link rel="icon" type="image/x-icon" href="{% get_dynamic_static_url 'favicon.ico' %}">
     
@@ -173,6 +174,9 @@
         });
     </script>
     
+    <!-- MAST Color Scheme -->
+    <script src="{% get_dynamic_static_url 'js/colors.js' %}"></script>
+    
     <!-- Notification JavaScript -->
     <script src="{% get_dynamic_static_url 'js/notifications.js' %}"></script>
     
@@ -199,9 +203,10 @@
             const event = JSON.parse(e.data);
             console.log('SSE Handler: Parsed event data', event);
             
-            showEventDoms(event);
-            if (shoulShowEventCards(event)) {
-                showEventCards(event);
+            update = JSON.parse(event)
+            showEventDoms(update);
+            if (shoulShowEventCards(update)) {
+                showEventCards(update);
             }
         });
         
@@ -210,13 +215,13 @@
             console.error('SSE Handler: ReadyState', eventSource.readyState);
         };
         
-        function shoulShowEventCards(event) {
+        function shoulShowEventCards(update) {
             // Determine if the event cards should be displayed based on current page and selected site
 
             const currentPage = window.location.pathname;
             const selectedSite = '{{ request.session.selected_site }}';
             
-            console.log('SSE Handler: Filtering - Page:', currentPage, 'selectedSite:', selectedSite, 'Event:', event);
+            console.log('SSE Handler: Filtering - Page:', currentPage, 'selectedSite:', selectedSite, 'Update:', update);
             
             // Check if we're on site_dashboard or unit_details
             const isSiteDashboard = currentPage.match(/\/units\/?$/);
@@ -231,8 +236,8 @@
             }
             
             // Must match selected site
-            if (event.initiator.site !== selectedSite) {
-                console.log('SSE Handler: REJECT - Site mismatch. Toast site:', event.initiator.site, 'Selected:', selectedSite);
+            if (update.initiator.site !== selectedSite) {
+                console.log('SSE Handler: REJECT - Site mismatch. Toast site:', update.initiator.site, 'Selected:', selectedSite);
                 return false;
             }
             
@@ -248,19 +253,19 @@
                 console.log('SSE Handler: On unit details page. Selected unit:', selectedUnit);
                 
                 // Show if it's a unit notification matching selected unit
-                if (event.initiator.machine_type === 'unit' && event.initiator.machine_name === selectedUnit) {
+                if (update.initiator.type === 'unit' && update.initiator.hostname === selectedUnit) {
                     console.log('SSE Handler: ACCEPT - Unit notification matches selected unit');
                     return true;
                 }
                 
                 // Also show site-level components (controller, specs) on unit details
-                if (event.initiator.machine_type === 'controller' || 
-                    event.initiator.machine_type === 'spec') {
+                if (update.initiator.type === 'controller' || 
+                    update.initiator.type === 'spec') {
                     console.log('SSE Handler: ACCEPT - Site-level component (controller/spec)');
                     return true;
                 }
                 
-                console.log('SSE Handler: REJECT - Unit notification does not match. Toast machine:', event.initiator.machine_type, event.initiator.machine_name);
+                console.log('SSE Handler: REJECT - Unit notification does not match. Toast machine:', update.initiator.type, update.initiator.hostname);
                 return false;
             }
             
@@ -268,10 +273,14 @@
             return false;
         }
 
-        function showEventDoms(event) {
+        function showEventDoms(update) {
             // Update DOM elements as specified in the event
             
-            for (const dom of event.doms) {
+            if (update.doms === undefined || update.doms === null || update.doms.length === 0) {
+                console.log('SSE Handler: No DOM updates to process');
+                return;
+            }
+            for (const dom of update.doms) {
                 // lookup element by id and update its innerHTML
                 const element = document.getElementById(dom.id);
                 if (element) {
@@ -290,7 +299,7 @@
             }
         }
         
-        function showEventCards(event) {
+        function showEventCards(update) {
             // Display event cards as toast notifications
 
             // Get or create toast container
@@ -302,34 +311,22 @@
                 document.body.appendChild(container);
             }
             
-            for (const card of event.cards) {
+            for (const card of update.cards) {
                 // Create toast element
                 const toastId = 'toast-' + Date.now();
                 const toastEl = document.createElement('div');
                 
-                // Map notification card types to colors and icons
-                let initiator = event.initiator || {};
-
-                let borderColor = '#0dcaf0';  // info blue
-                let icon = 'bi-info-circle-fill';
+                // Use centralized color scheme
+                let initiator = update.initiator || {};
+                let type = card.type || 'info';
                 
-                if (card.type === 'error') {
-                    borderColor = '#dc3545';  // danger red
-                    icon = 'bi-x-circle-fill';
-                } else if (card.type === 'warning') {
-                    borderColor = '#ffc107';  // warning yellow
-                    icon = 'bi-exclamation-triangle-fill';
-                } else if (card.type === 'start') {
-                    borderColor = '#0d6efd';  // primary blue
-                    icon = 'bi-play-circle-fill';
-                } else if (card.type === 'end') {
-                    borderColor = '#198754';  // success green
-                    icon = 'bi-check-circle-fill';
-                }
-            
+                // Get colors and icon from central scheme
+                let colors = getMastColors(type);
+                let icon = getMastIcon(type);
+                
                 toastEl.className = `toast`;
-                toastEl.style.border = `3px solid ${borderColor}`;  // Thick colored border all around
-                toastEl.style.boxShadow = '0 0.5rem 1rem rgba(0, 0, 0, 0.15)';  // Add shadow for depth
+                toastEl.style.border = `3px solid ${colors.border}`;
+                toastEl.style.boxShadow = '0 0.5rem 1rem rgba(0, 0, 0, 0.15)';
                 toastEl.id = toastId;
                 toastEl.setAttribute('role', 'alert');
                 toastEl.setAttribute('aria-live', 'assertive');
@@ -337,7 +334,7 @@
             
                 let detailsHtml = '';
                 if (card.details && card.details.length > 0) {
-                    detailsHtml = '<strong>Details:</strong><ul class="small mb-0 mt-1">';
+                    detailsHtml = '<strong>Details:</strong><ul class="small mb-1 mt-1">';
                     card.details.forEach(detail => {
                         detailsHtml += `<li>${detail}</li>`;
                     });
@@ -349,17 +346,14 @@
                     durationHtml = `<strong>Duration:</strong> ${card.duration}`;
                 }
                 
-                let component = initiator.component || null;
-                let from = `${initiator.site}:${initiator.machine_name}`;
-                if (component) {
-                    from += `:${component}`;
-                }
+                let from = `${initiator.hostname} (${initiator.site})`;
             
                 toastEl.innerHTML = `
-                    <div class="d-flex align-items-start">
-                        <i class="bi ${icon} ms-2" style="font-size: 1.5rem; color: ${borderColor};"></i>
-                        <div class="toast-body flex-grow-1 bg-white">
+                    <div class="d-flex mb-2 align-items-start">
+                        <i class="bi ${icon} ms-2 me-2 mt-1" style="font-size: 1.5rem; color: ${colors.border};"></i>
+                        <div class="toast-body flex-grow-1">
                             <strong>From:</strong> ${from}<br>
+                            <strong>Component:</strong> ${card.component}<br>
                             <strong>Message:</strong> ${card.message}<br>
                             ${detailsHtml}
                             ${durationHtml}
@@ -373,7 +367,7 @@
                 // Show toast using Bootstrap
                 const toast = new bootstrap.Toast(toastEl, {
                     autohide: true,
-                    delay: 5000  // 5 seconds
+                    delay: 10000  // 10 seconds
                 });
                 toast.show();
                 
