@@ -70,6 +70,20 @@ Context processors for adding global template variables.
 logger = logging.getLogger('mast.context_processors')
 
 
+# In-memory cache for config and status (simple, per-process)
+_MAST_CACHE = {
+    'sites': [],
+    'status': {},
+    'last_refresh': 0,
+    'controller_last_check': None,  # Add this
+    'controller_connected': False,  # Add this
+    'controller_error': None,  # Add this
+    'ttl': 30,  # seconds
+}
+
+_MAST_CACHE_LOCK: Lock = Lock()
+_MAST_CACHE_TTL = 120  # Default TTL for periodic refresh
+
 def controller_status(request):
     """
     Add controller connection status to all templates.
@@ -96,52 +110,18 @@ def controller_status(request):
         # Use controller_host from site configuration
         controller_host = site_obj.controller_host
     
-    # Try to connect to controller with site_name parameter
-    controller = ControllerApi(site_name=site)
-    
-    try:
-        response = asyncio.run(controller.client.get("status", timeout=3))
-        status = {
-            'connected': response.succeeded,
-            'last_check': datetime.now(),
-            'error': None if response.succeeded else str(response.errors),
-            'retry_count': 0,
+    # Return cached status instead of checking every time
+    return {
+        'controller_status': {
+            'connected': _MAST_CACHE.get('controller_connected', False),
+            'last_check': _MAST_CACHE.get('controller_last_check'),
+            'error': _MAST_CACHE.get('controller_error'),
+            'retry_count': request.session.get('controller_retry_count', 0),
             'controller_host': controller_host,
         }
-        
-        # Reset retry count on success
-        if response.succeeded:
-            request.session['controller_retry_count'] = 0
-        
-    except Exception as e:
-        logger.warning(f"Cannot connect to controller {controller_host}: {e}")
-        
-        # Increment retry count
-        retry_count = request.session.get('controller_retry_count', 0)
-        request.session['controller_retry_count'] = retry_count + 1
-        
-        status = {
-            'connected': False,
-            'last_check': datetime.now(),
-            'error': str(e),
-            'retry_count': retry_count + 1,
-            'controller_host': controller_host,
-        }
-    
-    return {'controller_status': status}
+    }
 
-logger = logging.getLogger('mast.context_processors')
-
-# In-memory cache for config and status (simple, per-process)
-_MAST_CACHE = {
-    'sites': [],
-    'status': {},
-    'last_refresh': 0,
-    'ttl': 30,  # seconds
-}
-
-_MAST_CACHE_LOCK: Lock = Lock()
-_MAST_CACHE_TTL = 120  # Default TTL for periodic refresh
+# ...existing code...
 
 def refresh_cache():
     """
@@ -166,6 +146,9 @@ def refresh_cache():
             if hasattr(resp, '__await__'):
                 resp = asyncio.run(resp)
             
+            # Update controller connection status in cache
+            check_time = datetime.now()
+            
             # Check if response succeeded and parse as SitesStatus
             if resp and getattr(resp, 'succeeded', False) and resp.value:
                 # resp.value should be dict that can be parsed as SitesStatus
@@ -175,6 +158,11 @@ def refresh_cache():
                         _MAST_CACHE['status'] = SitesStatus(**resp.value)
                     else:
                         _MAST_CACHE['status'] = resp.value  # Already a SitesStatus object
+                    
+                    # Update controller connection status
+                    _MAST_CACHE['controller_connected'] = True
+                    _MAST_CACHE['controller_last_check'] = check_time
+                    _MAST_CACHE['controller_error'] = None
                 
                 for site in _MAST_CACHE['status'].sites.keys():
                     msg = f"Status cache: [{site}]: "
@@ -189,20 +177,33 @@ def refresh_cache():
                         msg += f"{unit_name}({type(unit_status).__name__}), "
                     logger.info(msg)
             else:
-                logger.warning(f"Failed to fetch status from backend: {getattr(resp, 'errors', 'Unknown error')}")
-                _MAST_CACHE['status'] = None
+                error_msg = getattr(resp, 'errors', 'Unknown error')
+                logger.warning(f"Failed to fetch status from backend: {error_msg}")
+                with _MAST_CACHE_LOCK:
+                    _MAST_CACHE['status'] = None
+                    _MAST_CACHE['controller_connected'] = False
+                    _MAST_CACHE['controller_last_check'] = check_time
+                    _MAST_CACHE['controller_error'] = str(error_msg)
         else:
             logger.warning("No sites configured")
-            _MAST_CACHE['status'] = None
+            with _MAST_CACHE_LOCK:
+                _MAST_CACHE['status'] = None
+                _MAST_CACHE['controller_connected'] = False
+                _MAST_CACHE['controller_last_check'] = datetime.now()
+                _MAST_CACHE['controller_error'] = "No sites configured"
             
         _MAST_CACHE['last_refresh'] = time.time()
         return True
         
     except Exception as e:
         logger.error(f"Error refreshing cache: {e}", exc_info=True)
-        _MAST_CACHE['status'] = None
-        _MAST_CACHE['sites'] = []
-        _MAST_CACHE['last_refresh'] = time.time()
+        with _MAST_CACHE_LOCK:
+            _MAST_CACHE['status'] = None
+            _MAST_CACHE['sites'] = []
+            _MAST_CACHE['controller_connected'] = False
+            _MAST_CACHE['controller_last_check'] = datetime.now()
+            _MAST_CACHE['controller_error'] = str(e)
+            _MAST_CACHE['last_refresh'] = time.time()
         return False
 
 def mast(request):
