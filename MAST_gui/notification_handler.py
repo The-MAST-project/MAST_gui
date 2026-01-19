@@ -200,3 +200,51 @@ def update_sse_message_from_update_request(update_request: UiUpdateRequest) -> U
     except Exception as e:
         logger.error(f"Error generating SSE message from update request: {e}", exc_info=True)
         return None
+
+def broadcast_activity_indicators_update():
+    """
+    Broadcast activity indicator updates for all sites after cache refresh.
+    Called after periodic cache refresh in apps.py.
+    """
+    from .context_processors import _MAST_CACHE
+    from .sse_manager import sse_manager
+    
+    sites_status = _MAST_CACHE.get('status')
+    if not sites_status or not hasattr(sites_status, 'sites'):
+        logger.warning("No status in cache, skipping activity indicators broadcast")
+        return
+    
+    for site_name, site_status in sites_status.sites.items():
+        # Build update message with all component activities for this site
+        activities_update = {
+            'type': 'activity_indicators_refresh',
+            'site': site_name,
+            'components': {}
+        }
+        
+        # Add controller activities
+        if hasattr(site_status, 'controller') and site_status.controller:
+            activities_update['components']['controller'] = getattr(
+                site_status.controller, 'activities_verbal', []
+            )
+        
+        # Add spec activities
+        if hasattr(site_status, 'deepspec') and site_status.deepspec:
+            activities_update['components']['deepspec'] = getattr(
+                site_status.deepspec, 'activities_verbal', []
+            )
+        if hasattr(site_status, 'highspec') and site_status.highspec:
+            activities_update['components']['highspec'] = getattr(
+                site_status.highspec, 'activities_verbal', []
+            )
+        
+        # Add unit activities
+        if hasattr(site_status, 'units') and site_status.units:
+            for unit_name, unit_status in site_status.units.items():
+                activities_update['components'][unit_name] = getattr(
+                    unit_status, 'activities_verbal', []
+                )
+        
+        # Broadcast to all connected clients
+        sse_manager.broadcast('activity_refresh', activities_update)
+        logger.debug(f"Broadcast activity refresh for site {site_name}: {len(activities_update['components'])} components")

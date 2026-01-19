@@ -1,0 +1,30 @@
+<!-- filepath: /home/mast/PycharmProjects/MAST_gui/templates/components/component_card.html -->
+{# 
+  Reusable component card for units and instruments
+  
+  Parameters:
+    - name: Display name (required)
+    - deployed: Boolean - component is deployed/detected
+    - status_text: String - status badge text (e.g., "Deployed", "Detected", "Planned")
+    - status_secondary: String - secondary status text for non-deployed (optional)
+    - activities: List - activities_verbal for activity indicator
+    - url: String - link destination (default: '#')
+    - onclick: String - JavaScript onclick handler (optional)
+#}
+
+<a href="{{ url|default:'#' }}" class="text-decoration-none"
+   {% if onclick %}onclick="{{ onclick }}; return false;"{% endif %}>
+    <div class="card unit-card {% if deployed %}deployed{% else %}planned{% endif %}">
+        <div class="card-body text-center p-2">
+            <h6 class="mb-1">
+                {% include 'components/activity_indicator.html' with activities=activities %}
+                {{ name }}
+            </h6>
+            {% if deployed %}
+                <span class="badge bg-success">{{ status_text|default:"Deployed" }}</span>
+            {% else %}
+                <span class="badge bg-secondary">{{ status_secondary|default:status_text|default:"Not Detected" }}</span>
+            {% endif %}
+        </div>
+    </div>
+</a>

@@ -23,14 +23,10 @@
                                onclick="showInstrumentModal('{{ instrument_room.deepspec.display_name }}'); return false;">
                                 <div class="card unit-card {% if instrument_room.deepspec.detected %}deployed{% else %}planned{% endif %}">
                                     <div class="card-body text-center p-2">
-                                        <h6 class="mb-1">{{ instrument_room.deepspec.display_name }}</h6>
-                                        {% if instrument_room.deepspec.activities_verbal %}
-                                            <div class="mb-1">
-                                                {% for activity in instrument_room.deepspec.activities_verbal %}
-                                                    <span class="badge bg-info text-dark">{{ activity }}</span>
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
+                                        <h6 class="mb-1">
+                                            {% include 'components/activity_indicator.html' with activities=instrument_room.deepspec.activities_verbal component_id="deepspec" %}
+                                            {{ instrument_room.deepspec.display_name }}
+                                        </h6>
                                         {% if instrument_room.deepspec.detected %}
                                             <span class="badge bg-success">Detected</span>
                                         {% else %}
@@ -49,14 +45,10 @@
                                onclick="showInstrumentModal('{{ instrument_room.highspec.display_name }}'); return false;">
                                 <div class="card unit-card {% if instrument_room.highspec.detected %}deployed{% else %}planned{% endif %}">
                                     <div class="card-body text-center p-2">
-                                        <h6 class="mb-1">{{ instrument_room.highspec.display_name }}</h6>
-                                        {% if instrument_room.highspec.activities_verbal %}
-                                            <div class="mb-1">
-                                                {% for activity in instrument_room.highspec.activities_verbal %}
-                                                    <span class="badge bg-info text-dark">{{ activity }}</span>
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
+                                        <h6 class="mb-1">
+                                            {% include 'components/activity_indicator.html' with activities=instrument_room.highspec.activities_verbal component_id="highspec"%}
+                                            {{ instrument_room.highspec.display_name }}
+                                        </h6>
                                         {% if instrument_room.highspec.detected %}
                                             <span class="badge bg-success">Detected</span>
                                         {% else %}
@@ -75,14 +67,10 @@
                                onclick="showInstrumentModal('{{ instrument_room.controller.display_name }}'); return false;">
                                 <div class="card unit-card {% if instrument_room.controller.detected %}deployed{% else %}planned{% endif %}">
                                     <div class="card-body text-center p-2">
-                                        <h6 class="mb-1">{{ instrument_room.controller.display_name }}</h6>
-                                        {% if instrument_room.controller.activities_verbal %}
-                                            <div class="mb-1">
-                                                {% for activity in instrument_room.controller.activities_verbal %}
-                                                    <span class="badge bg-info text-dark">{{ activity }}</span>
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
+                                        <h6 class="mb-1">
+                                            {% include 'components/activity_indicator.html' with activities=instrument_room.controller.activities_verbal component_id="controller"%}
+                                            {{ instrument_room.controller.display_name }}
+                                        </h6>
                                         {% if instrument_room.controller.detected %}
                                             <span class="badge bg-success">Connected</span>
                                         {% else %}
@@ -117,19 +105,12 @@
                                     {% endif %}
                                             <div class="card unit-card {% if unit.deployed %}deployed{% else %}planned{% endif %}">
                                                 <div class="card-body text-center p-2">
-                                                    <h6 class="mb-1">{{ unit.full_name }}</h6>
-                                                    {% if unit.activities_verbal %}
-                                                        <div class="mb-1">
-                                                            {% for activity in unit.activities_verbal %}
-                                                                <span class="badge bg-info text-dark">{{ activity }}</span>
-                                                            {% endfor %}
-                                                        </div>
-                                                    {% endif %}
+                                                    <h6 class="mb-1">
+                                                        {% include 'components/activity_indicator.html' with activities=unit.activities_verbal component_id=unit.full_name %}
+                                                        {{ unit.full_name }}
+                                                    </h6>
                                                     {% if unit.deployed %}
                                                         <span class="badge bg-success">Deployed</span>
-                                                        <div class="mt-1">
-                                                            <i class="bi bi-circle-fill text-secondary" style="font-size: 0.8rem;"></i>
-                                                        </div>
                                                     {% else %}
                                                         <span class="badge bg-secondary">{{ unit.status_text }}</span>
                                                     {% endif %}
@@ -153,19 +134,12 @@
                                     {% endif %}
                                             <div class="card unit-card {% if unit.deployed %}deployed{% else %}planned{% endif %}">
                                                 <div class="card-body text-center p-2">
-                                                    <h6 class="mb-1">{{ unit.full_name }}</h6>
-                                                    {% if unit.activities_verbal %}
-                                                        <div class="mb-1">
-                                                            {% for activity in unit.activities_verbal %}
-                                                                <span class="badge bg-info text-dark">{{ activity }}</span>
-                                                            {% endfor %}
-                                                        </div>
-                                                    {% endif %}
+                                                    <h6 class="mb-1">
+                                                        {% include 'components/activity_indicator.html' with activities=unit.activities_verbal component_id=unit.full_name %}
+                                                        {{ unit.full_name }}
+                                                    </h6>
                                                     {% if unit.deployed %}
                                                         <span class="badge bg-success">Deployed</span>
-                                                        <div class="mt-1">
-                                                            <i class="bi bi-circle-fill text-secondary" style="font-size: 0.8rem;"></i>
-                                                        </div>
                                                     {% else %}
                                                         <span class="badge bg-secondary">{{ unit.status_text }}</span>
                                                     {% endif %}
@@ -188,19 +162,12 @@
                                     {% endif %}
                                             <div class="card unit-card {% if unit.deployed %}deployed{% else %}planned{% endif %}">
                                                 <div class="card-body text-center p-2">
-                                                    <h6 class="mb-1">{{ unit.full_name }}</h6>
-                                                    {% if unit.activities_verbal %}
-                                                        <div class="mb-1">
-                                                            {% for activity in unit.activities_verbal %}
-                                                                <span class="badge bg-info text-dark">{{ activity }}</span>
-                                                            {% endfor %}
-                                                        </div>
-                                                    {% endif %}
+                                                    <h6 class="mb-1">
+                                                        {% include 'components/activity_indicator.html' with activities=unit.activities_verbal component_id=unit.full_name %}
+                                                        {{ unit.full_name }}
+                                                    </h6>
                                                     {% if unit.deployed %}
                                                         <span class="badge bg-success">Deployed</span>
-                                                        <div class="mt-1">
-                                                            <i class="bi bi-circle-fill text-secondary" style="font-size: 0.8rem;"></i>
-                                                        </div>
                                                     {% else %}
                                                         <span class="badge bg-secondary">{{ unit.status_text }}</span>
                                                     {% endif %}

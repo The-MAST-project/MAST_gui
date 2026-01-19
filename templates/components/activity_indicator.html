@@ -1,0 +1,11 @@
+<!-- filepath: /home/mast/PycharmProjects/MAST_gui/templates/components/activity_indicator.html -->
+<span 
+    id="activity-{{ component_id }}-indicator"
+    class="activity-dot{% if activities and activities|length > 0 %} active{% endif %}"
+    data-activities="{{ activities|join:' '|default:'' }}"
+    data-bs-toggle="tooltip" 
+    data-bs-placement="bottom"
+    data-bs-delay='{"show":0,"hide":100}'
+    title="{{ activities|join:' '|default:'' }}"
+    style="{% if not activities or activities|length == 0 %}display:none;{% endif %}cursor: help;">
+</span>

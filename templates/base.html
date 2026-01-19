@@ -190,6 +190,14 @@
     document.addEventListener('DOMContentLoaded', function() {
         console.log('SSE Handler: DOM loaded, initializing...');
         
+        // Initialize Bootstrap tooltips for activity indicators
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
         // SSE Toast Card Listener
         const eventSource = new EventSource('/sse/stream/');
         console.log('SSE Handler: EventSource created');
@@ -203,11 +211,38 @@
             const event = JSON.parse(e.data);
             console.log('SSE Handler: Parsed event data', event);
             
-            update = JSON.parse(event)
+            update = JSON.parse(event);
             showEventDoms(update);
             if (shoulShowEventCards(update)) {
                 showEventCards(update);
             }
+        });
+        
+        eventSource.addEventListener('activity_refresh', function(e) {
+            const data = JSON.parse(e.data);
+            console.log('SSE Handler: Activity refresh received', data);
+            
+            // Check if we're on units page and site matches
+            const currentPage = window.location.pathname;
+            const selectedSite = '{{ request.session.selected_site }}';
+            
+            if (!currentPage.match(/\/units\/?$/) && !currentPage.match(/\/units\/([^\/]+)\/?$/)) {
+                console.log('SSE Handler: Activity refresh rejected - not on units page');
+                return; // Not on units page
+            }
+            
+            if (data.site !== selectedSite) {
+                console.log('SSE Handler: Activity refresh rejected - site mismatch');
+                return; // Different site
+            }
+            
+            // Update all component indicators
+            Object.keys(data.components).forEach(componentId => {
+                const activities = data.components[componentId] || [];
+                setActivityIndicator(`activity-${componentId}-indicator`, activities);
+            });
+            
+            console.log(`SSE Handler: Updated ${Object.keys(data.components).length} activity indicators`);
         });
         
         eventSource.onerror = function(e) {
@@ -297,6 +332,98 @@
                     console.warn(`SSE Handler: DOM element #${dom.id} not found`);
                 }
             }
+            
+            // Update activity indicators if activities_verbal provided
+            updateActivityIndicator(update);
+        }
+        
+        function updateActivityIndicator(update) {
+            // Check if update is for the current selected site
+            const selectedSite = '{{ request.session.selected_site }}';
+            if (update.initiator.site !== selectedSite) {
+                console.log('SSE Handler: Activity indicator update rejected - site mismatch');
+                return;
+            }
+            
+            // Extract activities from DOM updates
+            let activities = [];
+            
+            if (update.doms && update.doms.length > 0) {
+                for (const dom of update.doms) {
+                    // Check if this DOM update has HTML with activity badges
+                    if (dom.html) {
+                        // Parse HTML to extract activity strings from badge spans
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = dom.html;
+                        const badges = tempDiv.querySelectorAll('.badge');
+                        
+                        badges.forEach(badge => {
+                            const activity = badge.textContent.trim();
+                            if (activity) {
+                                activities.push(activity);
+                            }
+                        });
+                    }
+                }
+            }
+            
+            // Fallback: check if activities_verbal exists directly
+            if (activities.length === 0) {
+                return;
+            }
+            
+            const activitiesStr = activities.join(' ');
+            
+            
+            // Determine indicator ID based on initiator type
+            let indicatorId;
+            const type = update.initiator.type;
+            
+            if (type === 'unit') {
+                indicatorId = `activity-${update.initiator.hostname}-indicator`;
+            } else if (type === 'controller' || type === 'deepspec' || type === 'highspec') {
+                indicatorId = `activity-${type}-indicator`;
+            } else {
+                console.warn(`SSE Handler: Unknown initiator type for activity indicator: ${type}`);
+                return;
+            }
+
+            setActivityIndicator(indicatorId, activities);
+        }
+
+        function setActivityIndicator(indicatorId, activities) {
+            
+            // Find the indicator element
+            const indicator = document.getElementById(indicatorId);
+            if (!indicator) {
+                console.warn(`SSE Handler: Activity indicator not found: #${indicatorId}`);
+                return;
+            }
+
+            // Update data attribute
+            indicator.dataset.activities = activities.join(' ');
+            
+            // Update display and classes based on activities
+            if (activities.length === 1 && activities[0] === 'Idle') {
+                activities = [];
+            }
+
+            if (activities.length > 0) {
+                indicator.classList.add('active');
+                indicator.style.display = '';
+                indicator.title = activities.join(' ');
+            } else {
+                indicator.classList.remove('active');
+                indicator.style.display = 'none';
+                indicator.title = '';
+            }
+            
+            // Reinitialize tooltip
+            const tooltip = bootstrap.Tooltip.getInstance(indicator);
+            if (tooltip) tooltip.dispose();
+            new bootstrap.Tooltip(indicator);
+            
+            console.log(`SSE Handler: Updated activity indicator #${indicatorId}:`, activities);
         }
         
         function showEventCards(update) {
