@@ -168,8 +168,8 @@ def refresh_cache():
                     msg = f"Status cache: [{site}]: "
                     site_status = _MAST_CACHE['status'].sites[site]
                     controller_status = site_status.controller
-                    deepspec_status = site_status.deepspec
-                    highspec_status = site_status.highspec
+                    deepspec_status = site_status.spec.deepspec
+                    highspec_status = site_status.spec.highspec
                     unit_statuses = site_status.units
                     for comp_name, st in {'controller': controller_status, 'deepspec': deepspec_status, 'highspec': highspec_status}.items():
                         msg += f"{comp_name}({type(st).__name__}), "

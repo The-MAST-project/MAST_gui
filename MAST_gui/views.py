@@ -360,6 +360,7 @@ def sse_stream(request):
         """Generator that yields SSE formatted messages"""
         start_time = time.time()
         message_count = 0
+        last_activity = time.time()  # Track last activity
         
         try:
             # Send initial connection message
@@ -367,8 +368,8 @@ def sse_stream(request):
             
             while True:
                 try:
-                    # Wait for a message from the queue (with a timeout for keep-alive)
-                    message = client_queue.get(timeout=15)  # Changed from 30 to 15
+                    # Wait for message with timeout (for keep-alive)
+                    message = client_queue.get(timeout=15)  # Changed from 30 to 15 seconds
                     
                     # Format as SSE
                     event_type = message.get('event', 'message')
@@ -378,15 +379,24 @@ def sse_stream(request):
                     yield f"event: {event_type}\n"
                     yield f"data: {data}\n\n"
                     message_count += 1
+                    last_activity = time.time()
                     
                 except queue.Empty:
                     # Send keep-alive comment
                     yield ": keep-alive\n\n"
+                    
+                    # Log if too long without messages
+                    idle_time = time.time() - last_activity
+                    if idle_time > 60:
+                        logger.warning(f"SSE client {client_id} idle for {idle_time:.1f}s")
                 
         except GeneratorExit:
             # Connection closed - log and cleanup (don't yield anything)
             duration = time.time() - start_time
             logger.info(f"SSE client {client_id} disconnected after {duration:.1f}s ({message_count} messages)")
+        except Exception as e:
+            duration = time.time() - start_time
+            logger.error(f"SSE client {client_id} error after {duration:.1f}s: {e}")
         finally:
             sse_manager.remove_client(client_id)
     

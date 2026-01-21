@@ -99,12 +99,16 @@
 
 .activity-dot {
     display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background-color: var(--mast-success-border);
+    width: auto;  /* Changed from 10px to auto for icon */
+    height: auto;  /* Changed from 10px to auto for icon */
     margin-right: 4px;
     vertical-align: middle;
+    font-size: 12px;  /* Size of heart icon */
+    color: #dc3545;  /* Red color for heart */
+}
+
+.activity-dot::before {
+    content: "❤";  /* Red heart symbol */
 }
 
 .activity-dot.active {

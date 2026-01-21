@@ -25,7 +25,8 @@
                                     <div class="card-body text-center p-2">
                                         <h6 class="mb-1">
                                             {% include 'components/activity_indicator.html' with activities=instrument_room.deepspec.activities_verbal component_id="deepspec" %}
-                                            {{ instrument_room.deepspec.display_name }}
+                                            {{ instrument_room.deepspec.display_name }}<br>
+                                            <small>({{ site.spec_host }})</small>
                                         </h6>
                                         {% if instrument_room.deepspec.detected %}
                                             <span class="badge bg-success">Detected</span>
@@ -47,7 +48,8 @@
                                     <div class="card-body text-center p-2">
                                         <h6 class="mb-1">
                                             {% include 'components/activity_indicator.html' with activities=instrument_room.highspec.activities_verbal component_id="highspec"%}
-                                            {{ instrument_room.highspec.display_name }}
+                                            {{ instrument_room.highspec.display_name }}<br>
+                                            <small>({{ site.spec_host }})</small>
                                         </h6>
                                         {% if instrument_room.highspec.detected %}
                                             <span class="badge bg-success">Detected</span>
@@ -69,7 +71,8 @@
                                     <div class="card-body text-center p-2">
                                         <h6 class="mb-1">
                                             {% include 'components/activity_indicator.html' with activities=instrument_room.controller.activities_verbal component_id="controller"%}
-                                            {{ instrument_room.controller.display_name }}
+                                            {{ instrument_room.controller.display_name }}<br>
+                                            <small>({{ site.controller_host }})</small>
                                         </h6>
                                         {% if instrument_room.controller.detected %}
                                             <span class="badge bg-success">Connected</span>

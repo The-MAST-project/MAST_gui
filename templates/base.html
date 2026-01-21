@@ -2,7 +2,7 @@
 {% load dynamic_urls %}
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -202,8 +202,18 @@
         const eventSource = new EventSource('/sse/stream/');
         console.log('SSE Handler: EventSource created');
         
+        let reconnectCount = 0;
+        let connectionStartTime = Date.now();
+        
         eventSource.onopen = function(e) {
-            console.log('SSE Handler: Connection opened', e);
+            const duration = ((Date.now() - connectionStartTime) / 1000).toFixed(1);
+            if (reconnectCount > 0) {
+                console.log(`SSE Handler: Reconnected after ${duration}s (connection #${reconnectCount + 1})`, e);
+            } else {
+                console.log('SSE Handler: Initial connection opened', e);
+            }
+            reconnectCount++;
+            connectionStartTime = Date.now();
         };
         
         eventSource.addEventListener('notification', function(e) {
@@ -246,8 +256,9 @@
         });
         
         eventSource.onerror = function(e) {
-            console.error('SSE Handler: Connection error', e);
-            console.error('SSE Handler: ReadyState', eventSource.readyState);
+            const duration = ((Date.now() - connectionStartTime) / 1000).toFixed(1);
+            console.warn(`SSE Handler: Connection error after ${duration}s, will auto-reconnect...`, e);
+            console.warn('SSE Handler: ReadyState:', eventSource.readyState);
         };
         
         function shoulShowEventCards(update) {

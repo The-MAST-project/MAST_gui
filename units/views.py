@@ -144,15 +144,20 @@ def units_list(request):
         site_status = sites_status.sites[current_site]
         
         # Get each component's status
+        spec_status = site_status.spec
         for comp_name in ['deepspec', 'highspec', 'controller']:
-            comp_status = getattr(site_status, comp_name, None)
-            # Format display name
-            if comp_name == 'deepspec':
-                display_name = 'Deepspec'
-            elif comp_name == 'highspec':
-                display_name = 'Highspec'
-            else:
-                display_name = 'Controller'
+            match comp_name:
+                case 'deepspec':
+                    comp_status = getattr(spec_status, comp_name, None)
+                    display_name = 'Deepspec'
+                case 'highspec':
+                    comp_status = getattr(spec_status, comp_name, None)
+                    display_name = 'Highspec'
+                case 'controller':
+                    comp_status = site_status.controller
+                    display_name = 'Controller'
+                case _:
+                    comp_status = getattr(site_status, comp_name, None)
             
             instrument_room[comp_name] = {
                 'name': comp_name,
@@ -160,6 +165,7 @@ def units_list(request):
                 'detected': False if comp_status is None else getattr(comp_status, 'detected', False),
                 # 'activities_verbal': ['Unknown'] if comp_status is None else getattr(comp_status, 'activities_verbal', []) or [],
             }
+            logger.debug(f"Instrument room component {comp_name}: {instrument_room[comp_name]}")
     
     return render(request, 'units/list.html', {
         'buildings': buildings_sorted,
@@ -403,7 +409,8 @@ def unit_detail(request, unit_name):
                 focuser_config_values = getattr(focuser_obj, '__dict__', {})
             focuser_config_schema = extract_field_metadata(FocuserConfig)
 
-    # print(f"unit_details: {focuser_config_values=}\n{focuser_config_schema=}")
+    logger.debug(f"{unit_info=}")
+    logger.debug(f"{component_statuses=}")
     return render(request, 'units/detail.html', {
         'unit_name': unit_name,
         'site': current_site,
