@@ -9,6 +9,7 @@
     {% if error %}
         <div class="alert alert-danger">{{ error }}</div>
     {% else %}
+        <div id="units-buildings-section">
         {# Instrument Room Section #}
         <div class="card mb-4">
             <div class="card-header bg-light">
@@ -104,7 +105,7 @@
                                         <a href="{% url 'units:detail' unit.name %}" class="text-decoration-none">
                                     {% else %}
                                         <a href="#" class="text-decoration-none" 
-                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.status_text }}'); return false;">
+                                           onclick="showUnitStatusModal('{{ unit.full_name }} (ouch1)', '{{ unit.status_text }}'); return false;">
                                     {% endif %}
                                             <div class="card unit-card {% if unit.deployed %}deployed{% else %}planned{% endif %}">
                                                 <div class="card-body text-center p-2">
@@ -112,10 +113,10 @@
                                                         {% include 'components/activity_indicator.html' with activities=unit.activities_verbal component_id=unit.full_name %}
                                                         {{ unit.full_name }}
                                                     </h6>
-                                                    {% if unit.deployed %}
-                                                        <span class="badge bg-success">Deployed</span>
+                                                    {% if unit.operational %}
+                                                        <span class="badge bg-success">Ready</span>
                                                     {% else %}
-                                                        <span class="badge bg-secondary">{{ unit.status_text }}</span>
+                                                        <span class="badge bg-secondary">{{ unit.why_not_operational|join:" " }}</span>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -133,18 +134,18 @@
                                         <a href="{% url 'units:detail' unit.name %}" class="text-decoration-none">
                                     {% else %}
                                         <a href="#" class="text-decoration-none" 
-                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.status_text }}'); return false;">
+                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.why_not_operational|join:" " }}'); return false;">
                                     {% endif %}
-                                            <div class="card unit-card {% if unit.deployed %}deployed{% else %}planned{% endif %}">
+                                            <div class="card unit-card {% if unit.operational %}ready{% else %}not-operational{% endif %}">
                                                 <div class="card-body text-center p-2">
                                                     <h6 class="mb-1">
                                                         {% include 'components/activity_indicator.html' with activities=unit.activities_verbal component_id=unit.full_name %}
                                                         {{ unit.full_name }}
                                                     </h6>
-                                                    {% if unit.deployed %}
-                                                        <span class="badge bg-success">Deployed</span>
+                                                    {% if unit.operational %}
+                                                        <span class="badge bg-success">Ready</span>
                                                     {% else %}
-                                                        <span class="badge bg-secondary">{{ unit.status_text }}</span>
+                                                        <span class="badge bg-secondary">{{ unit.why_not_operational|join:" " }}</span>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -161,18 +162,18 @@
                                         <a href="{% url 'units:detail' unit.name %}" class="text-decoration-none">
                                     {% else %}
                                         <a href="#" class="text-decoration-none" 
-                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.status_text }}'); return false;">
+                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.why_not_operational|join:" " }}'); return false;">
                                     {% endif %}
-                                            <div class="card unit-card {% if unit.deployed %}deployed{% else %}planned{% endif %}">
+                                            <div class="card unit-card {% if unit.operational %}ready{% else %}not-operational{% endif %}">
                                                 <div class="card-body text-center p-2">
                                                     <h6 class="mb-1">
                                                         {% include 'components/activity_indicator.html' with activities=unit.activities_verbal component_id=unit.full_name %}
                                                         {{ unit.full_name }}
                                                     </h6>
-                                                    {% if unit.deployed %}
-                                                        <span class="badge bg-success">Deployed</span>
+                                                    {% if unit.operational %}
+                                                        <span class="badge bg-success">Ready</span>
                                                     {% else %}
-                                                        <span class="badge bg-secondary">{{ unit.status_text }}</span>
+                                                        <span class="badge bg-secondary">{{ unit.why_not_operational|join:" " }}</span>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -184,6 +185,7 @@
                 </div>
             </div>
         {% endfor %}
+        </div>
     {% endif %}
 </div>
 
@@ -213,8 +215,20 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+
 <script>
     function showUnitStatusModal(unitName, status) {
+        console.log('showUnitStatusModal called:', unitName, status);
+        
+        if (typeof bootstrap === 'undefined') {
+            console.error('Bootstrap is not loaded!');
+            alert('Unit ' + unitName + ': ' + status + ' no bootstrap');
+            return;
+        }
+        
         document.getElementById('modalUnitName').textContent = 'Unit ' + unitName;
         
         let statusMessage;
@@ -226,30 +240,41 @@
             statusMessage = status;
         }
         
+        console.log('Status message:', statusMessage);
         document.getElementById('modalUnitStatus').textContent = statusMessage;
         
         const modal = new bootstrap.Modal(document.getElementById('unitStatusModal'));
+        console.log('Modal instance:', modal);
         modal.show();
         
-        // Auto-hide after 3 seconds
+        // Auto-hide after 5 seconds
         setTimeout(() => {
             modal.hide();
-        }, 3000);
+        }, 5000);
     }
 
     function showInstrumentModal(instrumentName) {
+        console.log('showInstrumentModal called:', instrumentName);
+        
+        if (typeof bootstrap === 'undefined') {
+            console.error('Bootstrap is not loaded!');
+            alert(instrumentName + ': Details page coming soon...');
+            return;
+        }
+        
         document.getElementById('modalInstrumentName').textContent = instrumentName;
         
         const modal = new bootstrap.Modal(document.getElementById('instrumentModal'));
         modal.show();
         
-        // Auto-hide after 3 seconds
+        // Auto-hide after 5 seconds
         setTimeout(() => {
             modal.hide();
-        }, 3000);
+        }, 5000);
     }
 
-document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded');
+    console.log('Bootstrap available:', typeof bootstrap !== 'undefined');
     // Periodically refresh the units status section every 30 seconds
     function refreshUnits() {
         fetch(window.location.pathname, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -269,8 +294,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     setInterval(refreshUnits, 30000); // 30 seconds
-});
 </script>
+
 
 <style>
     .unit-card {
@@ -292,6 +317,5 @@ document.addEventListener('DOMContentLoaded', function() {
     .unit-card h6 {
         font-size: 0.9rem;
     }
-    /* Remove all badge color definitions - they now come from colors.css */
 </style>
 {% endblock %}

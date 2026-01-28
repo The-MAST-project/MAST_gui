@@ -1,7 +1,8 @@
 import logging
 import time
 from pydantic import BaseModel
-from .context_processors import _MAST_CACHE, _MAST_CACHE_LOCK
+# from .context_processors import _MAST_CACHE, _MAST_CACHE_LOCK
+from .context_processors import MastCache
 from common.models.statuses import ShortStatus
 from common.notifications import UiUpdateRequest, UiUpdateMessage, NotificationInitiator, NotificationCardType
 
@@ -13,7 +14,8 @@ def update_cache_from_update_request(update_request: UiUpdateRequest):
     """
         
     # Get SitesStatus object
-    sites_status = _MAST_CACHE.get('status')
+    # sites_status = _MAST_CACHE.get('status')
+    sites_status = MastCache().sites_status
     if not sites_status or not hasattr(sites_status, 'sites'):
         logger.warning("Cache status not initialized")
         return False
@@ -77,10 +79,10 @@ def update_cache_from_update_request(update_request: UiUpdateRequest):
                 logger.warning(f"Final attribute {final_key} not found on {type(target).__name__}")
                 return False
             
-            with _MAST_CACHE_LOCK:
+            with MastCache._lock:
                 setattr(target, final_key, value)        
                 # Update cache timestamp
-                _MAST_CACHE['last_refresh'] = time.time()
+                MastCache().last_refresh = time.time()
                 
             logger.info(f"Cache updated: {'.'.join(map(str, dict_path))} = {value}")
             return True
@@ -206,10 +208,11 @@ def broadcast_activity_indicators_update():
     Broadcast activity indicator updates for all sites after cache refresh.
     Called after periodic cache refresh in apps.py.
     """
-    from .context_processors import _MAST_CACHE
+    # from .context_processors import _MAST_CACHE
     from .sse_manager import sse_manager
     
-    sites_status = _MAST_CACHE.get('status')
+    # sites_status = _MAST_CACHE.get('status')
+    sites_status = MastCache().sites_status
     if not sites_status or not hasattr(sites_status, 'sites'):
         logger.warning("No status in cache, skipping activity indicators broadcast")
         return

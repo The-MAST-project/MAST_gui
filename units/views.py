@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from common.config import Config
 from common.api import ControllerApi
 from common.dlipowerswitch import PowerSwitchStatus
-from common.models.statuses import UnitStatus, ShortStatus, FullUnitStatus
+from common.models.statuses import UnitStatus, ShortStatus, FullUnitStatus, SitesStatus
 import asyncio
 from django.http import JsonResponse, FileResponse
 from django.views.decorators.http import require_http_methods
@@ -35,16 +35,15 @@ def units_list(request):
     
     # Get site configuration from MongoDB
     config = Config()
-    sites = config.get_sites()
+    sites_config = config.get_sites()
     
     # Find the selected site
     site = None
-    for s in sites:
+    for s in sites_config:
         if s.name == current_site:
             site = s
             break
-    
-    if not site:
+    else:
         return render(request, 'units/list.html', {
             'error': f'Site {current_site} not found',
             'units': [],
@@ -53,6 +52,14 @@ def units_list(request):
     
     # Organize units by building
     buildings_data = {}
+    
+    # Get site status from cache
+    from MAST_gui.context_processors import MastCache
+
+    sites_status: SitesStatus = MastCache().sites_status
+
+    if sites_status is None or not hasattr(sites_status, 'sites') or current_site not in sites_status.sites:
+        return
     
     # site.buildings is a list[Building]
     for building in site.buildings:
@@ -67,45 +74,32 @@ def units_list(request):
         
         # building.units is a list[str] (unit IDs)
         for unit_id in building.units:
-            # Determine status text
+
             if unit_id in site.deployed_units:
-                status_text = 'Deployed'
-            elif unit_id in site.units_in_maintenance:
-                status_text = 'In Maintenance'
-            else:
-                status_text = 'Planned'
-            
-            operational_status = 'unknown'
-            activities_verbal = []
-            if unit_id in site.deployed_units and unit_id not in site.units_in_maintenance:
-                # Get unit status from controller API using discriminated union
-                controller = ControllerApi(site_name=current_site)
-                response = asyncio.run(controller.client.get(f"unit/{current_site}/{unit_id}/status"))
+                if sites_status.sites and current_site in sites_status.sites and unit_id in sites_status.sites[current_site].units:
                 
-                activities_verbal = []
-                if response.succeeded and response.value:
-                    unit_status: UnitStatus = response.value
-                    if isinstance(unit_status, ShortStatus):
+                    unit_status: UnitStatus = sites_status.sites[current_site].units[unit_id]
+                    if unit_status.type == 'short':
                         # Controller couldn't reach unit
-                        operational_status = 'operational' if unit_status.operational else 'offline'
-                        activities_verbal = getattr(unit_status, 'activities_verbal', []) or []
-                        if isinstance(activities_verbal, str):
-                            activities_verbal = [activities_verbal]
-                    elif isinstance(unit_status, FullUnitStatus):
+                        operational = False
+                        why_not_operational = ['No response from unit']
+                    elif unit_status.type == 'full':
                         # Full status from unit
-                        operational_status = 'operational' if unit_status.operational else 'error'
-                        activities_verbal = getattr(unit_status, 'activities_verbal', []) or []
-                        if isinstance(activities_verbal, str):
-                            activities_verbal = [activities_verbal]
+                        operational = unit_status.operational
+                        why_not_operational = unit_status.why_not_operational or []
+            elif unit_id in site.units_in_maintenance:
+                operational = False
+                why_not_operational = ['In maintenance']
+            elif unit_id in site.planned_units:
+                operational = False
+                why_not_operational = ['Planned']
             
             unit_data = {
                 'name': unit_id,
                 'full_name': unit_id,
-                'deployed': unit_id in site.deployed_units,
-                'status': operational_status,
-                'status_text': status_text,
+                'operational': operational,
+                'why_not_operational': why_not_operational,
                 'building': display_name,
-                'activities_verbal': activities_verbal,
             }
             buildings_data[display_name]['units'].append(unit_data)
         
@@ -128,10 +122,6 @@ def units_list(request):
     
     # Sort buildings: clamshell first, then others
     buildings_sorted = dict(sorted(buildings_data.items(), key=lambda x: x[1]['sort_order']))
-    
-    # Get site status from cache
-    from MAST_gui.context_processors import _MAST_CACHE
-    sites_status = _MAST_CACHE.get('status')
     
     # Prepare instrument room components
     instrument_room = {
@@ -198,7 +188,7 @@ def unit_detail(request, unit_name):
     
     # Get unit status from ControllerApi (for unit operational info)
     controller = ControllerApi(site_name=current_site)
-    status_response = asyncio.run(controller.client.get(f"unit/{current_site}/{unit_name}/status"))
+    status_response = asyncio.run(controller.get(f"unit/{current_site}/{unit_name}/status"))
     
     unit_operational = False
     unit_info = {}
@@ -331,7 +321,7 @@ def unit_detail(request, unit_name):
     
     # Always get power switch status from controller endpoint
     # (separate from unit status, works even when unit not operational)
-    power_response = asyncio.run(controller.client.get(f"unit/{current_site}/{unit_name}/power_switch/status"))
+    power_response = asyncio.run(controller.get(f"unit/{current_site}/{unit_name}/power_switch/status"))
     
     outlets = []
     if power_response.succeeded and power_response.value:
@@ -372,7 +362,7 @@ def unit_detail(request, unit_name):
 
     controller = ControllerApi(site_name=current_site)
     config_response = asyncio.run(
-        controller.client.get(f"config/get_unit/{unit_name}")
+        controller.get(f"config/get_unit/{unit_name}")
     )
 
     if config_response.succeeded and config_response.value:

@@ -21,8 +21,9 @@ from .sse_manager import sse_manager
 
 from accounts.models import User
 from .notification_handler import update_sse_message_from_update_request
+from .context_processors import MastCache, refresh_cache
 
-from .context_processors import refresh_cache, _MAST_CACHE
+# from .context_processors import refresh_cache, _MAST_CACHE
 
 logger = logging.getLogger(__name__)
 
@@ -413,18 +414,18 @@ def sse_stream(request):
 def debug_cache(request):
     """Debug endpoint to view cache contents"""
     # Auto-refresh if cache is empty
-    if not _MAST_CACHE.get('status'):
+    if not MastCache().sites_status:
         logger.info("Cache empty, triggering refresh...")
-        refresh_cache()
+        MastCache().refresh()
     
     # Use Pydantic's built-in JSON serialization (handles Enums automatically)
     status_data = None
-    if _MAST_CACHE.get('status'):
-        status_data = _MAST_CACHE['status'].model_dump(mode='json')
+    if MastCache().sites_status:
+        status_data = MastCache().sites_status.model_dump(mode='json')
     
     cache_data = {
-        'last_refresh': _MAST_CACHE.get('last_refresh'),
-        'ttl': _MAST_CACHE.get('ttl'),
+        'last_refresh': MastCache().last_refresh,
+        'ttl': MastCache().ttl,
         'status': status_data
     }
     
@@ -435,11 +436,11 @@ def debug_cache(request):
 @require_http_methods(["POST"])
 def refresh_cache_endpoint(request):
     """Manually trigger cache refresh"""
-    success = refresh_cache()
+    success = MastCache().refresh()
     data = {
         'success': success,
-        'timestamp': _MAST_CACHE.get('last_refresh'),
-        'has_status': _MAST_CACHE.get('status') is not None
+        'timestamp': MastCache().last_refresh,
+        'has_status': MastCache().sites_status is not None
     }
     return JsonResponse(data, safe=False, json_dumps_params={'indent': 2})
 

@@ -10,16 +10,15 @@ from django.views.decorators.http import require_http_methods
 logger = logging.getLogger('mast.mast_utils')
 @login_required
 @require_http_methods(["GET"])
-def controller_status_check(request):
+def django_controller_status_check(request):
     """
     HTMX endpoint for polling controller status.
     Returns updated status indicator HTML.
     """
     site = request.session.get('selected_site', 'wis')
     # Use mast context processor to get status dict
-    from MAST_gui.context_processors import mast as mast_cp
-    mast_ctx = mast_cp(request)['mast']
-    for s in mast_ctx['sites']:
+    from MAST_gui.context_processors import mast as mast_cache
+    for s in mast_cache(request=request).sites_config:
         if s.name == site:
             controller_host = s.controller_host
             break

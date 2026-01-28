@@ -2,6 +2,8 @@ from django.apps import AppConfig
 import threading
 import logging
 
+from .context_processors import MastCache
+
 logger = logging.getLogger(__name__)
 
 class MastGuiConfig(AppConfig):
@@ -10,7 +12,7 @@ class MastGuiConfig(AppConfig):
     
     def ready(self):
         """Called when Django starts"""
-        from .context_processors import refresh_cache, _MAST_CACHE
+        from .context_processors import MastCache
         
         # Avoid running twice in development (Django reloader spawns 2 processes)
         import os
@@ -26,42 +28,43 @@ class MastGuiConfig(AppConfig):
         def periodic_refresh():
             """Refresh cache every N seconds in a separate thread"""
             try:
-                ttl = _MAST_CACHE.get('ttl', 30)  # Default 30s
                 
                 # Run refresh in a separate thread so it doesn't block
                 refresh_thread = threading.Thread(target=self._refresh_and_broadcast, daemon=True)
                 refresh_thread.start()
                 
                 # Schedule next refresh
-                timer = threading.Timer(ttl, periodic_refresh)
+                timer = threading.Timer(MastCache.TTL, periodic_refresh)
                 timer.daemon = True
                 timer.start()
             except Exception as e:
                 logger.error(f"Periodic cache refresh error: {e}", exc_info=True)
                 # Retry after TTL even on error
-                timer = threading.Timer(30, periodic_refresh)
+                timer = threading.Timer(MastCache.TTL, periodic_refresh)
                 timer.daemon = True
                 timer.start()
         
         # Start the periodic refresh cycle
-        timer = threading.Timer(30, periodic_refresh)  # First refresh in 30s
+        timer = threading.Timer(MastCache.TTL, periodic_refresh)  # First refresh in 30s
         timer.daemon = True
         timer.start()
         
-        logger.info("Periodic cache refresh started (every 30s)")
+        logger.info(f"Periodic cache refresh started (every {MastCache.TTL}s)")
     
     def _initial_refresh(self):
         """Initial cache refresh on startup"""
-        from .context_processors import refresh_cache
-        refresh_cache()
+        # from .context_processors import refresh_cache
+        # refresh_cache()
+        MastCache().refresh()
     
     def _refresh_and_broadcast(self):
         """Refresh cache and broadcast activity indicator updates"""
-        from .context_processors import refresh_cache
+        # from .context_processors import refresh_cache
         from .notification_handler import broadcast_activity_indicators_update
         
         # Refresh the cache
-        refresh_cache()
+        # refresh_cache()
+        MastCache().refresh()
         
         # Broadcast activity indicators to all connected browsers
         try:

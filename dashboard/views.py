@@ -21,17 +21,17 @@ def index(request):
         # Get mast context from context processor
         mast = request.context.get('mast') if hasattr(request, 'context') else None
         if not mast:
-            from MAST_gui.context_processors import mast as mast_cp
-            mast = mast_cp(request)['mast']
-        sites = mast['sites']
-        site = next((s for s in sites if s.name == current_site), None)
+            from MAST_gui.context_processors import mast as mast_cache
+            mast = mast_cache(request)
+        mast_sites = mast.sites_config
+        site = next((s for s in mast_sites if s.name == current_site), None)
         if not site:
             return render(request, 'dashboard/index.html', {
                 'error': f'Site {current_site} not found'
             })
         # Get status dict for all sites
-        status_dict = mast['status']
-        site_status = status_dict.get(current_site, {})
+        mast_statuses = mast.sites_status
+        site_status = mast_statuses.get(current_site, {})
         
         units_status = []
         

@@ -7,7 +7,7 @@ from django.http import HttpResponseRedirect
 
 from . import views
 # Fix import: use the full Python path if 'utils' is inside the project root
-from mast_utils.views import controller_status_check
+from mast_utils.views import django_controller_status_check
 from core.views import plans as plans_views  # new: plans view for /plans/ page
 from accounts import views as accounts_views
 from django.contrib.auth.views import LogoutView, LoginView
@@ -27,7 +27,7 @@ urlpatterns = [
     path('select-site/', views.select_site, name='select_site'),
     
     # Controller status check endpoint (from mast_utils)
-    path('controller-status/', controller_status_check, name='controller_status_check'),
+    path('controller-status/', django_controller_status_check, name='controller_status_check'),
     # Plans page (only one path to plans)
     path('plans/', plans_views.plans_index, name='plans_index'),
     
