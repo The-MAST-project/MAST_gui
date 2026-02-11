@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from common.config import Config
 from common.api import ControllerApi
 from common.dlipowerswitch import PowerSwitchStatus
-from common.models.statuses import UnitStatus, ShortStatus, FullUnitStatus, SitesStatus
+from common.models.statuses import UnitStatus, BasicStatus, FullUnitStatus, SitesStatus
 import asyncio
 from django.http import JsonResponse, FileResponse
 from django.views.decorators.http import require_http_methods
@@ -38,10 +38,10 @@ def units_list(request):
     sites_config = config.get_sites()
     
     # Find the selected site
-    site = None
+    site_config = None
     for s in sites_config:
         if s.name == current_site:
-            site = s
+            site_config = s
             break
     else:
         return render(request, 'units/list.html', {
@@ -58,67 +58,94 @@ def units_list(request):
 
     sites_status: SitesStatus = MastCache().sites_status
 
-    if sites_status is None or not hasattr(sites_status, 'sites') or current_site not in sites_status.sites:
-        return
+    error = None
+    if sites_status is None:
+        error = 'No current sites status (yet?)'
+    if not hasattr(sites_status, 'sites') or current_site not in sites_status.sites:
+        error = f"No status available for site '{current_site}' (yet?)"
+    if error:
+        return render(request, 'units/list.html', {
+            'error': error,
+            'units': [],
+            'buildings': {},
+            'site': site_config,
+        })
     
     # site.buildings is a list[Building]
-    for building in site.buildings:
+    for building in site_config.buildings:
         building_name = building.names[0] if building.names else "Unknown"
-        # Prepend 'Enclosure' to building name
-        display_name = f"Enclosure: {building_name}"
-        buildings_data[display_name] = {
-            'name': display_name,
+        
+        buildings_data[building_name] = {
+            'name': f"Enclosure: {building_name}",
             'units': [],
             'sort_order': 0 if 'clamshell' in building_name.lower() else 1  # Clamshell first
         }
         
         # building.units is a list[str] (unit IDs)
         for unit_id in building.units:
+            
+            unit_data = {
+                'deployed': unit_id in site_config.deployed_units,
+                'name': unit_id,
+                'full_name': unit_id,
+                'operational': True,
+                'why_not_operational': [],
+                'building': building_name,
+                'color': 'info'
+            }
 
-            if unit_id in site.deployed_units:
+            if unit_id in site_config.deployed_units:
                 if sites_status.sites and current_site in sites_status.sites and unit_id in sites_status.sites[current_site].units:
                 
                     unit_status: UnitStatus = sites_status.sites[current_site].units[unit_id]
-                    if unit_status.type == 'short':
+                    unit_data['powered'] = unit_status.powered
+                    unit_data['detected'] = unit_status.detected
+
+                    if unit_status.type == 'basic':
                         # Controller couldn't reach unit
-                        operational = False
-                        why_not_operational = ['No response from unit']
+                        unit_data['operational'] = False
+                        if isinstance(unit_status.powered, bool) and not unit_status.powered:
+                            unit_data['color'] = 'danger'
+                            unit_data['why_not_operational'] = ['Not powered']
+                        else:
+                            unit_data['color'] = 'danger'
+                            unit_data['why_not_operational'] = ['Not detected']
                     elif unit_status.type == 'full':
                         # Full status from unit
-                        operational = unit_status.operational
-                        why_not_operational = unit_status.why_not_operational or []
-            elif unit_id in site.units_in_maintenance:
-                operational = False
-                why_not_operational = ['In maintenance']
-            elif unit_id in site.planned_units:
-                operational = False
-                why_not_operational = ['Planned']
-            
-            unit_data = {
-                'name': unit_id,
-                'full_name': unit_id,
-                'operational': operational,
-                'why_not_operational': why_not_operational,
-                'building': display_name,
-            }
-            buildings_data[display_name]['units'].append(unit_data)
+                        unit_data['operational'] = unit_status.operational
+                        unit_data['color'] = 'success' if unit_status.operational else 'danger'
+                        unit_data['why_not_operational'] = unit_status.why_not_operational or []
+            elif unit_id in site_config.units_in_maintenance:
+                unit_data['operational'] = False
+                unit_data['color'] = 'warning'
+                unit_data['why_not_operational'] = ['In maintenance']
+            elif unit_id in site_config.planned_units:
+                unit_data['operational'] = False
+                unit_data['color'] = 'info'
+                unit_data['why_not_operational'] = ['Planned']
+            else:
+                unit_data['operational'] = False
+                unit_data['color'] = 'info'
+                unit_data['why_not_operational'] = ['Unknown unit name']
+
+            buildings_data[building_name]['units'].append(unit_data)
         
         # Sort units for proper display order (upper right to lower left, alternating)
         # For North/South: units numbered 1,3,5,7,9 (row 1) and 2,4,6,8,10 (row 2)
         # Display order: 9,7,5,3,1 (row 1 right to left), then 10,8,6,4,2 (row 2 right to left)
-        if len(buildings_data[display_name]['units']) > 1:
+        if len(buildings_data[building_name]['units']) > 1:
             # Extract numeric part from unit names for sorting
-            units = buildings_data[display_name]['units']
+            units = buildings_data[building_name]['units']
             # Separate odd and even units
-            odd_units = [u for u in units if int(u['name'].replace(site.project, '')) % 2 == 1]
-            even_units = [u for u in units if int(u['name'].replace(site.project, '')) % 2 == 0]
+            odd_units = [u for u in units if int(u['name'].replace(site_config.project, '')) % 2 == 1]
+            even_units = [u for u in units if int(u['name'].replace(site_config.project, '')) % 2 == 0]
             # Sort each row descending (right to left)
-            odd_units.sort(key=lambda u: int(u['name'].replace(site.project, '')), reverse=True)
-            even_units.sort(key=lambda u: int(u['name'].replace(site.project, '')), reverse=True)
+            odd_units.sort(key=lambda u: int(u['name'].replace(site_config.project, '')), reverse=True)
+            even_units.sort(key=lambda u: int(u['name'].replace(site_config.project, '')), reverse=True)
             # Store in display order with row split
-            buildings_data[display_name]['row1'] = odd_units
-            buildings_data[display_name]['row2'] = even_units
-            buildings_data[display_name]['units'] = odd_units + even_units
+            buildings_data[building_name]['row1'] = odd_units
+            buildings_data[building_name]['row2'] = even_units
+            buildings_data[building_name]['units'] = odd_units + even_units
     
     # Sort buildings: clamshell first, then others
     buildings_sorted = dict(sorted(buildings_data.items(), key=lambda x: x[1]['sort_order']))
@@ -139,27 +166,28 @@ def units_list(request):
             match comp_name:
                 case 'deepspec':
                     comp_status = getattr(spec_status, comp_name, None)
-                    display_name = 'Deepspec'
+                    component_display_name = 'Deepspec'
                 case 'highspec':
                     comp_status = getattr(spec_status, comp_name, None)
-                    display_name = 'Highspec'
+                    component_display_name = 'Highspec'
                 case 'controller':
                     comp_status = site_status.controller
-                    display_name = 'Controller'
+                    component_display_name = 'Controller'
                 case _:
                     comp_status = getattr(site_status, comp_name, None)
             
             instrument_room[comp_name] = {
                 'name': comp_name,
-                'display_name': display_name,
+                'display_name': component_display_name,
                 'detected': False if comp_status is None else getattr(comp_status, 'detected', False),
+                'powered': False if comp_status is None else getattr(comp_status, 'powered', False),
                 # 'activities_verbal': ['Unknown'] if comp_status is None else getattr(comp_status, 'activities_verbal', []) or [],
             }
             logger.debug(f"Instrument room component {comp_name}: {instrument_room[comp_name]}")
     
     return render(request, 'units/list.html', {
         'buildings': buildings_sorted,
-        'site': site,
+        'site': site_config,
         'instrument_room': instrument_room,
     })
 
@@ -197,19 +225,19 @@ def unit_detail(request, unit_name):
     if status_response.succeeded and status_response.value:
         # response.value is discriminated union UnitStatus
         # logger.info(f"Unit {unit_name} status response: {status_response.value}")
-        unit_status = ShortStatus(**status_response.value) if status_response.value['type'] == 'short' else FullUnitStatus(**status_response.value)
+        unit_status = BasicStatus(**status_response.value) if status_response.value['type'] == 'basic' else FullUnitStatus(**status_response.value)
         
-        if isinstance(unit_status, ShortStatus):
+        if unit_status.type == 'basic':
             # Controller couldn't reach unit - show limited info
             unit_operational = unit_status.operational
             unit_info = {
-                'type': 'short',
+                'type': 'basic',
                 'powered': unit_status.powered,
                 'detected': unit_status.detected,
                 'operational': unit_status.operational
             }
         
-        elif isinstance(unit_status, FullUnitStatus):
+        elif unit_status.type == 'full':
             # Full status from unit - use all available data
             unit_operational = unit_status.operational
             

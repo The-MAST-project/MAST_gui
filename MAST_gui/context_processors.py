@@ -238,6 +238,7 @@ class MastCache(BaseModel):
     def __init__(self, **kwargs):
         if not MastCache._initialized:
             super().__init__(**kwargs)
+            self.refresh()  # Initial cache refresh on first initialization
             MastCache._initialized = True
 
     def refresh(self):

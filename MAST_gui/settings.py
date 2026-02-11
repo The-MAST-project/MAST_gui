@@ -15,7 +15,7 @@ sys.path.insert(0, MAST_COMMON_PATH)
 
 # Security
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = True
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,mast-wis-control,10.23.3.73', 
                        cast=lambda v: [s.strip() for s in v.split(',')])
 
@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django_q',  # Add this for django-q2 task queue
     'MAST_gui',  # ← Django finds MastGuiConfig in MAST_gui/apps.py
+    'debug_toolbar',  # Optional: Django Debug Toolbar for development
 ]
 
 AUTH_USER_MODEL = 'accounts.User'  # Make sure this is set to your custom user model
@@ -78,6 +79,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',  # Optional: Django Debug Toolbar
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -313,6 +315,11 @@ mast_networks = [
     'mast-wis-control',
     'mast-ns-control',
     '*.weizmann.ac.il',
+]
+
+INTERNAL_IPS = [
+    '127.0.0.1',
+    '10.23.3.73',  # Add your client IP
 ]
 
 if no_proxy:

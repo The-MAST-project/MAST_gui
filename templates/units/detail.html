@@ -123,7 +123,7 @@
                 {% include 'units/components/covers_accordion.html' with covers=component_statuses.covers %}
             {% endif %}
         </div>
-    {% elif unit_info.type == 'short' %}
+    {% elif unit_info.type == 'basic' %}
         <div class="alert alert-info">
             <i class="bi bi-info-circle"></i>
             No unit information. Controller cannot get status from unit '{{unit_name}}'.

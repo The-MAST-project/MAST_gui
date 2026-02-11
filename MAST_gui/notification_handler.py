@@ -3,7 +3,7 @@ import time
 from pydantic import BaseModel
 # from .context_processors import _MAST_CACHE, _MAST_CACHE_LOCK
 from .context_processors import MastCache
-from common.models.statuses import ShortStatus
+from common.models.statuses import BasicStatus
 from common.notifications import UiUpdateRequest, UiUpdateMessage, NotificationInitiator, NotificationCardType
 
 logger = logging.getLogger(__name__)
@@ -48,8 +48,8 @@ def update_cache_from_update_request(update_request: UiUpdateRequest):
         return False
     
     target = site_status[type_key][host_key] if type_key == 'units' else site_status[type_key]
-    if isinstance(target, ShortStatus):
-        logger.warning(f"Target for {type_key} {host_key} is ShortStatus, cannot update attributes")
+    if isinstance(target, BasicStatus):
+        logger.warning(f"Target for {type_key} {host_key} is BasicStatus, cannot update attributes")
         return False
     
     for update_message in update_request.messages:

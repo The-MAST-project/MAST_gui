@@ -101,6 +101,11 @@
                         <div class="row justify-content-center">
                             {% for unit in building_data.units %}
                                 <div class="col-md-2 col-sm-3 mb-3">
+                                    {{ mast.sites_config|json_script:"mast-sites-config" }}
+                                    <script>
+                                        const mastSitesConfig = JSON.parse(document.getElementById('mast-sites-config').textContent);
+                                        console.log('mast.sites_config:', mastSitesConfig);
+                                    </script>
                                     {% if unit.deployed %}
                                         <a href="{% url 'units:detail' unit.name %}" class="text-decoration-none">
                                     {% else %}
@@ -116,7 +121,7 @@
                                                     {% if unit.operational %}
                                                         <span class="badge bg-success">Ready</span>
                                                     {% else %}
-                                                        <span class="badge bg-secondary">{{ unit.why_not_operational|join:" " }}</span>
+                                                        <span class="badge bg-secondary">{{ unit.why_not_operational|join:" "|escapejs }}</span>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -130,11 +135,14 @@
                         <div class="row mb-2">
                             {% for unit in building_data.row1 %}
                                 <div class="col">
+                                    <script>
+                                        console.log('Rendering unit:', '{{ unit.full_name }}', 'Deployed:', {{ unit.deployed|yesno:"true,false" }}, 'Operational:', {{ unit.operational|yesno:"true,false" }});
+                                    </script>
                                     {% if unit.deployed %}
                                         <a href="{% url 'units:detail' unit.name %}" class="text-decoration-none">
                                     {% else %}
                                         <a href="#" class="text-decoration-none" 
-                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.why_not_operational|join:" " }}'); return false;">
+                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.why_not_operational }}'); return false;">
                                     {% endif %}
                                             <div class="card unit-card {% if unit.operational %}ready{% else %}not-operational{% endif %}">
                                                 <div class="card-body text-center p-2">
@@ -162,7 +170,7 @@
                                         <a href="{% url 'units:detail' unit.name %}" class="text-decoration-none">
                                     {% else %}
                                         <a href="#" class="text-decoration-none" 
-                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.why_not_operational|join:" " }}'); return false;">
+                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.why_not_operational|join:" "|escapejs }}'); return false;">
                                     {% endif %}
                                             <div class="card unit-card {% if unit.operational %}ready{% else %}not-operational{% endif %}">
                                                 <div class="card-body text-center p-2">
@@ -173,7 +181,7 @@
                                                     {% if unit.operational %}
                                                         <span class="badge bg-success">Ready</span>
                                                     {% else %}
-                                                        <span class="badge bg-secondary">{{ unit.why_not_operational|join:" " }}</span>
+                                                        <span class="badge bg-secondary">{{ unit.why_not_operational|join:" "|escapejs }}</span>
                                                     {% endif %}
                                                 </div>
                                             </div>

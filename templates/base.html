@@ -230,19 +230,19 @@
         
         eventSource.addEventListener('activity_refresh', function(e) {
             const data = JSON.parse(e.data);
-            console.log('SSE Handler: Activity refresh received', data);
+            console.log('SSE Handler: UiNotification received', data);
             
             // Check if we're on units page and site matches
             const currentPage = window.location.pathname;
             const selectedSite = '{{ request.session.selected_site }}';
             
             if (!currentPage.match(/\/units\/?$/) && !currentPage.match(/\/units\/([^\/]+)\/?$/)) {
-                console.log('SSE Handler: Activity refresh rejected - not on units page');
+                console.log('SSE Handler: UiNotification rejected - not on units page');
                 return; // Not on units page
             }
             
             if (data.site !== selectedSite) {
-                console.log('SSE Handler: Activity refresh rejected - site mismatch');
+                console.log('SSE Handler: UiNotification rejected - site mismatch');
                 return; // Different site
             }
             
@@ -434,7 +434,7 @@
             if (tooltip) tooltip.dispose();
             new bootstrap.Tooltip(indicator);
             
-            console.log(`SSE Handler: Updated activity indicator #${indicatorId}:`, activities);
+            console.log(`SSE Handler: Updated activity indicator #${indicatorId}: `, indicator.title);
         }
         
         function showEventCards(update) {
@@ -517,5 +517,6 @@
         }
     });
     </script>
+
 </body>
 </html>
