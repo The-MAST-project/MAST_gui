@@ -9,15 +9,20 @@
             failed: [],
             expired: [],
             postponed: [],
+            canceled: [],
+            deleted: [],
 
             canManagePlans: false,
+            canSubmitPlans: false,
 
             init() {
                 // initialize capability from server-provided object
                 try {
                     this.canManagePlans = window.__PLANS_INIT && window.__PLANS_INIT.canManagePlans === true;
+                    this.canSubmitPlans = window.__PLANS_INIT && window.__PLANS_INIT.canSubmitPlans === true;
                 } catch (e) {
                     this.canManagePlans = false;
+                    this.canSubmitPlans = false;
                 }
                 this.fetchPlans();
             },
@@ -35,11 +40,13 @@
                     this.failed = data.failed || [];
                     this.expired = data.expired || [];
                     this.postponed = data.postponed || [];
+                    this.canceled = data.canceled || [];
+                    this.deleted = data.deleted || [];
                     // attach a helper _tab for inProgress entries if needed
                     this.inProgress.forEach(p => p._tab = this.findTabForUlid(p.ulid));
                 } catch (err) {
                     console.error('Failed to fetch plans:', err);
-                    this.inProgress = this.pending = this.completed = this.failed = this.expired = this.postponed = [];
+                    this.inProgress = this.pending = this.completed = this.failed = this.expired = this.postponed = this.canceled = this.deleted = [];
                 }
             },
 
@@ -150,30 +157,48 @@
                 if ((this.postponed || []).some(p => p.ulid === ulid)) return 'postponed';
                 if ((this.expired || []).some(p => p.ulid === ulid)) return 'expired';
                 if ((this.failed || []).some(p => p.ulid === ulid)) return 'failed';
+                if ((this.canceled || []).some(p => p.ulid === ulid)) return 'canceled';
+                if ((this.deleted || []).some(p => p.ulid === ulid)) return 'deleted';
                 return 'pending';
             },
 
             // Helpers to perform actions, then refresh
-            async revivePlan(ulid) {
-                if (!confirm('Revive plan ' + ulid + '?')) return;
+            async executePlan(ulid) {
+                if (!await confirm('Execute plan ' + ulid + '?')) return;
                 try {
-                    await ControlApi(`plans/revive?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
+                    await ControlApi(`/plans/execute?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
+                } catch (e) { console.warn(e); }
+                await this.fetchPlans();
+            },
+
+            async revivePlan(ulid) {
+                if (!await confirm('Revive plan ' + ulid + '?')) return;
+                try {
+                    await ControlApi(`/plans/revive?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
                 } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
             async postponePlan(ulid) {
-                if (!confirm('Postpone plan ' + ulid + '?')) return;
+                if (!await confirm('Postpone plan ' + ulid + '?')) return;
                 try {
-                    await ControlApi(`plans/postpone?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
+                    await ControlApi(`/plans/postpone?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
+                } catch (e) { console.warn(e); }
+                await this.fetchPlans();
+            },
+
+            async cancelPlan(ulid) {
+                if (!await confirm('Cancel plan ' + ulid + '?')) return;
+                try {
+                    await ControlApi(`/plans/cancel?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
                 } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
             async deletePlan(ulid) {
-                if (!confirm('Delete plan ' + ulid + '? This cannot be undone.')) return;
+                if (!await confirm('Delete plan ' + ulid + '? This cannot be undone.')) return;
                 try {
-                    await ControlApi(`plans/delete?ulid=${encodeURIComponent(ulid)}`, { method: 'DELETE' });
+                    await ControlApi(`/plans/delete?ulid=${encodeURIComponent(ulid)}`, { method: 'DELETE' });
                 } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },

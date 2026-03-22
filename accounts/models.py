@@ -57,4 +57,5 @@ class User(AbstractUser):
             ("can_use_controls", "Can use controls"),
             ("can_manage_users", "Can manage users"),
             ("can_manage_plans", "Can manage plans"),
+            ("can_submit_plans", "Can submit observation plans"),
         ]

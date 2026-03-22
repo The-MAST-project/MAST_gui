@@ -1,23 +1,25 @@
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
+
+@login_required
 def plans_index(request):
 	"""
-	Simple view that renders the Plans page. The page is populated via client-side
-	ControlApi('/plans/get'). We provide a boolean 'canManagePlans' used to enable/disable
-	buttons in the template — replace with your actual capability check as needed.
+	Renders the Plans page. Data is populated client-side via ControlApi('/plans/get').
+	Two capability flags are passed to the template:
+	  - canManagePlans: admins — can execute, postpone, cancel, delete, revive plans
+	  - canSubmitPlans: scientists — can submit new observation plans
 	"""
-	# Replace this with your real capability check if available (groups/capabilities).
-	can_manage = False
-	try:
-		can_manage = request.user.is_staff or request.user.is_superuser
-	except Exception:
-		can_manage = False
+	user = request.user
+	can_manage = user.has_perm('accounts.can_manage_plans') or user.is_superuser
+	can_submit = user.has_perm('accounts.can_submit_plans') or user.is_superuser
 	script_prefix = request.META.get("SCRIPT_NAME", "")
 	return render(
 		request,
 		"plans/index.html",
 		{
 			"canManagePlans": can_manage,
+			"canSubmitPlans": can_submit,
 			"SCRIPT_PREFIX": script_prefix,
 		}
 	)
