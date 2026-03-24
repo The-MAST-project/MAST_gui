@@ -80,7 +80,10 @@
                 for (const sf of card.fields.filter(f => !f._isSectionHeader && !f.hidden)) {
                     const val = this.getFieldValue(key, sf.name, sf._groupKey);
                     if (val !== null && val !== undefined && val !== '' && val !== false) {
-                        items.push({ label: sf.label, value: val, unit: sf.unit });
+                        const display = sf.widget === 'user'
+                            ? (this._resolveUser(val)?.name || val)
+                            : val;
+                        items.push({ label: sf.label, value: display, unit: sf.unit });
                     }
                 }
                 return items.length ? items : [{ message: '—' }];
