@@ -448,9 +448,7 @@ window.autofocusDetails = function(unitName) {
             this.fetchAutofocusTree();
         },
         fetchAutofocusTree() {
-            // Use SCRIPT_PREFIX for API calls
-            const prefix = window.SCRIPT_PREFIX || '';
-            ControlApi(`${prefix}/data/autofocus/${unitName}`)
+            ControlApi(`/data/autofocus/${unitName}`)
                 .then(data => {
                     // store the mapping as-is
                     this.autofocusTree = data || {};
