@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load socialaccount %}
 
 {% block title %}Sign Up - MAST GUI{% endblock %}
 
@@ -7,13 +8,15 @@
     <h3 class="mb-4 text-center">Sign Up</h3>
     <div class="mb-4 text-center">
         <div class="mb-2">Sign up with:</div>
-        <a href="{% url 'social:begin' 'google-oauth2' %}" class="btn btn-outline-danger w-100 mb-2">
+        <a href="{% provider_login_url 'google' %}" class="btn btn-outline-danger w-100 mb-2">
             <i class="bi bi-google"></i> Google
         </a>
-        <a href="{% url 'social:begin' 'github' %}" class="btn btn-outline-dark w-100 mb-2">
+        <a href="{% provider_login_url 'github' %}" class="btn btn-outline-dark w-100 mb-2">
             <i class="bi bi-github"></i> GitHub
         </a>
-        <!-- Add more providers as needed -->
+        <a href="{% provider_login_url 'orcid' %}" class="btn btn-outline-secondary w-100 mb-2">
+            ORCID
+        </a>
     </div>
     <div class="text-center mb-3 text-muted">or</div>
     <div class="d-grid">
