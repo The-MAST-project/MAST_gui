@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
 from django.db.models.signals import m2m_changed
@@ -25,6 +27,7 @@ class MASTPermissions:
 
 
 class User(AbstractUser):
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     is_registered = models.BooleanField(default=False)
     prefix = models.CharField(max_length=16, blank=True)
     full_name = models.CharField(max_length=128, blank=True)
