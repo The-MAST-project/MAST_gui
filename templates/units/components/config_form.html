@@ -77,11 +77,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td style="width:300px; white-space:nowrap; border:none; vertical-align:baseline;">
                             <label class="form-label mb-0" style="vertical-align:baseline;">
                                 <strong x-text="fieldMeta.ui && fieldMeta.ui.label ? fieldMeta.ui.label : fieldMeta.name"></strong>
-                                <span x-show="fieldMeta.ui && fieldMeta.ui.tooltip" 
-                                      class="ms-1"
-                                      data-bs-toggle="tooltip" 
-                                      :title="fieldMeta.ui.tooltip">
-                                    <i class="bi bi-info-circle text-muted"></i>
+                                <span x-show="fieldMeta.ui && fieldMeta.ui.tooltip"
+                                      class="info-icon ms-1"
+                                      x-tooltip="fieldMeta.ui && fieldMeta.ui.tooltip">
+                                    <i class="bi bi-info-circle"></i>
                                 </span>
                                 <small x-show="fieldMeta.ui && fieldMeta.ui.unit" 
                                        class="text-muted"

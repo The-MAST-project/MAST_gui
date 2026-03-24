@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="{% get_dynamic_static_url 'css/logo.css' %}">
     <link rel="stylesheet" href="{% get_dynamic_static_url 'css/colors.css' %}">
     <link rel="stylesheet" href="{% get_dynamic_static_url 'css/notifications.css' %}">
+    <link rel="stylesheet" href="{% get_dynamic_static_url 'css/main.css' %}">
     <link rel="icon" type="image/x-icon" href="{% get_dynamic_static_url 'favicon.ico' %}">
     
     {% block extra_css %}{% endblock %}
@@ -76,7 +77,7 @@
                     <select id="site-select" name="site" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 200px;">
                         {% for site in all_sites %}
                             <option value="{{ site.name }}" {% if site.name == current_site %}selected{% endif %}>
-                                {{ site.location }}
+                                {{ site.location.name }}
                             </option>
                         {% endfor %}
                     </select>
@@ -185,18 +186,53 @@
     <script src="{% get_dynamic_static_url 'js/confirm-modal.js' %}"></script>
     {% endblock %}
 
+    <!-- Global x-tooltip Alpine directive -->
+    <script>
+    document.addEventListener('alpine:init', function () {
+        Alpine.directive('tooltip', function (el, { expression }, { evaluateLater, cleanup, effect }) {
+            var getText = evaluateLater(expression);
+            var instance = null;
+            effect(function () {
+                getText(function (value) {
+                    if (instance) { instance.dispose(); instance = null; }
+                    if (value) {
+                        instance = new bootstrap.Tooltip(el, {html: true, placement: 'top', title: value});
+                    }
+                });
+            });
+            cleanup(function () { if (instance) instance.dispose(); });
+        });
+    });
+    </script>
+
     <!-- SSE Toast Card Handler - Global -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         console.log('SSE Handler: DOM loaded, initializing...');
         
-        // Initialize Bootstrap tooltips for activity indicators
-        var tooltipTriggerList = [].slice.call(
-            document.querySelectorAll('[data-bs-toggle="tooltip"]')
-        );
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
+        // Initialize Bootstrap tooltips
+        initTooltips();
+    });
+
+    function initTooltips(root) {
+        (root || document).querySelectorAll('[data-bs-toggle="tooltip"]:not([data-bs-original-title])').forEach(function (el) {
+            new bootstrap.Tooltip(el, {html: true, placement: 'top'});
         });
+    }
+
+    // Auto-initialize tooltips on any newly added DOM nodes
+    new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+            mutation.addedNodes.forEach(function (node) {
+                if (node.nodeType !== 1) return;
+                if (node.matches('[data-bs-toggle="tooltip"]')) initTooltips(node.parentElement);
+                else if (node.querySelector) initTooltips(node);
+            });
+        });
+    }).observe(document.body, {childList: true, subtree: true});
+
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('SSE Handler: DOM loaded, initializing...');
         
         // SSE Toast Card Listener
         const eventSource = new EventSource('/sse/stream/');
@@ -392,7 +428,7 @@
             
             if (type === 'unit') {
                 indicatorId = `activity-${update.initiator.hostname}-indicator`;
-            } else if (type === 'controller' || type === 'deepspec' || type === 'highspec') {
+            } else if (type === 'controller' || type === 'spec') {
                 indicatorId = `activity-${type}-indicator`;
             } else {
                 console.warn(`SSE Handler: Unknown initiator type for activity indicator: ${type}`);

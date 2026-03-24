@@ -1,0 +1,42 @@
+<div class="col{% if limit_width %}-md-2 col-sm-3 mb-3{% endif %}">
+    {% if card_url %}
+        <a href="{{ card_url }}" class="text-decoration-none">
+    {% else %}
+        <a href="#" class="text-decoration-none" 
+           onclick="{{ onclick_action|safe }}; return false;">
+    {% endif %}
+            <div class="card unit-card {% if severity %}severity-{{ severity }}{% else %}{% if operational %}ready{% elif detected %}deployed{% else %}{% if planned %}planned{% else %}not-operational{% endif %}{% endif %}{% endif %}">
+                <div class="card-body text-center p-2">
+                    <h6 class="mb-1 {% if severity %}text-severity-{{ severity }}{% endif %}">
+                        {% include 'components/activity_indicator.html' with activities=activities component_id=component_id %}
+                        {{ full_name }}
+                        {% if host %}<br><small>({{ host }})</small>{% endif %}
+                    </h6>
+                    <script>console.log('status_card: full_name: {{ full_name }}, planned: {{ planned }}, maintenance: {{ maintenance }}, detected: {{ detected }}, operational: {{ operational }}, why_not_operational: {{ why_not_operational }}');</script>
+                    {% if planned %}
+                        <span class="badge bg-{{ severity|default:'secondary' }}">{{ "Planned" }}</span>
+                    {% elif maintenance %}
+                        <span class="badge bg-{{ severity|default:'warning' }}">{{ "In Maintenance" }}</span>
+                    {% elif not detected %}
+                        <span class="badge bg-{{ severity|default:'error' }}">{{ "Not Detected" }}</span>
+                    {% elif not operational %}
+                        <span
+                            class="badge bg-{{ severity|default:'error' }}"
+                            {% if why_not_operational %}
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="auto"
+                                data-bs-html="true"
+                                data-bs-custom-class="status-tooltip"
+                                data-bs-title="{% for reason in why_not_operational %}{{ reason|escape }}{% if not forloop.last %}<br>{% endif %}{% endfor %}"
+                                style="cursor: help;"
+                            {% endif %}
+                        >
+                            Not Operational
+                        </span>
+                    {% else %}
+                        <span class="badge bg-success">Operational</span>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+</div>

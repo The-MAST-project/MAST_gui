@@ -283,10 +283,9 @@ class MastCache(BaseModel):
                         msg = f"Status cache: [{site}]: "
                         site_status = self.sites_status.sites[site]
                         controller_status = site_status.controller
-                        deepspec_status = site_status.spec.deepspec
-                        highspec_status = site_status.spec.highspec
+                        spec_status = site_status.spec
                         unit_statuses = site_status.units
-                        for comp_name, st in {'controller': controller_status, 'deepspec': deepspec_status, 'highspec': highspec_status}.items():
+                        for comp_name, st in {'controller': controller_status, 'spec': spec_status}.items():
                             msg += f"{comp_name}({type(st).__name__}), "
                         for unit_name, unit_status in unit_statuses.items():
                             msg += f"{unit_name}({type(unit_status).__name__}), "

@@ -29,6 +29,7 @@ async function ControlApi(url, options = {}) {
         body: options.body || undefined,
         // ...you may add credentials, mode, etc if needed
     };
+    
     console.log(`ControlApi fetching: ${fullUrl}`, options);
 
     try {

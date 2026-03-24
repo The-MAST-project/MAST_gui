@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static %}
+{% load dynamic_urls %}
+
+{% block title %}New Plan — MAST{% endblock %}
+
+{% block content %}
+<div x-data="planNewPage()" x-init="init()" class="container py-3">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="mb-0">New Plan</h1>
+        <a href="{% url 'plans_index' %}" class="btn btn-secondary">Back to Plans</a>
+    </div>
+
+    <!-- Loading state -->
+    <template x-if="loading">
+        <div class="text-muted py-4 text-center">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            Loading plan template…
+        </div>
+    </template>
+
+    <!-- Error state -->
+    <template x-if="error">
+        <div class="alert alert-danger" x-text="error"></div>
+    </template>
+
+    <!-- Form -->
+    <template x-if="!loading && !error">
+        <div>
+            {% include "plans/_plan_cards.html" %}
+
+            <!-- Action bar -->
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-primary" @click="submitPlan()" :disabled="!isValid()">Submit</button>
+                <a href="{% url 'plans_index' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+    </template>
+
+</div>
+
+<script src="{% get_dynamic_static_url 'js/api.js' %}"></script>
+<script src="{% get_dynamic_static_url 'js/form_utils.js' %}"></script>
+<script src="{% get_dynamic_static_url 'js/plan_cards_mixin.js' %}"></script>
+<script>
+window.__PLAN_NEW_INIT = {
+    fieldMeta: {{ field_meta_json|safe }},
+    plansUrl: "{% url 'plans_index' %}",
+};
+</script>
+<script src="{% get_dynamic_static_url 'js/plan_new.js' %}"></script>
+{% endblock %}

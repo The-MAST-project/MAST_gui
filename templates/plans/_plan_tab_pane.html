@@ -1,0 +1,52 @@
+<div class="tab-pane fade{% if active %} show active{% endif %}" id="pane-{{ tab }}" role="tabpanel">
+	<div class="d-flex align-items-center fw-bold mb-2 px-3 py-2" style="background-color: #f8f9fa; position: sticky; top: 0; z-index: 10;">
+		<span style="min-width: 30px; margin-right: 0.75rem;">#</span>
+		<span style="width: 20px; margin-right: 0.5rem;">ID</span>
+		<span style="flex-grow: 1;">Owner</span>
+	</div>
+
+	<div class="accordion" id="accordion-{{ tab }}">
+		<template x-for="(p, index) in {{ tab }}" :key="p.ulid">
+			<div class="accordion-item" :data-plan-ulid="p.ulid" :data-plan-tab="'{{ tab }}'">
+				<h2 class="accordion-header d-flex align-items-center justify-content-between">
+					<button class="accordion-button collapsed flex-grow-1 text-start me-2"
+							type="button"
+							data-bs-toggle="collapse"
+							:data-bs-target="'#{{ tab }}-'+p.ulid">
+						<span class="text-muted me-3" style="min-width: 30px;" x-text="(index + 1) + '.'"></span>
+						<i class="bi bi-person-badge me-2"
+						   data-bs-toggle="tooltip"
+						   data-bs-placement="top"
+						   :title="p.ulid"></i>
+						<span x-text="p.owner || 'n/a'"></span>
+					</button>
+					<div class="btn-group">
+						{% if tab == "submitted" %}
+							<button class="btn btn-sm btn-success" type="button" @click.stop="approvePlan(p.ulid)" :disabled="!canManagePlans">Approve</button>
+							<button class="btn btn-sm btn-danger"  type="button" @click.stop="deletePlan(p.ulid)"  :disabled="!canManagePlans">Delete</button>
+						{% elif tab == "pending" %}
+							<button class="btn btn-sm btn-primary" type="button" @click.stop="executePlan(p.ulid)"  :disabled="!canManagePlans">Execute</button>
+							<button class="btn btn-sm btn-warning" type="button" @click.stop="postponePlan(p.ulid)" :disabled="!canManagePlans">Postpone</button>
+							<button class="btn btn-sm btn-danger"  type="button" @click.stop="deletePlan(p.ulid)"   :disabled="!canManagePlans">Delete</button>
+						{% elif tab == "completed" or tab == "postponed" or tab == "expired" or tab == "failed" %}
+							<button class="btn btn-sm btn-success" type="button" @click.stop="revivePlan(p.ulid)"  :disabled="!canManagePlans">Revive</button>
+							<button class="btn btn-sm btn-danger"  type="button" @click.stop="deletePlan(p.ulid)"  :disabled="!canManagePlans">Delete</button>
+						{% elif tab == "canceled" or tab == "deleted" %}
+							<button class="btn btn-sm btn-success" type="button" @click.stop="revivePlan(p.ulid)" :disabled="!canManagePlans">Revive</button>
+						{% endif %}
+						<span style="margin-right: 0.5rem;"></span>
+					</div>
+				</h2>
+				<div :id="'{{ tab }}-'+p.ulid" class="accordion-collapse collapse">
+					<div class="accordion-body" style="padding-left:0.5cm; padding-right:0.5cm; padding-top:0.5rem; padding-bottom:0.5rem;"
+					     x-data="planViewCards(p, (window.__PLANS_INIT || {}).fieldMeta || {})">
+						{% include "plans/_plan_cards.html" %}
+					</div>
+				</div>
+			</div>
+		</template>
+		<template x-if="{{ tab }}.length === 0">
+			<div class="text-muted p-3">No {{ tab }} plans.</div>
+		</template>
+	</div>
+</div>

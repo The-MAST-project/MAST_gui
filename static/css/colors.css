@@ -21,6 +21,10 @@
     --mast-primary-text: #084298;
     --mast-primary-border: #9ec5fe;
     
+    --mast-secondary-bg: #e2e3e5;
+    --mast-secondary-text: #41464b;
+    --mast-secondary-border: #c4c8cb;
+    
     /* Semantic Aliases */
     --mast-start-bg: var(--mast-primary-bg);
     --mast-start-text: var(--mast-primary-text);
@@ -69,8 +73,83 @@
 }
 
 .badge.bg-secondary {
-    background-color: #e2e3e5 !important;
-    color: #41464b !important;
+    background-color: var(--mast-secondary-bg) !important;
+    color: var(--mast-secondary-text) !important;
+}
+
+/* Unit/Instrument Card Styles */
+.unit-card {
+    border: 2px solid #dee2e6;
+    transition: all 0.3s;
+    min-height: 100px;
+}
+
+.unit-card.deployed, .unit-card.ready {
+    border-color: var(--mast-success-border);
+}
+
+.unit-card.planned, .unit-card.not-operational {
+    border-color: var(--mast-secondary-border);
+    opacity: 0.7;
+}
+
+/* Severity-based card border colors */
+.unit-card.severity-info {
+    border-color: var(--mast-info-border);
+}
+
+.unit-card.severity-success {
+    border-color: var(--mast-success-border);
+}
+
+.unit-card.severity-warning {
+    border-color: var(--mast-warning-border);
+}
+
+.unit-card.severity-danger {
+    border-color: var(--mast-danger-border);
+}
+
+.unit-card.severity-primary {
+    border-color: var(--mast-primary-border);
+}
+
+.unit-card.severity-secondary {
+    border-color: var(--mast-secondary-border);
+}
+
+/* Severity-based text colors */
+.text-severity-info {
+    color: var(--mast-info-text) !important;
+}
+
+.text-severity-success {
+    color: var(--mast-success-text) !important;
+}
+
+.text-severity-warning {
+    color: var(--mast-warning-text) !important;
+}
+
+.text-severity-danger {
+    color: var(--mast-danger-text) !important;
+}
+
+.text-severity-primary {
+    color: var(--mast-primary-text) !important;
+}
+
+.text-severity-secondary {
+    color: var(--mast-secondary-text) !important;
+}
+
+.unit-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.unit-card h6 {
+    font-size: 0.9rem;
 }
 
 /* Cardiac pulse animation - simulates human heartbeat (60-80 BPM) */

@@ -3,6 +3,7 @@
     window.plansPage = function () {
         return {
             // Data arrays (PlansResponse)
+            submitted: [],
             inProgress: [],
             pending: [],
             completed: [],
@@ -34,6 +35,7 @@
                     const data = await r;
                     console.log('Plans data received:', data);
                     // Expect data shaped like PlansResponse
+                    this.submitted = data.submitted || [];
                     this.inProgress = data.in_progress || data.inProgress || [];
                     this.pending = data.pending || [];
                     this.completed = data.completed || [];
@@ -46,7 +48,7 @@
                     this.inProgress.forEach(p => p._tab = this.findTabForUlid(p.ulid));
                 } catch (err) {
                     console.error('Failed to fetch plans:', err);
-                    this.inProgress = this.pending = this.completed = this.failed = this.expired = this.postponed = this.canceled = this.deleted = [];
+                    this.submitted = this.inProgress = this.pending = this.completed = this.failed = this.expired = this.postponed = this.canceled = this.deleted = [];
                 }
             },
 
@@ -152,6 +154,7 @@
             // Attempt to locate the tab that contains a given ULID
             findTabForUlid(ulid) {
                 // search arrays
+                if ((this.submitted || []).some(p => p.ulid === ulid)) return 'submitted';
                 if ((this.pending || []).some(p => p.ulid === ulid)) return 'pending';
                 if ((this.completed || []).some(p => p.ulid === ulid)) return 'completed';
                 if ((this.postponed || []).some(p => p.ulid === ulid)) return 'postponed';
@@ -164,15 +167,23 @@
 
             // Helpers to perform actions, then refresh
             async executePlan(ulid) {
-                if (!await confirm('Execute plan ' + ulid + '?')) return;
+                if (!confirm('Execute plan ' + ulid + '?')) return;
                 try {
                     await ControlApi(`/plans/execute?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
                 } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
+            async approvePlan(ulid) {
+                if (!confirm('Approve plan ' + ulid + '?')) return;
+                try {
+                    await ControlApi(`/plans/revive?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
+                } catch (e) { console.warn(e); }
+                await this.fetchPlans();
+            },
+
             async revivePlan(ulid) {
-                if (!await confirm('Revive plan ' + ulid + '?')) return;
+                if (!confirm('Revive plan ' + ulid + '?')) return;
                 try {
                     await ControlApi(`/plans/revive?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
                 } catch (e) { console.warn(e); }
@@ -180,7 +191,7 @@
             },
 
             async postponePlan(ulid) {
-                if (!await confirm('Postpone plan ' + ulid + '?')) return;
+                if (!confirm('Postpone plan ' + ulid + '?')) return;
                 try {
                     await ControlApi(`/plans/postpone?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
                 } catch (e) { console.warn(e); }
@@ -188,7 +199,7 @@
             },
 
             async cancelPlan(ulid) {
-                if (!await confirm('Cancel plan ' + ulid + '?')) return;
+                if (!confirm('Cancel plan ' + ulid + '?')) return;
                 try {
                     await ControlApi(`/plans/cancel?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
                 } catch (e) { console.warn(e); }
@@ -196,7 +207,7 @@
             },
 
             async deletePlan(ulid) {
-                if (!await confirm('Delete plan ' + ulid + '? This cannot be undone.')) return;
+                if (!confirm('Delete plan ' + ulid + '? This cannot be undone.')) return;
                 try {
                     await ControlApi(`/plans/delete?ulid=${encodeURIComponent(ulid)}`, { method: 'DELETE' });
                 } catch (e) { console.warn(e); }

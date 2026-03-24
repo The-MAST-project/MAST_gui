@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h2>Units - {{ site.location }}</h2>
+    <h2>Units - {{ site.location.name }}</h2>
     
     {% if error %}
         <div class="alert alert-danger">{{ error }}</div>
@@ -17,73 +17,14 @@
             </div>
             <div class="card-body">
                 <div class="row justify-content-center">
-                    {# DeepSpec #}
-                    {% if instrument_room.deepspec %}
-                        <div class="col-md-2 col-sm-3 mb-3">
-                            <a href="#" class="text-decoration-none" 
-                               onclick="showInstrumentModal('{{ instrument_room.deepspec.display_name }}'); return false;">
-                                <div class="card unit-card {% if instrument_room.deepspec.detected %}deployed{% else %}planned{% endif %}">
-                                    <div class="card-body text-center p-2">
-                                        <h6 class="mb-1">
-                                            {% include 'components/activity_indicator.html' with activities=instrument_room.deepspec.activities_verbal component_id="deepspec" %}
-                                            {{ instrument_room.deepspec.display_name }}<br>
-                                            <small>({{ site.spec_host }})</small>
-                                        </h6>
-                                        {% if instrument_room.deepspec.detected %}
-                                            <span class="badge bg-success">Detected</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Not Detected</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                    {% endif %}
-                    
-                    {# HighSpec #}
-                    {% if instrument_room.highspec %}
-                        <div class="col-md-2 col-sm-3 mb-3">
-                            <a href="#" class="text-decoration-none" 
-                               onclick="showInstrumentModal('{{ instrument_room.highspec.display_name }}'); return false;">
-                                <div class="card unit-card {% if instrument_room.highspec.detected %}deployed{% else %}planned{% endif %}">
-                                    <div class="card-body text-center p-2">
-                                        <h6 class="mb-1">
-                                            {% include 'components/activity_indicator.html' with activities=instrument_room.highspec.activities_verbal component_id="highspec"%}
-                                            {{ instrument_room.highspec.display_name }}<br>
-                                            <small>({{ site.spec_host }})</small>
-                                        </h6>
-                                        {% if instrument_room.highspec.detected %}
-                                            <span class="badge bg-success">Detected</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Not Detected</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
+                    {# Spec #}
+                    {% if instrument_room.spec %}
+                        {% include 'units/components/status_card.html' with full_name=instrument_room.spec.display_name planned=False maintenance=False detected=instrument_room.spec.detected operational=instrument_room.spec.operational why_not_operational=instrument_room.spec.why_not_operational activities=instrument_room.spec.activities_verbal component_id="spec" host=site.spec_host severity=instrument_room.spec.severity|default:"success" limit_width=True onclick_action="showInstrumentModal('"|add:instrument_room.spec.display_name|escapejs|add:"')" %}
                     {% endif %}
                     
                     {# Controller #}
                     {% if instrument_room.controller %}
-                        <div class="col-md-2 col-sm-3 mb-3">
-                            <a href="#" class="text-decoration-none" 
-                               onclick="showInstrumentModal('{{ instrument_room.controller.display_name }}'); return false;">
-                                <div class="card unit-card {% if instrument_room.controller.detected %}deployed{% else %}planned{% endif %}">
-                                    <div class="card-body text-center p-2">
-                                        <h6 class="mb-1">
-                                            {% include 'components/activity_indicator.html' with activities=instrument_room.controller.activities_verbal component_id="controller"%}
-                                            {{ instrument_room.controller.display_name }}<br>
-                                            <small>({{ site.controller_host }})</small>
-                                        </h6>
-                                        {% if instrument_room.controller.detected %}
-                                            <span class="badge bg-success">Connected</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Not Detected</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
+                        {% include 'units/components/status_card.html' with full_name=instrument_room.controller.display_name planned=False maintenance=False detected=True operational=instrument_room.controller.operational why_not_operational=instrument_room.controller.why_not_operational activities=instrument_room.controller.activities_verbal component_id="controller" host=site.controller_host severity=instrument_room.controller.severity|default:"success" limit_width=True onclick_action="showInstrumentModal('"|add:instrument_room.controller.display_name|escapejs|add:"')" %}
                     {% endif %}
                 </div>
             </div>
@@ -100,33 +41,10 @@
                         {# Single unit (Clamshell) - centered #}
                         <div class="row justify-content-center">
                             {% for unit in building_data.units %}
-                                <div class="col-md-2 col-sm-3 mb-3">
-                                    {{ mast.sites_config|json_script:"mast-sites-config" }}
-                                    <script>
-                                        const mastSitesConfig = JSON.parse(document.getElementById('mast-sites-config').textContent);
-                                        console.log('mast.sites_config:', mastSitesConfig);
-                                    </script>
-                                    {% if unit.deployed %}
-                                        <a href="{% url 'units:detail' unit.name %}" class="text-decoration-none">
-                                    {% else %}
-                                        <a href="#" class="text-decoration-none" 
-                                           onclick="showUnitStatusModal('{{ unit.full_name }} (ouch1)', '{{ unit.status_text }}'); return false;">
-                                    {% endif %}
-                                            <div class="card unit-card {% if unit.deployed %}deployed{% else %}planned{% endif %}">
-                                                <div class="card-body text-center p-2">
-                                                    <h6 class="mb-1">
-                                                        {% include 'components/activity_indicator.html' with activities=unit.activities_verbal component_id=unit.full_name %}
-                                                        {{ unit.full_name }}
-                                                    </h6>
-                                                    {% if unit.operational %}
-                                                        <span class="badge bg-success">Ready</span>
-                                                    {% else %}
-                                                        <span class="badge bg-secondary">{{ unit.why_not_operational|join:" "|escapejs }}</span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </a>
-                                </div>
+                                {% if unit.deployed %}
+                                    {% url 'units:detail' unit.name as detail_url %}
+                                {% endif %}
+                                {% include 'units/components/status_card.html' with full_name=unit.full_name planned=unit.planned detected=unit.detected maintenance=unit.maintenance activities=unit.activities_verbal component_id=unit.full_name operational=unit.operational why_not_operational=unit.why_not_operational card_url=detail_url severity=unit.severity|default:"success" limit_width=True %}
                             {% endfor %}
                         </div>
                     {% else %}
@@ -134,59 +52,20 @@
                         {# Row 1 (North): odd units sorted right to left #}
                         <div class="row mb-2">
                             {% for unit in building_data.row1 %}
-                                <div class="col">
-                                    <script>
-                                        console.log('Rendering unit:', '{{ unit.full_name }}', 'Deployed:', {{ unit.deployed|yesno:"true,false" }}, 'Operational:', {{ unit.operational|yesno:"true,false" }});
-                                    </script>
-                                    {% if unit.deployed %}
-                                        <a href="{% url 'units:detail' unit.name %}" class="text-decoration-none">
-                                    {% else %}
-                                        <a href="#" class="text-decoration-none" 
-                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.why_not_operational }}'); return false;">
-                                    {% endif %}
-                                            <div class="card unit-card {% if unit.operational %}ready{% else %}not-operational{% endif %}">
-                                                <div class="card-body text-center p-2">
-                                                    <h6 class="mb-1">
-                                                        {% include 'components/activity_indicator.html' with activities=unit.activities_verbal component_id=unit.full_name %}
-                                                        {{ unit.full_name }}
-                                                    </h6>
-                                                    {% if unit.operational %}
-                                                        <span class="badge bg-success">Ready</span>
-                                                    {% else %}
-                                                        <span class="badge bg-secondary">{{ unit.why_not_operational|join:" " }}</span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </a>
-                                </div>
+                                {% if unit.deployed %}
+                                    {% url 'units:detail' unit.name as detail_url %}
+                                {% endif %}
+                                {% include 'units/components/status_card.html' with full_name=unit.full_name planned=unit.planned detected=unit.detected maintenance=unit.maintenance activities=unit.activities_verbal component_id=unit.full_name operational=unit.operational why_not_operational=unit.why_not_operational card_url=detail_url severity=unit.severity|default:"success" limit_width=True %}
                             {% endfor %}
                         </div>
                         
                         {# Row 2 (South): even units sorted right to left #}
                         <div class="row">
                             {% for unit in building_data.row2 %}
-                                <div class="col">
-                                    {% if unit.deployed %}
-                                        <a href="{% url 'units:detail' unit.name %}" class="text-decoration-none">
-                                    {% else %}
-                                        <a href="#" class="text-decoration-none" 
-                                           onclick="showUnitStatusModal('{{ unit.full_name }}', '{{ unit.why_not_operational|join:" "|escapejs }}'); return false;">
-                                    {% endif %}
-                                            <div class="card unit-card {% if unit.operational %}ready{% else %}not-operational{% endif %}">
-                                                <div class="card-body text-center p-2">
-                                                    <h6 class="mb-1">
-                                                        {% include 'components/activity_indicator.html' with activities=unit.activities_verbal component_id=unit.full_name %}
-                                                        {{ unit.full_name }}
-                                                    </h6>
-                                                    {% if unit.operational %}
-                                                        <span class="badge bg-success">Ready</span>
-                                                    {% else %}
-                                                        <span class="badge bg-secondary">{{ unit.why_not_operational|join:" "|escapejs }}</span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </a>
-                                </div>
+                                {% if unit.deployed %}
+                                    {% url 'units:detail' unit.name as detail_url %}
+                                {% endif %}
+                                {% include 'units/components/status_card.html' with full_name=unit.full_name planned=unit.planned detected=unit.detected maintenance=unit.maintenance activities=unit.activities_verbal component_id=unit.full_name operational=unit.operational why_not_operational=unit.why_not_operational card_url=detail_url severity=unit.severity|default:"success" limit_width=True %}
                             {% endfor %}
                         </div>
                     {% endif %}
@@ -233,7 +112,7 @@
         
         if (typeof bootstrap === 'undefined') {
             console.error('Bootstrap is not loaded!');
-            alert('Unit ' + unitName + ': ' + status + ' no bootstrap');
+            alert('Unit ' + unitName + ': ' + status);
             return;
         }
         
@@ -248,14 +127,11 @@
             statusMessage = status;
         }
         
-        console.log('Status message:', statusMessage);
         document.getElementById('modalUnitStatus').textContent = statusMessage;
         
         const modal = new bootstrap.Modal(document.getElementById('unitStatusModal'));
-        console.log('Modal instance:', modal);
         modal.show();
         
-        // Auto-hide after 5 seconds
         setTimeout(() => {
             modal.hide();
         }, 5000);
@@ -275,20 +151,16 @@
         const modal = new bootstrap.Modal(document.getElementById('instrumentModal'));
         modal.show();
         
-        // Auto-hide after 5 seconds
         setTimeout(() => {
             modal.hide();
         }, 5000);
     }
 
-    console.log('Page loaded');
-    console.log('Bootstrap available:', typeof bootstrap !== 'undefined');
     // Periodically refresh the units status section every 30 seconds
     function refreshUnits() {
         fetch(window.location.pathname, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(resp => resp.text())
             .then(html => {
-                // Replace only the units/buildings section if possible
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
                 const newSection = doc.querySelector('#units-buildings-section');
@@ -296,7 +168,6 @@
                 if (newSection && oldSection) {
                     oldSection.innerHTML = newSection.innerHTML;
                 } else {
-                    // fallback: reload the whole page
                     window.location.reload();
                 }
             });
@@ -304,26 +175,4 @@
     setInterval(refreshUnits, 30000); // 30 seconds
 </script>
 
-
-<style>
-    .unit-card {
-        border: 2px solid #dee2e6;
-        transition: all 0.3s;
-        min-height: 100px;
-    }
-    .unit-card.deployed {
-        border-color: #28a745;
-    }
-    .unit-card.planned {
-        border-color: #6c757d;
-        opacity: 0.7;
-    }
-    .unit-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .unit-card h6 {
-        font-size: 0.9rem;
-    }
-</style>
 {% endblock %}

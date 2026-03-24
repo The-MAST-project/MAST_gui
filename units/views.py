@@ -86,47 +86,44 @@ def units_list(request):
             
             unit_data = {
                 'deployed': unit_id in site_config.deployed_units,
+                'planned': unit_id in site_config.planned_units,
+                'maintenance': unit_id in site_config.units_in_maintenance,
                 'name': unit_id,
                 'full_name': unit_id,
                 'operational': True,
-                'why_not_operational': [],
+                'status': [],
                 'building': building_name,
-                'color': 'info'
+                'severity': 'secondary',
+                'info': [],
             }
 
             if unit_id in site_config.deployed_units:
                 if sites_status.sites and current_site in sites_status.sites and unit_id in sites_status.sites[current_site].units:
                 
                     unit_status: UnitStatus = sites_status.sites[current_site].units[unit_id]
-                    unit_data['powered'] = unit_status.powered
-                    unit_data['detected'] = unit_status.detected
+                    unit_data['detected'] = unit_status.detected if hasattr(unit_status, 'detected') else False
 
                     if unit_status.type == 'basic':
                         # Controller couldn't reach unit
+                        unit_data['detected'] = unit_status.detected if hasattr(unit_status, 'detected') else False
                         unit_data['operational'] = False
                         if isinstance(unit_status.powered, bool) and not unit_status.powered:
-                            unit_data['color'] = 'danger'
-                            unit_data['why_not_operational'] = ['Not powered']
+                            unit_data['severity'] = 'danger'
+                            unit_data['status'] = ['Not powered']
                         else:
-                            unit_data['color'] = 'danger'
-                            unit_data['why_not_operational'] = ['Not detected']
+                            unit_data['severity'] = 'danger'
+                            unit_data['status'] = ['Not detected']
                     elif unit_status.type == 'full':
                         # Full status from unit
                         unit_data['operational'] = unit_status.operational
-                        unit_data['color'] = 'success' if unit_status.operational else 'danger'
+                        unit_data['severity'] = 'success' if unit_status.operational else 'warning'
                         unit_data['why_not_operational'] = unit_status.why_not_operational or []
-            elif unit_id in site_config.units_in_maintenance:
-                unit_data['operational'] = False
-                unit_data['color'] = 'warning'
-                unit_data['why_not_operational'] = ['In maintenance']
-            elif unit_id in site_config.planned_units:
-                unit_data['operational'] = False
-                unit_data['color'] = 'info'
-                unit_data['why_not_operational'] = ['Planned']
+                        unit_data['detected'] = unit_status.detected if hasattr(unit_status, 'detected') else False
             else:
                 unit_data['operational'] = False
-                unit_data['color'] = 'info'
-                unit_data['why_not_operational'] = ['Unknown unit name']
+                unit_data['severity'] = 'secondary'
+                unit_data['why_not_operational'] = ['Bad unit name']
+                unit_data['detected'] = False
 
             buildings_data[building_name]['units'].append(unit_data)
         
@@ -152,8 +149,7 @@ def units_list(request):
     
     # Prepare instrument room components
     instrument_room = {
-        'deepspec': None,
-        'highspec': None,
+        'spec': None,
         'controller': None,
     }
     
@@ -161,26 +157,51 @@ def units_list(request):
         site_status = sites_status.sites[current_site]
         
         # Get each component's status
-        spec_status = site_status.spec
-        for comp_name in ['deepspec', 'highspec', 'controller']:
+        for comp_name in ['spec', 'controller']:
             match comp_name:
-                case 'deepspec':
-                    comp_status = getattr(spec_status, comp_name, None)
-                    component_display_name = 'Deepspec'
-                case 'highspec':
-                    comp_status = getattr(spec_status, comp_name, None)
-                    component_display_name = 'Highspec'
+                case 'spec':
+                    comp_status = getattr(site_status, 'spec', None)
+                    component_display_name = 'Spec'
                 case 'controller':
-                    comp_status = site_status.controller
+                    comp_status = getattr(site_status, 'controller', None)
                     component_display_name = 'Controller'
                 case _:
                     comp_status = getattr(site_status, comp_name, None)
             
+            detected = False if comp_status is None else getattr(comp_status, 'detected', False)
+            powered = False if comp_status is None else getattr(comp_status, 'powered', False)
+            if powered:
+                if detected:
+                    if comp_status.operational:
+                        severity = 'success'
+                    else:
+                        severity = 'warning'
+                else:
+                    severity = 'warning'
+                    
+            match comp_name:
+                case 'controller':
+                    severity = 'success'
+                    operational = True
+                    why_not_operational = []
+                case 'spec':
+                    if comp_status is None:
+                        severity = 'danger'
+                        operational = False
+                        why_not_operational = ['No spec status']
+                    else:
+                        operational = comp_status.operational
+                        severity = 'success' if operational else 'warning'
+                        why_not_operational = comp_status.why_not_operational if comp_status.why_not_operational is not None else []
+
             instrument_room[comp_name] = {
                 'name': comp_name,
                 'display_name': component_display_name,
-                'detected': False if comp_status is None else getattr(comp_status, 'detected', False),
-                'powered': False if comp_status is None else getattr(comp_status, 'powered', False),
+                'detected': detected,
+                'powered': powered,
+                'severity': severity,
+                'operational': operational,
+                'why_not_operational': why_not_operational,
                 # 'activities_verbal': ['Unknown'] if comp_status is None else getattr(comp_status, 'activities_verbal', []) or [],
             }
             logger.debug(f"Instrument room component {comp_name}: {instrument_room[comp_name]}")
@@ -255,7 +276,7 @@ def unit_detail(request, unit_name):
                 'guiding': unit_status.guiding,
                 'autofocusing': unit_status.autofocusing,
                 'activities_verbal': activities_list,  # Now guaranteed to be a list
-                'why_not_operational': unit_status.why_not_operational or []
+                'status': unit_status.why_not_operational or []
             }
             
             # Extract component statuses from full status
@@ -287,7 +308,7 @@ def unit_detail(request, unit_name):
                     'detected': getattr(unit_status.imager, 'detected', None),
                     'operational': unit_status.imager.operational,
                     'activities_verbal': imager_activities,
-                    'why_not_operational': getattr(unit_status.imager, 'why_not_operational', [])
+                    'status': getattr(unit_status.imager, 'status', [])
                 }
             
             if unit_status.focuser:

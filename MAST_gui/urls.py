@@ -28,8 +28,9 @@ urlpatterns = [
     
     # Controller status check endpoint (from mast_utils)
     path('controller-status/', django_controller_status_check, name='controller_status_check'),
-    # Plans page (only one path to plans)
+    # Plans pages
     path('plans/', plans_views.plans_index, name='plans_index'),
+    path('plans/new/', plans_views.plans_new, name='plans_new'),
     
     # App includes
     path('accounts/', include('accounts.urls', namespace='accounts')),

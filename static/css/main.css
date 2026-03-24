@@ -56,12 +56,8 @@ body {
     width: 250px;
     background: #f2f4f7;
     border-right: 1px solid #dee2e6;
-    height: 100vh;
-    position: fixed;
-    top: 0;
-    left: 0;
     overflow-y: auto;
-    z-index: 1000;
+    flex-shrink: 0;
 }
 
 .sidebar-nav {
@@ -100,7 +96,6 @@ body {
 
 /* Main Content Area */
 .main-content {
-    margin-left: 250px;
     padding: 2rem;
 }
 
@@ -125,4 +120,78 @@ body {
     justify-content: center;
     font-size: 0.875rem;
     font-weight: bold;
+}
+
+/* Form controls — slightly more visible borders */
+.form-control,
+.form-select,
+.form-check-input {
+    border-color: #adb5bd;
+}
+
+.form-control.border-success,
+.form-select.border-success,
+.form-check-input.border-success,
+.form-control.border-danger,
+.form-select.border-danger,
+.form-check-input.border-danger {
+    border-width: 2px;
+}
+
+.form-control.border-success,
+.form-select.border-success,
+.form-check-input.border-success {
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+.form-control.border-danger,
+.form-select.border-danger,
+.form-check-input.border-danger {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+    border-color: #86b7fe;
+}
+
+/* Info icons */
+.info-icon {
+    color: #6ea8fe;
+    cursor: help;
+    transition: color 0.15s ease;
+}
+
+.info-icon:hover {
+    color: #0d6efd;
+}
+
+/* Tooltips */
+.tooltip {
+    --bs-tooltip-bg: #ffffff;
+    --bs-tooltip-color: #212529;
+    --bs-tooltip-opacity: 1;
+    --bs-tooltip-max-width: max-content;
+}
+
+.tooltip-inner {
+    border: 1px solid #dee2e6;
+    text-align: left;
+}
+
+.tooltip-inner p:last-child {
+    margin-bottom: 0;
+}
+
+/* Status tooltips (activity indicators) — wide, nowrap */
+.status-tooltip {
+    --bs-tooltip-max-width: none;
+}
+
+.status-tooltip .tooltip-inner {
+    width: max-content;
+    max-width: none;
+    white-space: nowrap;
+    text-align: left;
 }

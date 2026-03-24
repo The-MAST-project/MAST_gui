@@ -1,0 +1,182 @@
+<!-- Shared card list — used by plan_new.html (editable) and plans index (readonly) -->
+<div class="d-flex flex-column gap-3">
+    <template x-for="card in cards" :key="card.key">
+        <div class="card" :class="cardBorderClass(card.key)">
+            <div class="card-header d-flex justify-content-between align-items-center"
+                 style="cursor:pointer;" @click="toggleCard(card.key)">
+                <strong x-text="card.label"></strong>
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Summary values -->
+                    <small class="text-muted" x-show="!openCards[card.key]">
+                        <template x-for="item in cardSummaryItems(card)" :key="item.label || item.message">
+                            <span>
+                                <template x-if="item.message">
+                                    <span class="fst-italic" x-text="item.message"></span>
+                                </template>
+                                <template x-if="!item.message">
+                                    <span>
+                                        <span class="text-secondary" x-text="item.label + ': '"></span>
+                                        <span x-text="item.value ?? '—'"></span>
+                                        <span x-show="item.unit" x-text="' ' + item.unit" class="text-muted"></span>
+                                        <span class="me-2"></span>
+                                    </span>
+                                </template>
+                            </span>
+                        </template>
+                    </small>
+                    <i class="bi" :class="openCards[card.key] ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                </div>
+            </div>
+            <div class="card-body" x-show="openCards[card.key]" x-transition>
+                <template x-for="field in card.fields" :key="field._uniqueName || field.name">
+                    <div>
+                    <!-- Section header -->
+                    <template x-if="field._isSectionHeader">
+                        <div class="row mt-3 mb-1">
+                            <div class="col-12">
+                                <small class="text-muted fw-semibold text-uppercase" x-text="field.label"></small>
+                                <template x-if="field.tooltip">
+                                    <span class="info-icon ms-1 small" x-tooltip="field.tooltip">ⓘ</span>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                    <!-- Field row -->
+                    <template x-if="!field._isSectionHeader">
+                    <div class="row align-items-start mb-2">
+                        <!-- Label column (indented when inside a section) -->
+                        <div class="col-4 pt-1" :class="(field.section || field._groupKey) ? 'ps-4' : ''">
+                            <label class="form-label mb-0 text-nowrap">
+                                <span x-text="field.label"></span>
+                                <span x-show="field.unit" class="text-muted ms-1 small" x-text="'(' + field.unit + ')' "></span>
+                                <span x-show="field.required" class="text-danger ms-1">*</span>
+                                <span x-show="field.tooltip" class="text-muted ms-1 small"
+                                      x-tooltip="field.tooltip">ⓘ</span>
+                            </label>
+                        </div>
+                        <!-- Value column -->
+                        <div class="col-8">
+                            <!-- select -->
+                            <template x-if="field.widget === 'select'">
+                                <select class="form-select form-select-sm"
+                                        style="width: auto; min-width: 8ch;"
+                                        :disabled="!isEditable(field)"
+                                        :class="fieldBorderClass(card.key, field)"
+                                        @change="setFieldValue(card.key, field.name, $event.target.value, field._groupKey)">
+                                    <template x-if="!field.default">
+                                        <option value="">— choose —</option>
+                                    </template>
+                                    <template x-for="opt in resolveOptions(field)" :key="opt">
+                                        <option :value="opt"
+                                                :selected="(getFieldValue(card.key, field.name, field._groupKey) ?? field.default) === opt"
+                                                x-text="opt"></option>
+                                    </template>
+                                </select>
+                            </template>
+
+                            <!-- checkbox -->
+                            <template x-if="field.widget === 'checkbox'">
+                                <div class="form-check mb-0">
+                                    <input type="checkbox" class="form-check-input"
+                                           :disabled="!isEditable(field)"
+                                           :checked="!!getFieldValue(card.key, field.name, field._groupKey)"
+                                           @change="setFieldValue(card.key, field.name, $event.target.checked, field._groupKey)">
+                                </div>
+                            </template>
+
+                            <!-- number -->
+                            <template x-if="field.widget === 'number'">
+                                <input type="number" class="form-control form-control-sm"
+                                       style="width: 9ch;"
+                                       :disabled="!isEditable(field)"
+                                       :class="fieldBorderClass(card.key, field)"
+                                       :value="getFieldValue(card.key, field.name, field._groupKey) ?? field.default"
+                                       :min="field.min" :max="field.max"
+                                       @input="setFieldValue(card.key, field.name, $event.target.valueAsNumber, field._groupKey)">
+                            </template>
+
+                            <!-- datetime -->
+                            <template x-if="field.widget === 'datetime'">
+                                <input type="datetime-local" class="form-control form-control-sm w-auto"
+                                       :disabled="!isEditable(field)"
+                                       :class="fieldBorderClass(card.key, field)"
+                                       :value="getFieldValue(card.key, field.name, field._groupKey)"
+                                       @input="setFieldValue(card.key, field.name, $event.target.value, field._groupKey)">
+                            </template>
+
+                            <!-- radio-date-picker -->
+                            <template x-if="field.widget === 'radio-date-picker'">
+                                <div class="d-flex flex-row align-items-center gap-3 flex-wrap">
+                                    <template x-for="opt in field.options" :key="opt">
+                                        <div class="d-flex align-items-center gap-1">
+                                            <div class="form-check mb-0">
+                                                <input type="radio" class="form-check-input"
+                                                       :name="card.key + '.' + field._uniqueName"
+                                                       :id="card.key + '.' + field._uniqueName + '.' + opt"
+                                                       :value="opt"
+                                                       :checked="getFieldValue(card.key, field.name, field._groupKey) === opt"
+                                                       :disabled="!isEditable(field)"
+                                                       @change="setModeValue(card.key, field, opt)">
+                                                <label class="form-check-label"
+                                                       :for="card.key + '.' + field._uniqueName + '.' + opt"
+                                                       @click="isEditable(field) && (opt === 'Date' || opt === 'DateTime') && openDatePicker(card.key, field, opt)">
+                                                    <span x-text="opt"></span>
+                                                    <template x-if="opt === 'Date' || opt === 'DateTime'">
+                                                        <i class="bi bi-calendar2 ms-1 small text-secondary" style="vertical-align: middle;"></i>
+                                                    </template>
+                                                </label>
+                                            </div>
+                                            <template x-if="getFieldValue(card.key, field.name, field._groupKey) === opt && opt === 'Date'">
+                                                <input type="date" class="form-control form-control-sm w-auto ms-1"
+                                                       :id="`picker-${card.key}-${field._uniqueName}-Date`"
+                                                       :disabled="!isEditable(field)"
+                                                       :value="getFieldValue(card.key, field.name.replace('_mode', ''), field._groupKey)"
+                                                       @input="setFieldValue(card.key, field.name.replace('_mode', ''), $event.target.value, field._groupKey)">
+                                            </template>
+                                            <template x-if="getFieldValue(card.key, field.name, field._groupKey) === opt && opt === 'DateTime'">
+                                                <input type="datetime-local" class="form-control form-control-sm w-auto ms-1"
+                                                       :id="`picker-${card.key}-${field._uniqueName}-DateTime`"
+                                                       :disabled="!isEditable(field)"
+                                                       :value="getFieldValue(card.key, field.name.replace('_mode', ''), field._groupKey)"
+                                                       @input="setFieldValue(card.key, field.name.replace('_mode', ''), $event.target.value, field._groupKey)">
+                                            </template>
+                                            <template x-if="opt === 'After'">
+                                                <div class="d-flex align-items-center gap-1 ms-1">
+                                                    <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                                           class="form-control form-control-sm"
+                                                           style="width: 6ch;"
+                                                           :disabled="!isEditable(field)"
+                                                           :value="getFieldValue(card.key, 'end_after_nights', field._groupKey)"
+                                                           @input="setFieldValue(card.key, 'end_after_nights', parseInt($event.target.value) || null, field._groupKey)">
+                                                    <span class="text-muted small">nights</span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+
+                            <!-- text (default) -->
+                            <template x-if="!field.widget || field.widget === 'text'">
+                                <input type="text" class="form-control form-control-sm"
+                                       style="max-width: 16ch;"
+                                       :disabled="!isEditable(field)"
+                                       :class="fieldBorderClass(card.key, field)"
+                                       :value="getFieldValue(card.key, field.name, field._groupKey)"
+                                       @input="setFieldValue(card.key, field.name, $event.target.value, field._groupKey)">
+                            </template>
+
+                            <!-- validation error (reserved space) -->
+                            <div class="form-text text-danger mt-0" style="min-height: 1em;"
+                                 x-text="fieldError(card.key, field)"></div>
+                        </div>
+                    </div>
+                    </template><!-- end field row -->
+                    </div><!-- end x-for root -->
+                </template>
+            </div>
+            <!-- Validation error -->
+            <div class="card-footer text-danger small" x-show="cardErrors && cardErrors[card.key]" x-text="cardErrors && cardErrors[card.key]"></div>
+        </div>
+    </template>
+</div>

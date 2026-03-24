@@ -308,22 +308,22 @@ def handle_notification(request):
     """
     Receive notifications from backend controller
     """
-    from common.notifications import UiUpdateRequest
+    from common.notifications import UiUpdateNotifications
     try:
         try:
-            update_request = UiUpdateRequest.model_validate_json(request.body)
+            ui_notifications = UiUpdateNotifications.model_validate_json(request.body)
         except ValidationError as ve:
             logger.error(f"Notification validation error: {ve}")
             return JsonResponse({'error': 'Invalid notification format'}, status=400)
         
-        initiator = update_request.initiator
-        logger.info(f"Received notification: {update_request.type} from {initiator.site}:{initiator.hostname}")
+        initiator = ui_notifications.initiator
+        logger.info(f"Received notification: {ui_notifications.type} from {initiator.site}:{initiator.hostname}")
         
         if sse_manager.client_count == 0:
             logger.info("No SSE clients connected, skipping broadcast")
             return JsonResponse({'broadcasted': False, 'reason': 'no_clients'})
         
-        sse_message = update_sse_message_from_update_request(update_request)
+        sse_message = update_sse_message_from_update_request(ui_notifications)
         data = sse_message.model_dump_json() if sse_message else None
         if data is not None:
             sse_manager.broadcast('notification', data)

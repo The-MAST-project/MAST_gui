@@ -1,14 +1,13 @@
 import logging
 import time
 from pydantic import BaseModel
-# from .context_processors import _MAST_CACHE, _MAST_CACHE_LOCK
 from .context_processors import MastCache
 from common.models.statuses import BasicStatus
-from common.notifications import UiUpdateRequest, UiUpdateMessage, NotificationInitiator, NotificationCardType
+from common.notifications import UiUpdateNotifications, NotificationInitiator, NotificationCardType
 
 logger = logging.getLogger(__name__)
 
-def update_cache_from_update_request(update_request: UiUpdateRequest):
+def update_cache_from_update_request(update_notifications: UiUpdateNotifications):
     """
     Update in-memory cache from notification update request
     """
@@ -20,29 +19,29 @@ def update_cache_from_update_request(update_request: UiUpdateRequest):
         logger.warning("Cache status not initialized")
         return False
     
-    # Do we have a cache entry for the update_request.initiator.site?
-    if update_request.initiator.site not in sites_status.sites:
-        logger.warning(f"Site {update_request.initiator.site} not found in cache")
+    # Do we have a cache entry for the update_notifications.initiator.site?
+    if update_notifications.initiator.site not in sites_status.sites:
+        logger.warning(f"Site {update_notifications.initiator.site} not found in cache")
         return False
-    site_key = update_request.initiator.site
+    site_key = update_notifications.initiator.site
     if site_key not in sites_status.sites:
         logger.warning(f"Site {site_key} not found in cache")
         return False
     
     site_status = sites_status.sites[site_key]
-    match update_request.initiator.type:
+    match update_notifications.initiator.type:
         case 'unit':
             type_key = 'units'
         case 'controller' | 'deepspec' | 'highspec':
-            type_key = update_request.initiator.type
+            type_key = update_notifications.initiator.type
         case _:
-            logger.warning(f"Unknown initiator type: {update_request.initiator.type}")
+            logger.warning(f"Unknown initiator type: {update_notifications.initiator.type}")
             return False
     if type_key not in site_status:
         logger.warning(f"Type {type_key} not found in site status")
         return False
     
-    host_key = update_request.initiator.hostname
+    host_key = update_notifications.initiator.hostname
     if host_key not in site_status[type_key]:
         logger.warning(f"Host {host_key} not found in type {type_key}")
         return False
@@ -52,7 +51,7 @@ def update_cache_from_update_request(update_request: UiUpdateRequest):
         logger.warning(f"Target for {type_key} {host_key} is BasicStatus, cannot update attributes")
         return False
     
-    for update_message in update_request.messages:
+    for update_message in update_notifications.notifications:
         logger.debug(f"Update message: {update_message}")
 
         if not update_message.cache:
@@ -101,7 +100,7 @@ class CardSSEMessage(BaseModel):
     duration: str | None = None  # For 'end' type cards
     component: str | None = None
 
-def card_sses_from_update_request(update_request: UiUpdateRequest) -> list[CardSSEMessage] | None:
+def card_sses_from_update_request(update_request: UiUpdateNotifications) -> list[CardSSEMessage] | None:
     """
     Generate toast card data from notification
     
@@ -109,17 +108,17 @@ def card_sses_from_update_request(update_request: UiUpdateRequest) -> list[CardS
     """
     card_sse_messages = []  # Change: create a list
 
-    for update_message in update_request.messages:
-        if not update_message.card:
+    for notification in update_request.notifications:
+        if not notification.card:
             continue  # No card in this message
 
         try:
             card_sse_message = CardSSEMessage(
-                type=update_message.card.type,
-                message=update_message.card.message,
-                details=update_message.card.details,
-                duration=update_message.card.duration,
-                component=update_message.card.component,
+                type=notification.card.type,
+                message=notification.card.message,
+                details=notification.card.details,
+                duration=notification.card.duration,
+                component=notification.card.component,
             )
                 
             card_sse_messages.append(card_sse_message.model_dump())  # Change: append to list
@@ -135,31 +134,30 @@ class DomSSEMessage(BaseModel):
     text: str | None = None
     html: str | None = None
 
-def dom_sses_from_update_request(update_request: UiUpdateRequest) -> list[DomSSEMessage] | None:
+def dom_sses_from_update_request(update_request: UiUpdateNotifications) -> list[DomSSEMessage] | None:
     """
     Generate DOM update messages from notification
     """
     dom_sse_messages = []
     
-    update_message: UiUpdateMessage | None = None
-    for update_message in update_request.messages:
-        if not update_message.dom:
+    for notification in update_request.notifications:
+        if not notification.dom:
             continue  # No DOM update in this message
         
-        dom_update_message = update_message.dom
+        dom_update_message = notification.dom
         
         try:
             id=dom_update_message.id
             match dom_update_message.render_as:
-                case 'txt':
+                case 'text':
                     dom_sse_message = DomSSEMessage(
                         id=id,
-                        text=str(update_message.cache.value) if update_message.cache else '',
+                        text=str(notification.cache.value) if notification.cache else '',
                     )
                 case 'badge':
                     html = ''
-                    if isinstance(update_message.cache.value, list):
-                        values = update_message.cache.value
+                    if isinstance(notification.cache.value, list):
+                        values = notification.cache.value
                         for value in values:
                             html += f'<span class="badge bg-primary me-1">{str(value)}</span>'
 
@@ -184,7 +182,7 @@ class UpdateSSEMessage(BaseModel):
     cards: list[CardSSEMessage] | None = None
     doms: list[DomSSEMessage] | None = None
 
-def update_sse_message_from_update_request(update_request: UiUpdateRequest) -> UpdateSSEMessage | None:
+def update_sse_message_from_update_request(update_request: UiUpdateNotifications) -> UpdateSSEMessage | None:
     """
     Generate SSE message from notification update request
     """
@@ -232,13 +230,9 @@ def broadcast_activity_indicators_update():
             )
         
         # Add spec activities
-        if hasattr(site_status, 'deepspec') and site_status.deepspec:
-            activities_update['components']['deepspec'] = getattr(
-                site_status.deepspec, 'activities_verbal', []
-            )
-        if hasattr(site_status, 'highspec') and site_status.highspec:
-            activities_update['components']['highspec'] = getattr(
-                site_status.highspec, 'activities_verbal', []
+        if hasattr(site_status, 'spec') and site_status.spec:
+            activities_update['components']['spec'] = getattr(
+                site_status.spec, 'activities_verbal', []
             )
         
         # Add unit activities
