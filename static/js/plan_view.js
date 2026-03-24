@@ -17,6 +17,18 @@
 
             init() {
                 this.cards = this._buildCards(fieldMeta || {});
+
+                // Events card — built from plan.events, not from field metadata
+                const rawEvents = (this.plan.events || []).slice();
+                rawEvents.sort((a, b) => (a.when || '') < (b.when || '') ? -1 : 1);
+                this.cards.push({
+                    key: 'events',
+                    label: 'Events',
+                    type: 'events',
+                    events: rawEvents,
+                    summaryEvent: rawEvents.find(e => e.what === 'created' || e.what === 'submitted') || null,
+                });
+
                 this.cards.forEach(c => this.openCards[c.key] = false);
             },
 
@@ -33,6 +45,14 @@
             // (no "changed from default" concept — we don't have a baseline)
             cardSummaryItems(card) {
                 const key = card.key;
+
+                if (key === 'events') {
+                    if (!card.summaryEvent) return [{ message: '—' }];
+                    return [{
+                        label: card.summaryEvent.what,
+                        value: this._fmtWhen(card.summaryEvent.when),
+                    }];
+                }
 
                 if (key === 'target') {
                     const ra = this.getFieldValue('target', 'ra_hours');

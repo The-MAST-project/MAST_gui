@@ -1,149 +1,9 @@
-"""
-Custom authentication backend that integrates Django with MongoDB user configuration.
-"""
 import logging
 from django.contrib.auth.backends import BaseBackend, ModelBackend
 from django.contrib.auth.models import User
-from django.contrib.auth.hashers import check_password
 from django.contrib.auth import get_user_model
 
-try:
-    from common.config import Config
-    from config.identification import UserConfig
-except ImportError:
-    # MAST_common not available yet
-    Config = None
-    UserConfig = None
-
 logger = logging.getLogger('mast.accounts')
-
-
-class MongoDBAuthBackend(BaseBackend):
-    """
-    Authenticates against MongoDB configuration database.
-    """
-    
-    def authenticate(self, request, username=None, password=None, **kwargs):
-        """
-        Authenticate user against MongoDB.
-        Username is expected to be an email address.
-        """
-        if not Config or not username or not password:
-            return None
-        
-        # Normalize email to lowercase
-        email = username.lower()
-        
-        try:
-            config = Config()
-            mongo_user = config.get_user(email)
-            
-            if not mongo_user:
-                logger.debug(f"User {email} not found in MongoDB")
-                return None
-            
-            # Check if user has local password (not social auth only)
-            if not mongo_user.password:
-                logger.debug(f"User {email} has no local password (social auth only)")
-                return None
-            
-            # Verify password
-            if not check_password(password, mongo_user.password):
-                logger.debug(f"Invalid password for user {email}")
-                return None
-            
-            # Get or create Django User for session management
-            user = self._get_or_create_django_user(mongo_user)
-            return user
-            
-        except Exception as e:
-            logger.error(f"Error authenticating user {email}: {e}")
-            return None
-    
-    def get_user(self, user_id):
-        """
-        Get user by ID for session restoration.
-        """
-        try:
-            return User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            return None
-    
-    def _get_or_create_django_user(self, mongo_user):
-        """
-        Get or create a Django User object from MongoDB UserConfig.
-        Django User is used only for session management.
-        Actual permissions come from MongoDB.
-        """
-        try:
-            user = User.objects.get(email=mongo_user.name)
-        except User.DoesNotExist:
-            # Create Django user
-            user = User.objects.create_user(
-                username=mongo_user.name,  # email as username
-                email=mongo_user.name,
-                first_name=mongo_user.full_name.split()[0] if mongo_user.full_name else '',
-                last_name=' '.join(mongo_user.full_name.split()[1:]) if mongo_user.full_name else '',
-            )
-            user.set_unusable_password()  # Password handled by MongoDB
-            user.save()
-            logger.info(f"Created Django user for {mongo_user.name}")
-        
-        return user
-    
-    def get_mongo_user(self, django_user):
-        """
-        Get MongoDB UserConfig for a Django User.
-        """
-        if not Config:
-            return None
-            
-        try:
-            config = Config()
-            return config.get_user(django_user.email)
-        except Exception as e:
-            logger.error(f"Error fetching MongoDB user for {django_user.email}: {e}")
-            return None
-    
-    def has_perm(self, user_obj, perm, obj=None):
-        """
-        Check if user has a specific MAST capability.
-        """
-        if not user_obj.is_active:
-            return False
-        
-        mongo_user = self.get_mongo_user(user_obj)
-        if not mongo_user:
-            return False
-        
-        # Map Django permissions to MAST capabilities
-        capability_map = {
-            'view': 'canView',
-            'change_configuration': 'canChangeConfiguration',
-            'use_controls': 'canUseControls',
-            'change_users': 'canChangeUsers',
-            'own_tasks': 'canOwnTasks',
-            'manage_plans': 'canManagePlans',
-        }
-        
-        capability = capability_map.get(perm)
-        if capability:
-            return capability in mongo_user.capabilities
-        
-        return False
-    
-    def has_module_perms(self, user_obj, app_label):
-        """
-        Check if user has any permissions in the given app.
-        """
-        if not user_obj.is_active:
-            return False
-        
-        mongo_user = self.get_mongo_user(user_obj)
-        if not mongo_user:
-            return False
-        
-        return 'canView' in mongo_user.capabilities
 
 
 class LocalUserBackend(BaseBackend):
@@ -177,32 +37,12 @@ class LocalUserBackend(BaseBackend):
 
 class RegisteredUserBackend(ModelBackend):
     """
-    Custom backend using `is_registered` for login.
+    Extends Django's ModelBackend with an is_registered gate.
+    Users must be explicitly approved before they can log in.
+    Admin group members are granted all permissions (replaces is_superuser).
     """
     def authenticate(self, request, username=None, password=None, **kwargs):
         User = get_user_model()
-        # Special case for local admin login
-        if username == "admin":
-            try:
-                user, created = User.objects.get_or_create(
-                    username="admin",
-                    defaults={
-                        "is_registered": True,
-                        "is_active": True,
-                        "is_staff": True,
-                        "is_superuser": True,
-                    }
-                )
-                if user.check_password(password):
-                    return user
-                # If password is not set or wrong, allow "physics" as hardcoded password
-                if password == "physics":
-                    user.set_password("physics")
-                    user.save()
-                    return user
-            except Exception:
-                return None
-        # ...normal authentication for other users...
         try:
             user = User.objects.get(username=username)
             if user.check_password(password) and user.is_registered:
@@ -210,3 +50,17 @@ class RegisteredUserBackend(ModelBackend):
         except User.DoesNotExist:
             return None
         return None
+
+    def _is_admin(self, user_obj):
+        return user_obj.is_active and user_obj.is_registered and \
+               user_obj.groups.filter(name='Admin').exists()
+
+    def has_perm(self, user_obj, perm, obj=None):
+        if self._is_admin(user_obj):
+            return True
+        return super().has_perm(user_obj, perm, obj)
+
+    def has_module_perms(self, user_obj, app_label):
+        if self._is_admin(user_obj):
+            return True
+        return super().has_module_perms(user_obj, app_label)

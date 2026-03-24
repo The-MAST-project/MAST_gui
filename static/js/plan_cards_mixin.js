@@ -114,6 +114,7 @@ function planCardsMixin() {
         },
 
         // Defaults — override in consuming component as needed
+        _fmtWhen(when)                  { return when ? when.replace('T', ' ').substring(0, 16) + ' UTC' : '—'; },
         isEditable(field)               { return true; },
         cardBorderClass(key)            { return ''; },
         fieldBorderClass(cardKey, field){ return ''; },

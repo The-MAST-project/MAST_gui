@@ -28,43 +28,26 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # Third-party apps
-    # 'allauth',
-    # 'allauth.account',
-    # 'allauth.socialaccount',
-    
-    # MAST apps - comment out until they exist
-    'accounts',  # Make sure this is here
-    'units',  # Add this
-    'mast_safety',  # Changed from 'safety'
-    # 'dashboard',
-    # 'specs',
-    # 'mast_safety',
-    # 'assignments',
-    # 'plans',
-    'mast_utils',  # Changed from 'utils' to 'mast_utils'
-    'social_django',
+    # MAST apps
+    'accounts',
+    'units',
+    'mast_safety',
+    'mast_utils',
+
+    # Third-party
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    # Add providers as needed, e.g.:
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.orcid',
     'django.contrib.sites',
-    'django_q',  # Add this for django-q2 task queue
-    'MAST_gui',  # ← Django finds MastGuiConfig in MAST_gui/apps.py
-    'debug_toolbar',  # Optional: Django Debug Toolbar for development
+    'django_q',
+    'MAST_gui',
+    'debug_toolbar',
 ]
 
-AUTH_USER_MODEL = 'accounts.User'  # Make sure this is set to your custom user model
-
-# There is NO 'account' app in INSTALLED_APPS.
-# Only 'accounts' is present, which is correct for your custom user model.
-
-INSTALLED_APPS += [
-    'allauth.socialaccount.providers.facebook',
-    'allauth.socialaccount.providers.apple',
-]
+AUTH_USER_MODEL = 'accounts.User'
 
 SITE_ID = 1
 
@@ -130,16 +113,13 @@ CHANNEL_LAYERS = {
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
     'accounts.backends.RegisteredUserBackend',
-    'django.contrib.auth.backends.ModelBackend',  # Use Django's default
     'allauth.account.auth_backends.AuthenticationBackend',
-    'social_core.backends.google.GoogleOAuth2',
-    'social_core.backends.github.GithubOAuth2',
 ]
 
 # Login URLs
-LOGIN_URL = '/admin/login/'  # Use Django admin login for now
+LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/admin/login/'
+LOGOUT_REDIRECT_URL = '/'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -167,77 +147,53 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# NEW (django-allauth updated settings):
-SITE_ID = 1
-
-# Authentication method: email only (no username)
+# django-allauth
 ACCOUNT_LOGIN_METHODS = {'username', 'email'}
-
-# Signup fields: email and password
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
-
-# Email verification
-ACCOUNT_EMAIL_VERIFICATION = 'none'  # 'mandatory' for production
+ACCOUNT_EMAIL_VERIFICATION = 'none'  # set to 'mandatory' in production
 ACCOUNT_UNIQUE_EMAIL = True
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Print to console for development
+ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
+ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'
+ACCOUNT_ADAPTER = 'accounts.adapter.CustomAccountAdapter'
 
-# Allauth settings
-ACCOUNT_EMAIL_VERIFICATION = "optional"
-ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
-ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"
-ACCOUNT_ADAPTER = "accounts.adapter.CustomAccountAdapter"  # if you want to customize registration approval
-
-# Redirects
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # console only; configure SMTP in production
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
+        'APP': {
+            'client_id': config('GOOGLE_CLIENT_ID', default=''),
+            'secret': config('GOOGLE_CLIENT_SECRET', default=''),
+            'key': '',
+        },
     },
     'github': {
         'SCOPE': ['user', 'user:email'],
-    },
-    'facebook': {
-        'METHOD': 'oauth2',
-        'SCOPE': ['email'],
-        'FIELDS': ['email', 'name'],
-    },
-    'apple': {
         'APP': {
-            'client_id': 'YOUR_APPLE_CLIENT_ID',
-            'key': 'YOUR_APPLE_KEY',
-            'team_id': 'YOUR_APPLE_TEAM_ID',
-            'secret': 'YOUR_APPLE_SECRET',
-        }
-    }
+            'client_id': config('GITHUB_CLIENT_ID', default=''),
+            'secret': config('GITHUB_CLIENT_SECRET', default=''),
+        },
+    },
+    'orcid': {
+        # Uses ORCID public API sandbox by default; set BASE_DOMAIN for production
+        'BASE_DOMAIN': 'orcid.org',  # 'sandbox.orcid.org' for testing
+        'MEMBER_API': False,          # True if you have ORCID member API access
+        'APP': {
+            'client_id': config('ORCID_CLIENT_ID', default=''),
+            'secret': config('ORCID_CLIENT_SECRET', default=''),
+        },
+    },
 }
 
 # Crispy Forms
-CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
-CRISPY_TEMPLATE_PACK = "bootstrap5"
+CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
+CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 # MAST Configuration
 MAST_SITE = config('MAST_SITE', default='wis')
 MAST_CONFIG_SOURCE = config('MAST_CONFIG_SOURCE', default=None)
 MAST_API_PREFIX = 'mast/api/v1'
-
-# For python-social-auth:
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '209268696894-q7r751q0bcqu5a3jm7cb8ag9je1h6a7m.apps.googleusercontent.com'
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
-SOCIAL_AUTH_GOOGLE_OAUTH2_REDIRECT_URI = 'http://localhost:8010/auth/complete/google-oauth2/'
-
-# For django-allauth:
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'APP': {
-            'client_id': '209268696894-q7r751q0bcqu5a3jm7cb8ag9je1h6a7m.apps.googleusercontent.com',
-            'secret': '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',
-            'key': ''
-        }
-    }
-}
 
 # Logging
 LOGGING = {

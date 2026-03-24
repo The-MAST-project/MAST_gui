@@ -28,6 +28,34 @@
                 </div>
             </div>
             <div class="card-body" x-show="openCards[card.key]" x-transition>
+
+                <!-- Events table -->
+                <template x-if="card.type === 'events'">
+                    <table class="table table-borderless table-sm mb-0">
+                        <thead>
+                            <tr class="border-bottom">
+                                <th class="text-muted fw-semibold small text-uppercase ps-0">When</th>
+                                <th class="text-muted fw-semibold small text-uppercase">What</th>
+                                <th class="text-muted fw-semibold small text-uppercase">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-if="card.events.length === 0">
+                                <tr><td colspan="3" class="text-muted fst-italic ps-0">No events</td></tr>
+                            </template>
+                            <template x-for="ev in card.events" :key="ev.when">
+                                <tr>
+                                    <td class="text-nowrap ps-0" x-text="_fmtWhen(ev.when)"></td>
+                                    <td x-text="ev.what || '—'"></td>
+                                    <td class="text-muted small" x-text="(ev.details || []).join(', ')"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </template>
+
+                <!-- Regular fields -->
+                <template x-if="!card.type">
                 <template x-for="field in card.fields" :key="field._uniqueName || field.name">
                     <div>
                     <!-- Section header -->
@@ -174,6 +202,7 @@
                     </template><!-- end field row -->
                     </div><!-- end x-for root -->
                 </template>
+                </template><!-- end !card.type -->
             </div>
             <!-- Validation error -->
             <div class="card-footer text-danger small" x-show="cardErrors && cardErrors[card.key]" x-text="cardErrors && cardErrors[card.key]"></div>

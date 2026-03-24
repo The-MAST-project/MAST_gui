@@ -59,9 +59,7 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/', accounts_views.signup, name='signup'),
     path('signup/local/', accounts_views.local_signup, name='local_signup'),  # <-- Add this line
-    # Social auth URLs (python-social-auth)
-    path('auth/', include('social_django.urls', namespace='social')),
-    # Django-allauth URLs (if you use allauth)
+    # django-allauth OAuth callbacks
     path('accounts/', include('allauth.urls')),
     # Catch-all pattern for all non-static/media URLs
     # re_path(r'^.*$', mast_dash_redirect),
