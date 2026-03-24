@@ -184,6 +184,20 @@
                                 </div>
                             </template>
 
+                            <!-- user (resolved from owners map) -->
+                            <template x-if="field.widget === 'user'">
+                                <span>
+                                    <template x-if="_resolveUser(getFieldValue(card.key, field.name, field._groupKey))">
+                                        <a :href="_resolveUser(getFieldValue(card.key, field.name, field._groupKey)).url"
+                                           x-text="_resolveUser(getFieldValue(card.key, field.name, field._groupKey)).name">
+                                        </a>
+                                    </template>
+                                    <template x-if="!_resolveUser(getFieldValue(card.key, field.name, field._groupKey))">
+                                        <span x-text="getFieldValue(card.key, field.name, field._groupKey) || '—'"></span>
+                                    </template>
+                                </span>
+                            </template>
+
                             <!-- text (default) -->
                             <template x-if="!field.widget || field.widget === 'text'">
                                 <input type="text" class="form-control form-control-sm"
