@@ -16,6 +16,17 @@
             canManagePlans: false,
             canSubmitPlans: false,
 
+            ownerName(uid) {
+                if (!uid) return 'n/a';
+                const o = ((window.__PLANS_INIT || {}).owners || {})[uid];
+                return o ? o.name : uid;
+            },
+            ownerUrl(uid) {
+                if (!uid) return '#';
+                const o = ((window.__PLANS_INIT || {}).owners || {})[uid];
+                return o ? o.url : '#';
+            },
+
             init() {
                 // initialize capability from server-provided object
                 try {

@@ -5,6 +5,7 @@ import os
 
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,8 @@ def plans_index(request):
 	  - canManagePlans: admins — can execute, postpone, cancel, delete, revive plans
 	  - canSubmitPlans: scientists — can submit new observation plans
 	"""
+	from accounts.models import User as MASTUser
+
 	user = request.user
 	can_manage = user.has_perm('accounts.can_manage_plans') or user.is_superuser
 	can_submit = user.has_perm('accounts.can_submit_plans') or user.is_superuser
@@ -65,6 +68,14 @@ def plans_index(request):
 		logger.exception(f"plans_index: failed to build field metadata: {e}")
 		field_meta_json = '{}'
 
+	owners = {
+		str(u.uid): {
+			'name': u.full_name or u.username,
+			'url': reverse('accounts:user_profile', args=[u.uid]),
+		}
+		for u in MASTUser.objects.filter(is_active=True)
+	}
+
 	return render(
 		request,
 		"plans/index.html",
@@ -73,5 +84,6 @@ def plans_index(request):
 			"canSubmitPlans": can_submit,
 			"SCRIPT_PREFIX": script_prefix,
 			"field_meta_json": field_meta_json,
+			"owners_json": json.dumps(owners),
 		}
 	)

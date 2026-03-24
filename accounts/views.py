@@ -14,6 +14,24 @@ from accounts.models import User, MASTPermissions
 logger = logging.getLogger('mast.accounts')
 
 
+_CAPABILITIES = [
+    (MASTPermissions.CAN_VIEW,                 'View system status and data'),
+    (MASTPermissions.CAN_SUBMIT_PLANS,         'Submit observation plans'),
+    (MASTPermissions.CAN_MANAGE_PLANS,         'Manage plans'),
+    (MASTPermissions.CAN_EXECUTE_PLANS,        'Execute plans and batches'),
+    (MASTPermissions.CAN_USE_CONTROLS,         'Use low-level controls'),
+    (MASTPermissions.CAN_CHANGE_CONFIGURATION, 'Change configuration'),
+    (MASTPermissions.CAN_MANAGE_USERS,         'Manage users'),
+]
+
+
+def _build_capabilities(user):
+    return [
+        {'code': code, 'name': name, 'has_permission': user.has_perm(f'accounts.{code}')}
+        for code, name in _CAPABILITIES
+    ]
+
+
 @require_http_methods(['GET', 'POST'])
 def login_view(request):
     if request.method == 'POST':
@@ -48,21 +66,23 @@ def profile(request):
 @login_required
 def profile_modal(request):
     user = request.user
-    capabilities = [
-        {'code': MASTPermissions.CAN_VIEW,                 'name': 'View system status and data'},
-        {'code': MASTPermissions.CAN_SUBMIT_PLANS,         'name': 'Submit observation plans'},
-        {'code': MASTPermissions.CAN_MANAGE_PLANS,         'name': 'Manage plans'},
-        {'code': MASTPermissions.CAN_EXECUTE_PLANS,        'name': 'Execute plans and batches'},
-        {'code': MASTPermissions.CAN_USE_CONTROLS,         'name': 'Use low-level controls'},
-        {'code': MASTPermissions.CAN_CHANGE_CONFIGURATION, 'name': 'Change configuration'},
-        {'code': MASTPermissions.CAN_MANAGE_USERS,         'name': 'Manage users'},
-    ]
-    for cap in capabilities:
-        cap['has_permission'] = user.has_perm(f'accounts.{cap["code"]}')
     return render(request, 'accounts/profile_modal.html', {
         'user': user,
         'groups': user.groups.all(),
-        'capabilities': capabilities,
+        'capabilities': _build_capabilities(user),
+    })
+
+
+@login_required
+def user_profile(request, uid):
+    """Readonly profile page for any user, linked from plan owner names."""
+    target = get_object_or_404(User, uid=uid)
+    return render(request, 'accounts/user_profile.html', {
+        'profile_user': target,
+        'groups': target.groups.all(),
+        'capabilities': _build_capabilities(target),
+        'is_own_profile': target == request.user,
+        'can_manage_users': request.user.has_perm('accounts.can_manage_users'),
     })
 
 

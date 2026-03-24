@@ -18,7 +18,7 @@
 						   data-bs-toggle="tooltip"
 						   data-bs-placement="top"
 						   :title="p.ulid"></i>
-						<span x-text="p.owner || 'n/a'"></span>
+						<a :href="ownerUrl(p.owner)" x-text="ownerName(p.owner)" @click.stop class="text-reset"></a>
 					</button>
 					<div class="btn-group">
 						{% if tab == "submitted" %}
