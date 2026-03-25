@@ -10,7 +10,7 @@ from django.contrib.auth.models import Group, Permission
 from accounts.models import MASTPermissions
 
 GROUPS = {
-    'Guest': [
+    'Everybody': [
         MASTPermissions.CAN_VIEW,
     ],
     'Scientist': [

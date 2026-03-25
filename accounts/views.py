@@ -153,11 +153,7 @@ def admin_users(request):
 
 @login_required
 @require_http_methods(['POST'])
-def admin_approve_user(request, user_id):
-    user = get_object_or_404(User, id=user_id)
-    user.is_registered = True
-    user.is_active = True
-    user.save()
+def _send_approval_email(request, user):
     if user.email:
         send_mail(
             subject='Your MAST account has been approved',
@@ -171,6 +167,16 @@ def admin_approve_user(request, user_id):
             recipient_list=[user.email],
             fail_silently=True,
         )
+
+
+def admin_approve_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    user.is_registered = True
+    user.is_active = True
+    user.save()
+    everybody = Group.objects.get(name='Everybody')
+    user.groups.add(everybody)
+    _send_approval_email(request, user)
     messages.success(request, f'User {user.username} approved.')
     return render(request, 'admin/partials/user_row.html', {'user': user})
 
@@ -248,7 +254,6 @@ def admin_delete_user(request, user_id):
 @require_http_methods(['GET', 'POST'])
 def profile_edit(request):
     """Self-service profile edit modal — no admin permission required."""
-    from django.urls import reverse
     return _user_edit(request, request.user, post_url=reverse('profile_edit'))
 
 
@@ -256,23 +261,43 @@ def profile_edit(request):
 @require_http_methods(['GET', 'POST'])
 @permission_required('accounts.can_manage_users', raise_exception=True)
 def admin_user_edit(request, user_id):
-    from django.urls import reverse
     user = get_object_or_404(User, id=user_id)
     return _user_edit(request, user, post_url=reverse('admin_user_edit', args=[user_id]))
 
 
-def _user_edit(request, user, post_url):
+@login_required
+@require_http_methods(['GET', 'POST'])
+@permission_required('accounts.can_manage_users', raise_exception=True)
+def admin_approve_edit(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    return _user_edit(request, user, post_url=reverse('admin_approve_edit', args=[user_id]),
+                      submit_label='Approve', approve=True)
+
+
+def _user_edit(request, user, post_url, submit_label='Save', approve=False):
     if request.method == 'POST':
         form = ProfileForm(request.POST, instance=user)
         if form.is_valid():
             form.save()
+            if approve:
+                user.is_active = True
+                user.is_registered = True
+                user.save(update_fields=['is_active', 'is_registered'])
+                _send_approval_email(request, user)
             return HttpResponse('<script>window.location.reload();</script>')
     else:
         form = ProfileForm(instance=user)
     social_providers = list(user.socialaccount_set.values_list('provider', flat=True))
+    caps = sorted(set(
+        perm.split('.', 1)[1]
+        for perm in user.get_group_permissions()
+        if perm.startswith('accounts.')
+    ))
     return render(request, 'admin/partials/user_edit_modal.html', {
         'edit_user': user,
         'form': form,
         'social_providers': social_providers,
         'post_url': post_url,
+        'submit_label': submit_label,
+        'capabilities': caps,
     })

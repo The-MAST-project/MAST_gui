@@ -34,6 +34,14 @@
                     </a>
                 </li>
                 <li>
+                    <a class="dropdown-item"
+                       hx-get="{% url 'admin_approve_edit' user.id %}"
+                       hx-target="#profile-modal-container"
+                       hx-swap="innerHTML">
+                        Approve and Edit…
+                    </a>
+                </li>
+                <li>
                     <a class="dropdown-item text-danger"
                        hx-post="{% url 'admin_reject_user' user.id %}"
                        hx-target="#user-row-{{ user.id }}"

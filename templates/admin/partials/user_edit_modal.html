@@ -74,22 +74,54 @@
           {# Authentication #}
           <div class="row mb-2 align-items-center">
             <span class="col-3 col-form-label fw-bold">Authentication</span>
-            <div class="col-9">
-              <span class="form-control-plaintext">
-                {% if social_providers %}
-                  {{ social_providers|join:", " }}
-                {% else %}
-                  Local
-                {% endif %}
-              </span>
+            <div class="col-9 pt-1">
+              {% if social_providers %}
+                {% for provider_id in social_providers %}
+                  {% include "account/snippets/provider_badge.html" %}
+                {% endfor %}
+              {% else %}
+                <span class="badge bg-light text-dark border">Local</span>
+              {% endif %}
             </div>
           </div>
+
+          {# Groups — editable only for can_manage_users #}
+          <div class="row mb-2 align-items-start">
+            <span class="col-3 col-form-label fw-bold">Groups</span>
+            <div class="col-9 pt-1">
+              {% if perms.accounts.can_manage_users %}
+                {{ form.groups }}
+              {% else %}
+                <span class="form-control-plaintext">
+                  {% for g in edit_user.groups.all %}
+                    {% if g.name != 'Everybody' %}
+                      <span class="badge bg-info me-1">{{ g.name }}</span>
+                    {% endif %}
+                  {% empty %}
+                    <em class="text-muted">None</em>
+                  {% endfor %}
+                </span>
+              {% endif %}
+            </div>
+          </div>
+
+          {# Capabilities — read-only, derived from group permissions #}
+          {% if capabilities %}
+          <div class="row mb-2 align-items-start">
+            <span class="col-3 col-form-label fw-bold">Capabilities</span>
+            <div class="col-9 pt-1">
+              {% for cap in capabilities %}
+                <span class="badge bg-secondary me-1 mb-1">{{ cap }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
 
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
                   onclick="document.getElementById('profile-modal-container').innerHTML = ''">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save</button>
+          <button type="submit" class="btn btn-primary">{{ submit_label|default:"Save" }}</button>
         </div>
       </form>
     </div>

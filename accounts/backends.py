@@ -8,24 +8,9 @@ logger = logging.getLogger('mast.accounts')
 
 class LocalUserBackend(BaseBackend):
     """
-    Custom backend for local users 'guest' and 'admin'.
+    Custom backend kept for future local override use.
     """
     def authenticate(self, request, username=None, password=None, **kwargs):
-        if username == 'guest':
-            try:
-                user, _ = User.objects.get_or_create(username='guest', defaults={'is_active': True})
-                user.set_unusable_password()
-                user.save()
-                return user
-            except Exception:
-                return None
-        if username == 'admin':
-            try:
-                user, _ = User.objects.get_or_create(username='admin', defaults={'is_active': True, 'is_staff': True, 'is_superuser': True})
-                if password == 'physics':
-                    return user
-            except Exception:
-                return None
         return None
 
     def get_user(self, user_id):

@@ -245,13 +245,27 @@ class ProfileForm(forms.ModelForm):
     email = forms.EmailField(max_length=254, required=False, label="Email")
     affiliation = forms.CharField(max_length=128, required=False, label="Affiliation")
     username = forms.CharField(max_length=150, required=True, label="Username")
+    groups = forms.ModelMultipleChoiceField(
+        queryset=Group.objects.exclude(name='Everybody'),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Groups",
+    )
 
     class Meta:
         model = User
         fields = ("username", "prefix", "first_name", "middle_name", "last_name",
-                  "email", "affiliation")
+                  "email", "affiliation", "groups")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-            field.widget.attrs.setdefault('class', 'form-control form-control-sm')
+        for name, field in self.fields.items():
+            if name != 'groups':
+                field.widget.attrs.setdefault('class', 'form-control form-control-sm')
+
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        if commit:
+            everybody = Group.objects.get(name='Everybody')
+            user.groups.add(everybody)
+        return user
