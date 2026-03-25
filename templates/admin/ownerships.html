@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Ownership Transfer{% endblock %}
+
+{% block content %}
+<div id="profile-modal-container"></div>
+
+<div class="container mt-4">
+  <h2>Ownership Transfer</h2>
+
+  <form id="ownership-form" method="post">
+    {% csrf_token %}
+    <div class="row g-3 align-items-end mt-2">
+
+      <div class="col-auto">
+        <label for="from-user" class="form-label fw-bold">From</label>
+        <select id="from-user" name="from_user_id" class="form-select"
+                hx-get="{% url 'ownerships_assets' %}"
+                hx-target="#asset-list-container"
+                hx-trigger="change"
+                hx-include="[name='from_user_id']">
+          <option value="">— select user —</option>
+          {% for u in users %}
+          <option value="{{ u.id }}" {% if from_user and from_user.id == u.id %}selected{% endif %}>
+            {{ u.username }}{% if not u.is_active %} (inactive){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <label for="to-user" class="form-label fw-bold">To</label>
+        <select id="to-user" name="to_user_id" class="form-select">
+          <option value="">— select user —</option>
+          {% for u in users %}
+          <option value="{{ u.id }}" {% if to_user and to_user.id == u.id %}selected{% endif %}>
+            {{ u.username }}{% if not u.is_active %} (inactive){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-auto d-flex flex-column">
+        <label class="form-label invisible">x</label>
+        <button type="button" class="btn btn-primary" id="transfer-btn"
+                onclick="confirmTransfer()" disabled>
+          Transfer
+        </button>
+      </div>
+
+    </div>
+    <div id="user-select-error" class="text-danger small mt-2" style="display:none;"></div>
+  </form>
+
+  <div id="asset-list-container" class="mt-4">
+    {% if from_user %}
+      {% include "admin/partials/ownership_assets.html" %}
+    {% endif %}
+  </div>
+</div>
+
+{# Confirmation modal #}
+<div class="modal fade" id="transferModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Transfer</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="transfer-modal-body">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="transfer-confirm-btn"
+                onclick="submitTransfer()">Transfer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function updateTransferBtn() {
+  const fromSelect = document.getElementById('from-user');
+  const toSelect = document.getElementById('to-user');
+  const btn = document.getElementById('transfer-btn');
+  const err = document.getElementById('user-select-error');
+
+  const bothSelected = fromSelect.value && toSelect.value;
+  const sameUser = fromSelect.value && fromSelect.value === toSelect.value;
+
+  if (sameUser) {
+    err.textContent = 'From and To must be different users.';
+    err.style.display = '';
+    btn.disabled = true;
+  } else {
+    err.textContent = '';
+    err.style.display = 'none';
+    btn.disabled = !bothSelected;
+  }
+}
+
+document.getElementById('from-user').addEventListener('change', updateTransferBtn);
+document.getElementById('to-user').addEventListener('change', updateTransferBtn);
+
+function confirmTransfer() {
+  const fromSelect = document.getElementById('from-user');
+  const toSelect = document.getElementById('to-user');
+  const fromLabel = fromSelect.options[fromSelect.selectedIndex]?.text;
+  const toLabel = toSelect.options[toSelect.selectedIndex]?.text;
+
+  const checked = document.querySelectorAll('.asset-checkbox:checked');
+  if (checked.length === 0) {
+    alert('Please select at least one asset.');
+    return;
+  }
+
+  const names = Array.from(checked).map(cb => cb.dataset.name);
+  const listHtml = names.map(n => `<li>${n}</li>`).join('');
+  document.getElementById('transfer-modal-body').innerHTML =
+    `<p>Transfer <strong>${checked.length}</strong> asset(s) from
+     <strong>${fromLabel}</strong> to <strong>${toLabel}</strong>?</p>
+     <ul class="small text-muted">${listHtml}</ul>`;
+
+  new bootstrap.Modal(document.getElementById('transferModal')).show();
+}
+
+function submitTransfer() {
+  const fromId = document.getElementById('from-user').value;
+  const toId = document.getElementById('to-user').value;
+  const checked = Array.from(document.querySelectorAll('.asset-checkbox:checked'));
+  const assetIds = checked.map(cb => cb.value);
+
+  fetch('{% url "ownerships_transfer" %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+    },
+    body: JSON.stringify({ from_user_id: fromId, to_user_id: toId, asset_ids: assetIds }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    bootstrap.Modal.getInstance(document.getElementById('transferModal')).hide();
+    if (data.ok) {
+      htmx.ajax('GET', '{% url "ownerships_assets" %}?from_user_id=' + fromId,
+                {target: '#asset-list-container', swap: 'innerHTML'});
+    } else {
+      alert('Transfer failed: ' + (data.error || 'unknown error'));
+    }
+  });
+}
+</script>
+{% endblock %}

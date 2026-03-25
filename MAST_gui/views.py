@@ -410,6 +410,99 @@ def sse_stream(request):
     return response
 
 
+@login_required
+@permission_required('accounts.can_manage_users', raise_exception=True)
+def manage_ownerships(request):
+    users = User.objects.all().order_by('username')
+    return render(request, 'admin/ownerships.html', {'users': users})
+
+
+def _list_user_assets(user):
+    """Return list of asset dicts for all plans owned by user."""
+    from pathlib import Path
+    import tomlkit
+
+    plans_root = Path('/Storage/mast-share/MAST/plans')
+    assets = []
+    if not plans_root.exists():
+        return assets
+    for toml_file in plans_root.rglob('PLAN_*.toml'):
+        try:
+            doc = tomlkit.loads(toml_file.read_text(encoding='utf-8'))
+            if str(doc.get('owner', '')) != str(user.uid):
+                continue
+            status = toml_file.parent.name
+            target = doc.get('target', {})
+            plan_name = target.get('name', '') if isinstance(target, dict) else ''
+            ulid_val = doc.get('ulid', toml_file.stem.replace('PLAN_', ''))
+            assets.append({
+                'id': str(toml_file.relative_to(plans_root)),
+                'name': f"{plan_name} ({ulid_val})" if plan_name else str(ulid_val),
+                'type': 'Plan',
+                'status': status,
+            })
+        except Exception:
+            logger.exception(f'Failed to read plan {toml_file}')
+    assets.sort(key=lambda a: a['status'])
+    return assets
+
+
+@login_required
+@permission_required('accounts.can_manage_users', raise_exception=True)
+def ownerships_assets(request):
+    from_user_id = request.GET.get('from_user_id')
+    if not from_user_id:
+        return HttpResponse('')
+    from_user = get_object_or_404(User, id=from_user_id)
+    assets = _list_user_assets(from_user)
+    return render(request, 'admin/partials/ownership_assets.html', {
+        'from_user': from_user,
+        'assets': assets,
+    })
+
+
+@login_required
+@permission_required('accounts.can_manage_users', raise_exception=True)
+@require_http_methods(['POST'])
+def ownerships_transfer(request):
+    import json as _json
+    import tomlkit
+    from pathlib import Path
+
+    try:
+        body = _json.loads(request.body)
+        from_user = get_object_or_404(User, id=body['from_user_id'])
+        to_user = get_object_or_404(User, id=body['to_user_id'])
+        asset_ids = body.get('asset_ids', [])
+
+        if not asset_ids:
+            return JsonResponse({'ok': False, 'error': 'No assets selected'})
+        if from_user.id == to_user.id:
+            return JsonResponse({'ok': False, 'error': 'From and To users must differ'})
+
+        plans_root = Path('/Storage/mast-share/MAST/plans')
+        errors = []
+        transferred = 0
+        for rel_path in asset_ids:
+            toml_file = plans_root / rel_path
+            try:
+                doc = tomlkit.loads(toml_file.read_text(encoding='utf-8'))
+                if str(doc.get('owner', '')) != str(from_user.uid):
+                    errors.append(f'{rel_path}: owner mismatch')
+                    continue
+                doc['owner'] = str(to_user.uid)
+                toml_file.write_text(tomlkit.dumps(doc), encoding='utf-8')
+                transferred += 1
+            except Exception as e:
+                logger.exception(f'Failed to transfer {toml_file}')
+                errors.append(f'{rel_path}: {e}')
+
+        return JsonResponse({'ok': True, 'transferred': transferred, 'errors': errors})
+    except Exception as e:
+        logger.exception('ownerships_transfer error')
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+
+
 @csrf_exempt
 def debug_cache(request):
     """Debug endpoint to view cache contents"""

@@ -1,0 +1,48 @@
+{% comment %}
+  Loaded via HTMX when a From user is selected.
+  Context: from_user, assets (list of dicts with id, name, type, status)
+{% endcomment %}
+{% if assets %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <span class="text-muted small">{{ assets|length }} asset(s) owned by <strong>{{ from_user.username }}</strong></span>
+  <a href="#" class="small ms-2" onclick="toggleAll(true); return false;">Select all</a>
+  <a href="#" class="small" onclick="toggleAll(false); return false;">Clear</a>
+</div>
+
+{% regroup assets by type as asset_groups %}
+{% for group in asset_groups %}
+<h6 class="text-muted text-uppercase small fw-semibold mb-1">{{ group.grouper }}s</h6>
+<div class="mb-4" style="max-height: 320px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: .375rem;">
+  <table class="table table-sm table-hover mb-0">
+    <thead class="table-light sticky-top">
+      <tr>
+        <th style="width:2.5rem;"></th>
+        <th>Name</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for asset in group.list %}
+      <tr>
+        <td class="ps-3">
+          <input type="checkbox" class="form-check-input asset-checkbox"
+                 value="{{ asset.id }}" data-name="{{ asset.name }}">
+        </td>
+        <td class="font-monospace small">{{ asset.name }}</td>
+        <td><span class="badge bg-light text-dark border">{{ asset.status }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+
+{% elif from_user %}
+<p class="text-muted mt-2">No assets found for <strong>{{ from_user.username }}</strong>.</p>
+{% endif %}
+
+<script>
+function toggleAll(state) {
+  document.querySelectorAll('.asset-checkbox').forEach(cb => cb.checked = state);
+}
+</script>

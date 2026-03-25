@@ -41,6 +41,9 @@ urlpatterns = [
     
     # Admin/management URLs
     path('manage/users/', views.admin_users, name='admin_users'),
+    path('manage/ownerships/', views.manage_ownerships, name='manage_ownerships'),
+    path('manage/ownerships/assets/', views.ownerships_assets, name='ownerships_assets'),
+    path('manage/ownerships/transfer/', views.ownerships_transfer, name='ownerships_transfer'),
     path('profile/', accounts_views.profile, name='profile'),
     path('login-modal/', accounts_views.login_modal, name='login_modal'),
     path('social/force-select/<str:provider>/', accounts_views.social_force_select, name='social_force_select'),
