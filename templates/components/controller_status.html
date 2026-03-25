@@ -30,9 +30,13 @@
                 Connected to <strong>{{ controller_host }}</strong>
             </div>
             <small class="text-muted">
-                Last checked: 
+                Last checked:
                 {% if last_check %}
-                    {{ last_check|timesince }} ago
+                    <time id="last-check-time"
+                          datetime="{{ last_check|date:'c' }}"
+                          title="{{ last_check|time:'H:i:s' }}">
+                        {{ last_check|time:"H:i:s" }}
+                    </time>
                 {% else %}
                     never
                 {% endif %}
@@ -130,4 +134,23 @@ function controllerStatus() {
         }
     }
 }
+
+function timeAgo(dateStr) {
+    const sec = Math.round((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (sec < 5)   return 'just now';
+    if (sec < 60)  return sec + ' seconds ago';
+    const min = Math.round(sec / 60);
+    if (min < 60)  return min + ' minute' + (min !== 1 ? 's' : '') + ' ago';
+    const hr = Math.round(min / 60);
+    return hr + ' hour' + (hr !== 1 ? 's' : '') + ' ago';
+}
+
+(function() {
+    const el = document.getElementById('last-check-time');
+    if (!el) return;
+    const dt = el.getAttribute('datetime');
+    function update() { el.textContent = timeAgo(dt); }
+    update();
+    setInterval(update, 5000);
+})();
 </script>
