@@ -1,0 +1,62 @@
+{% load socialaccount %}
+<div class="modal fade show" id="loginModal" tabindex="-1" style="display:block;" aria-modal="true" role="dialog">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'account_login' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:'/' }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Sign In</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                  onclick="document.getElementById('profile-modal-container').innerHTML = ''"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row mb-3 align-items-center">
+            <label class="col-3 col-form-label fw-bold">Email</label>
+            <div class="col-9">
+              <input type="text" name="login" class="form-control" placeholder="username or email" autocomplete="username" autofocus>
+            </div>
+          </div>
+          <div class="row mb-3 align-items-center">
+            <label class="col-3 col-form-label fw-bold">Password</label>
+            <div class="col-9">
+              <input type="password" name="password" class="form-control" placeholder="password" autocomplete="current-password">
+            </div>
+          </div>
+          <div class="row mb-1 align-items-center">
+            <div class="col-9 offset-3">
+              <div class="form-check">
+                <input type="checkbox" name="remember" id="id_remember" class="form-check-input">
+                <label for="id_remember" class="form-check-label small">Remember me</label>
+              </div>
+            </div>
+          </div>
+
+          {% get_providers as socialaccount_providers %}
+          {% if socialaccount_providers %}
+            <hr class="my-3">
+            <p class="text-center text-muted small mb-2">Or sign in with</p>
+            <div class="d-flex justify-content-center gap-2">
+              {% for provider in socialaccount_providers %}
+                <a href="{% provider_login_url provider.id process='login' %}"
+                   class="btn btn-outline-secondary btn-sm">{{ provider.name }}</a>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+        <div class="modal-footer justify-content-between">
+          <a href="{% url 'account_reset_password' %}" class="text-muted small">Forgot password?</a>
+          <div>
+            <button type="button" class="btn btn-outline-secondary"
+                    data-bs-dismiss="modal"
+                    onclick="document.getElementById('profile-modal-container').innerHTML = ''">Cancel</button>
+            <button type="submit" class="btn btn-primary ms-2">Sign In</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+  new bootstrap.Modal(document.getElementById('loginModal')).show();
+</script>

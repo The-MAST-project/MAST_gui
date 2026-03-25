@@ -1,16 +1,8 @@
-<tr id="user-{{ user.id }}">
-    <td>
-        {{ user.username }}
-        {% if user.is_superuser %}<span class="badge bg-danger">Admin</span>{% endif %}
-    </td>
+<tr id="user-row-{{ user.id }}">
+    <td>{{ user.username }}</td>
+    <td>{{ user.first_name }} {{ user.last_name }}</td>
     <td>{{ user.email }}</td>
-    <td>
-        {% for group in user.groups.all %}
-            <span class="badge bg-info">{{ group.name }}</span>
-        {% empty %}
-            <span class="text-muted">None</span>
-        {% endfor %}
-    </td>
+    <td>{{ user.affiliation|default:"—" }}</td>
     <td>
         {% if user.is_active %}
             <span class="badge bg-success">Active</span>
@@ -18,35 +10,68 @@
             <span class="badge bg-secondary">Inactive</span>
         {% endif %}
     </td>
-    <td>{{ user.last_login|date:"Y-m-d H:i"|default:"Never" }}</td>
-    <td>
-        <button class="btn btn-sm btn-primary" 
-                hx-get="{% url 'admin_user_edit' user.id %}"
-                hx-target="#modal-container"
-                hx-swap="innerHTML">
-            Edit
-        </button>
-        <form style="display: inline;" 
-              hx-post="{% url 'admin_user_delete' user.id %}"
-              hx-target="#user-{{ user.id }}"
-              hx-swap="outerHTML"
-              hx-confirm="Are you sure you want to delete user {{ user.username }}?">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-        </form>
-    </td>
-</tr>
-<tr>
-    <td>{{ user.username }}</td>
-    <td>{{ user.full_name }}</td>
-    <td>{{ user.email }}</td>
-    <td>{{ user.affiliation }}</td>
     <td>
         {% for group in user.groups.all %}
-            <span class="badge bg-secondary">{{ group.name }}</span>
+            <span class="badge bg-info">{{ group.name }}</span>
+        {% empty %}
+            <span class="badge bg-secondary">None</span>
         {% endfor %}
     </td>
     <td>
-        <span class="text-success">Approved</span>
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                Actions
+            </button>
+            <ul class="dropdown-menu">
+                {% if not user.is_active %}
+                <li>
+                    <a class="dropdown-item"
+                       hx-post="{% url 'admin_approve_user' user.id %}"
+                       hx-target="#user-row-{{ user.id }}"
+                       hx-swap="outerHTML"
+                       hx-confirm="Approve {{ user.username }}?">
+                        Approve
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item text-danger"
+                       hx-post="{% url 'admin_reject_user' user.id %}"
+                       hx-target="#user-row-{{ user.id }}"
+                       hx-swap="outerHTML"
+                       hx-confirm="Reject and delete {{ user.username }}?">
+                        Reject
+                    </a>
+                </li>
+                {% else %}
+                <li>
+                    <a class="dropdown-item"
+                       hx-post="{% url 'admin_deactivate_user' user.id %}"
+                       hx-target="#user-row-{{ user.id }}"
+                       hx-swap="outerHTML"
+                       hx-confirm="Deactivate {{ user.username }}? They can be re-approved later."
+                       title="Sets the user to inactive. Can be re-approved later.">
+                        Deactivate
+                    </a>
+                </li>
+                {% endif %}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item"
+                       hx-get="{% url 'admin_user_edit' user.id %}"
+                       hx-target="#profile-modal-container"
+                       hx-swap="innerHTML">
+                        Edit
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item text-danger"
+                       hx-get="{% url 'admin_delete_user_modal' user.id %}"
+                       hx-target="#profile-modal-container"
+                       hx-swap="innerHTML">
+                        Delete…
+                    </a>
+                </li>
+            </ul>
+        </div>
     </td>
 </tr>

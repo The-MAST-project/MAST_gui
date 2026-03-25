@@ -42,6 +42,9 @@ urlpatterns = [
     # Admin/management URLs
     path('manage/users/', views.admin_users, name='admin_users'),
     path('profile/', accounts_views.profile, name='profile'),
+    path('login-modal/', accounts_views.login_modal, name='login_modal'),
+    path('social/force-select/<str:provider>/', accounts_views.social_force_select, name='social_force_select'),
+    path('profile/edit/', accounts_views.profile_edit, name='profile_edit'),
     path('manage/users/<int:user_id>/edit/', accounts_views.admin_user_edit, name='admin_user_edit'),
     path('manage/users/<int:user_id>/delete/', views.admin_user_delete, name='admin_user_delete'),
     path('manage/groups/<int:group_id>/edit/', views.admin_group_edit, name='admin_group_edit'),
@@ -50,9 +53,12 @@ urlpatterns = [
     path('manage/netdata-proxy/', views.netdata_proxy, name='netdata_proxy'),
     path('manage/netdata-proxy/<path:netdata_path>', views.netdata_proxy, name='netdata_proxy_path'),
         
-    # Approval/Rejection URLs
-    path('admin/users/<int:user_id>/approve/', accounts_views.admin_approve_user, name='admin_approve_user'),
-    path('admin/users/<int:user_id>/reject/', accounts_views.admin_reject_user, name='admin_reject_user'),
+    # User management actions
+    path('manage/users/<int:user_id>/approve/', accounts_views.admin_approve_user, name='admin_approve_user'),
+    path('manage/users/<int:user_id>/reject/', accounts_views.admin_reject_user, name='admin_reject_user'),
+    path('manage/users/<int:user_id>/deactivate/', accounts_views.admin_deactivate_user, name='admin_deactivate_user'),
+    path('manage/users/<int:user_id>/delete/', accounts_views.admin_delete_user, name='admin_delete_user'),
+    path('manage/users/<int:user_id>/delete-modal/', accounts_views.admin_delete_user_modal, name='admin_delete_user_modal'),
 
     # Add login route for user menu
     path('login/', LoginView.as_view(), name='login'),

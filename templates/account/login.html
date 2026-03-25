@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load i18n allauth account socialaccount dynamic_urls %}
+
+{% block title %}Sign In - MAST GUI{% endblock %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 400px;">
+  <h3 class="mb-4 text-center">Sign In</h3>
+
+  <div class="mb-4">
+    <div class="mb-2 text-center">Sign in with social account:</div>
+    {% include "account/snippets/provider_buttons.html" with process="login" %}
+  </div>
+
+  <div class="text-center mb-3 text-muted">or local account</div>
+
+  <form method="post" action="{% url 'account_login' %}">
+    {% csrf_token %}
+    {{ redirect_field }}
+    <div class="mb-3">
+      <label class="form-label">Username or email</label>
+      <input type="text" name="login" class="form-control" autocomplete="username" autofocus>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Password</label>
+      <input type="password" name="password" class="form-control" autocomplete="current-password">
+    </div>
+    {% if form.errors %}
+      <div class="alert alert-danger py-2 small">
+        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+        {% for field in form %}{% for error in field.errors %}{{ field.label }}: {{ error }}{% endfor %}{% endfor %}
+      </div>
+    {% endif %}
+    <div class="form-check mb-3">
+      <input type="checkbox" name="remember" id="id_remember" class="form-check-input">
+      <label for="id_remember" class="form-check-label small">Remember me</label>
+    </div>
+    <div class="d-grid">
+      <button type="submit" class="btn btn-primary">Sign In</button>
+    </div>
+  </form>
+
+  <div class="mt-3 text-center small">
+    <a href="{% url 'account_reset_password' %}">Forgot your password?</a>
+    &nbsp;·&nbsp;
+    <a href="{% get_dynamic_url 'signup' %}">Don't have an account? Sign up</a>
+  </div>
+</div>
+{% endblock %}

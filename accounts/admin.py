@@ -9,17 +9,17 @@ from accounts.models import User, MASTPermissions
 class UserAdmin(BaseUserAdmin):
     list_display = ('username', 'email', 'full_name', 'affiliation', 'is_registered', 'is_active', 'group_list')
     list_filter = ('is_registered', 'is_active', 'is_staff', 'groups')
-    search_fields = ('username', 'email', 'full_name', 'affiliation')
+    search_fields = ('username', 'email', 'first_name', 'last_name', 'affiliation')
     ordering = ('username',)
 
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'prefix', 'full_name', 'affiliation')}),
+        ('Personal info', {'fields': ('prefix', 'first_name', 'middle_name', 'last_name', 'email', 'affiliation')}),
         ('Access', {'fields': ('is_active', 'is_registered', 'is_staff', 'groups')}),
     )
     add_fieldsets = (
         (None, {'fields': ('username', 'password1', 'password2')}),
-        ('Personal info', {'fields': ('email', 'full_name', 'affiliation')}),
+        ('Personal info', {'fields': ('prefix', 'first_name', 'middle_name', 'last_name', 'email', 'affiliation')}),
         ('Access', {'fields': ('is_active', 'is_registered', 'groups')}),
     )
 

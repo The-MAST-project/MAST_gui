@@ -1,9 +1,30 @@
+import re
 import uuid
 
 from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
+
+
+def generate_username(first: str, middle: str = '', last: str = '') -> str:
+    """Build a username from name parts: first.middle.last (lowercase, dots collapsed)."""
+    parts = [first, middle, last]
+    name = '.'.join(p.strip().lower() for p in parts if p.strip())
+    name = re.sub(r'[^a-z0-9.]', '', name)   # strip non-alphanumeric except dots
+    name = re.sub(r'\.{2,}', '.', name)       # collapse consecutive dots
+    return name.strip('.') or 'user'
+
+
+def unique_username(first: str, middle: str = '', last: str = '') -> str:
+    """Generate a unique username, appending .2, .3 … if needed."""
+    base = generate_username(first, middle, last)
+    if not User.objects.filter(username=base).exists():
+        return base
+    i = 2
+    while User.objects.filter(username=f'{base}.{i}').exists():
+        i += 1
+    return f'{base}.{i}'
 
 
 class MASTPermissions:
@@ -29,9 +50,14 @@ class MASTPermissions:
 class User(AbstractUser):
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     is_registered = models.BooleanField(default=False)
-    prefix = models.CharField(max_length=16, blank=True)
-    full_name = models.CharField(max_length=128, blank=True)
+    prefix = models.CharField(max_length=32, blank=True)
+    middle_name = models.CharField(max_length=64, blank=True)
     affiliation = models.CharField(max_length=128, blank=True)
+
+    @property
+    def full_name(self) -> str:
+        parts = [self.prefix, self.first_name, self.middle_name, self.last_name]
+        return ' '.join(p for p in parts if p)
 
     def has_mast_permission(self, codename: str) -> bool:
         return self.has_perm(f'accounts.{codename}')

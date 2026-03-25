@@ -6,10 +6,6 @@ from django.contrib.auth.forms import UserCreationForm
 from accounts.models import User
 from django.contrib.auth.models import Group
 
-PREFIX_CHOICES = [
-    ('', '---'),
-    ('Mr', 'Mr'), ('Ms', 'Ms'), ('Mrs', 'Mrs'), ('Dr', 'Dr'), ('Prof', 'Prof'),
-]
 
 class RegistrationForm(forms.ModelForm):
     """
@@ -30,36 +26,41 @@ class RegistrationForm(forms.ModelForm):
         })
     )
     
-    title = forms.ChoiceField(
-        label=_("Title"),
-        choices=PREFIX_CHOICES,
+    prefix = forms.CharField(
+        label=_("Prefix"),
+        max_length=32,
         required=False,
-        help_text=_("Optional: Academic or professional title")
+        help_text=_("Optional: e.g. Dr, Prof, Mr, Mrs")
     )
-    
-    # International name fields (Western and Eastern order support)
-    given_name = forms.CharField(
-        label=_("Given Name(s)"),
+
+    first_name = forms.CharField(
+        label=_("First Name"),
         max_length=100,
         required=True,
-        help_text=_("First and middle names (e.g., 'John William' or '明')"),
         widget=forms.TextInput(attrs={
-            'placeholder': 'John William',
+            'placeholder': 'John',
             'autocomplete': 'given-name'
         })
     )
-    
-    family_name = forms.CharField(
-        label=_("Family Name"),
+
+    middle_name = forms.CharField(
+        label=_("Middle Name"),
+        max_length=64,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Optional'})
+    )
+
+    last_name = forms.CharField(
+        label=_("Last Name"),
         max_length=100,
         required=True,
-        help_text=_("Last name or surname (e.g., 'Smith' or '李')"),
+        help_text=_("Surname (e.g., 'Smith' or '李')"),
         widget=forms.TextInput(attrs={
             'placeholder': 'Smith',
             'autocomplete': 'family-name'
         })
     )
-    
+
     preferred_name = forms.CharField(
         label=_("Preferred Name"),
         max_length=100,
@@ -190,24 +191,6 @@ class RegistrationForm(forms.ModelForm):
     )
 
     # === Additional Registration Fields ===
-    prefix = forms.ChoiceField(
-        label=_("Prefix"),
-        choices=PREFIX_CHOICES,
-        required=False,
-        help_text=_("Optional: Select your prefix/title")
-    )
-    
-    full_name = forms.CharField(
-        label=_("Full Name"),
-        max_length=128,
-        required=True,
-        help_text=_("Your full name as it should appear in records"),
-        widget=forms.TextInput(attrs={
-            'placeholder': 'John Doe',
-            'autocomplete': 'name'
-        })
-    )
-    
     username = forms.CharField(
         label=_("Username"),
         max_length=64,
@@ -230,7 +213,7 @@ class RegistrationForm(forms.ModelForm):
 
     class Meta:
         model = get_user_model()
-        fields = ['username', 'prefix', 'full_name', 'email', 'institution', 'department', 'position', 'orcid', 'research_interests', 'country', 'intended_use', 'additional_info', 'agree_terms', 'agree_citation', 'groups']
+        fields = ['username', 'prefix', 'first_name', 'middle_name', 'last_name', 'email', 'affiliation', 'groups']
 
 class LocalSignupForm(UserCreationForm):
     email = forms.EmailField(
@@ -254,22 +237,21 @@ class LocalSignupForm(UserCreationForm):
         )
 
 class ProfileForm(forms.ModelForm):
-    email = forms.EmailField(
-        max_length=254,
-        required=True,
-        label="Email address",
-        help_text="This will be used as your username."
-    )
-    first_name = forms.CharField(max_length=30, required=True, label="First name")
-    last_name = forms.CharField(max_length=30, required=True, label="Last name")
-    affiliation = forms.CharField(max_length=100, required=True, label="Affiliation")
-    phone = forms.CharField(max_length=30, required=False, label="Phone number")
-    country = forms.CharField(max_length=50, required=False, label="Country")
-    city = forms.CharField(max_length=50, required=False, label="City")
+    prefix = forms.CharField(max_length=32, required=False, label="Prefix",
+        help_text="e.g. Dr, Prof, Mr, Mrs")
+    first_name = forms.CharField(max_length=64, required=False, label="First name")
+    middle_name = forms.CharField(max_length=64, required=False, label="Middle name")
+    last_name = forms.CharField(max_length=64, required=False, label="Last name")
+    email = forms.EmailField(max_length=254, required=False, label="Email")
+    affiliation = forms.CharField(max_length=128, required=False, label="Affiliation")
+    username = forms.CharField(max_length=150, required=True, label="Username")
 
     class Meta:
         model = User
-        fields = (
-            "email", "first_name", "last_name", "affiliation",
-            "phone", "country", "city"
-        )
+        fields = ("username", "prefix", "first_name", "middle_name", "last_name",
+                  "email", "affiliation")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control form-control-sm')

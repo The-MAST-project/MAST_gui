@@ -16,8 +16,10 @@ sys.path.insert(0, MAST_COMMON_PATH)
 # Security
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 DEBUG = True
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,mast-wis-control,10.23.3.73', 
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,mast-wis-control,10.23.3.73',
                        cast=lambda v: [s.strip() for s in v.split(',')])
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
 # Application definition
 INSTALLED_APPS = [
@@ -67,7 +69,8 @@ MIDDLEWARE = [
 
 CSRF_TRUSTED_ORIGINS = [
     "http://10.23.3.73:8000",
-    # Add any other proxy/external URLs as needed
+    "http://mast-wis-control.weizmann.ac.il",
+    "http://mast-wis-control.weizmann.ac.il:8000",
 ]
 
 ROOT_URLCONF = 'MAST_gui.urls'
@@ -155,8 +158,10 @@ ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
 ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'
 ACCOUNT_ADAPTER = 'accounts.adapter.CustomAccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'accounts.adapter.CustomSocialAccountAdapter'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # console only; configure SMTP in production
+DEFAULT_FROM_EMAIL = 'MAST <noreply@mast-wis-control.weizmann.ac.il>'
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
@@ -234,6 +239,11 @@ LOGGING = {
         'django': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        'allauth': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
             'propagate': False,
         },
     },

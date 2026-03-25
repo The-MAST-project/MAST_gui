@@ -1,31 +1,95 @@
 <div class="modal fade show" id="profileModal" tabindex="-1" style="display:block;" aria-modal="true" role="dialog">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
-      <form method="post" hx-post="{% url 'admin_user_edit' edit_user.id %}" hx-target="#profile-modal-container" hx-swap="innerHTML">
+      <form method="post" hx-post="{{ post_url }}" hx-target="#profile-modal-container" hx-swap="innerHTML">
         {% csrf_token %}
         <div class="modal-header">
-          <h5 class="modal-title">Edit User Profile</h5>
+          <h5 class="modal-title">User profile</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
                   onclick="document.getElementById('profile-modal-container').innerHTML = ''"></button>
         </div>
         <div class="modal-body">
-          {% for field in form %}
-            <div class="mb-3">
-              <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-              {{ field }}
-              {% if field.help_text %}
-                <div class="form-text mt-1">{{ field.help_text }}</div>
-              {% endif %}
-              {% for error in field.errors %}
-                <div class="text-danger small mt-1">{{ error }}</div>
-              {% endfor %}
+
+          {# Person row — inline sub-fields #}
+          <div class="row mb-2 align-items-end">
+            <label class="col-3 col-form-label fw-bold pb-1">Person</label>
+            <div class="col-9">
+              <div class="row g-2">
+                <div class="col-2">
+                  <label class="form-label small text-muted mb-0">Prefix</label>
+                  {{ form.prefix }}
+                  {% for e in form.prefix.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="col-3">
+                  <label class="form-label small text-muted mb-0">First</label>
+                  {{ form.first_name }}
+                  {% for e in form.first_name.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="col-3">
+                  <label class="form-label small text-muted mb-0">Middle</label>
+                  {{ form.middle_name }}
+                  {% for e in form.middle_name.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="col-4">
+                  <label class="form-label small text-muted mb-0">Last</label>
+                  {{ form.last_name }}
+                  {% for e in form.last_name.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+              </div>
             </div>
-          {% endfor %}
+          </div>
+
+          {# Username #}
+          <div class="row mb-2 align-items-center">
+            <label for="{{ form.username.id_for_label }}" class="col-3 col-form-label fw-bold">Username</label>
+            <div class="col-9">
+              {% if request.user.is_superuser %}
+                {{ form.username }}
+              {% else %}
+                <span class="form-control-plaintext">{{ edit_user.username }}</span>
+                <input type="hidden" name="username" value="{{ edit_user.username }}">
+              {% endif %}
+              {% for e in form.username.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          {# Email #}
+          <div class="row mb-2 align-items-center">
+            <label for="{{ form.email.id_for_label }}" class="col-3 col-form-label fw-bold">Email</label>
+            <div class="col-9">
+              {{ form.email }}
+              {% for e in form.email.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          {# Affiliation #}
+          <div class="row mb-2 align-items-center">
+            <label for="{{ form.affiliation.id_for_label }}" class="col-3 col-form-label fw-bold">Affiliation</label>
+            <div class="col-9">
+              {{ form.affiliation }}
+              {% for e in form.affiliation.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          {# Authentication #}
+          <div class="row mb-2 align-items-center">
+            <span class="col-3 col-form-label fw-bold">Authentication</span>
+            <div class="col-9">
+              <span class="form-control-plaintext">
+                {% if social_providers %}
+                  {{ social_providers|join:", " }}
+                {% else %}
+                  Local
+                {% endif %}
+              </span>
+            </div>
+          </div>
+
         </div>
         <div class="modal-footer">
-          <button type="submit" class="btn btn-outline-secondary">Save</button>
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
                   onclick="document.getElementById('profile-modal-container').innerHTML = ''">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
         </div>
       </form>
     </div>

@@ -32,7 +32,7 @@
 
     <script>
       // Global JS9 preferences for all displays
-      window.js9Prefs = {
+      window.JS9Prefs = {
         // Example preferences (customize as needed)
         colormap: "heat",
         scale: "log",
@@ -84,35 +84,31 @@
                 </form>
 
                 <!-- User Menu -->
+                {% if user.is_authenticated %}
                 <div class="dropdown">
-                    <button class="btn btn-link dropdown-toggle text-decoration-none text-dark" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> 
-                        {% if user.is_authenticated %}
-                            {{ user.username }}
-                        {% else %}
-                            Guest
-                        {% endif %}
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        {% if user.is_authenticated %}
-        <li>
-            <a class="dropdown-item" href="{% get_dynamic_url 'profile' %}">
-                Profile
-            </a>
-        </li>
-        <li><hr class="dropdown-divider"></li>
-        <li>
-            <form method="post" action="{% get_dynamic_url 'logout' %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="dropdown-item">Logout</button>
-            </form>
-        </li>
-    {% else %}
-        <li><a class="dropdown-item" href="{% get_dynamic_url 'login' %}">Login</a></li>
-    {% endif %}
-    <li><a class="dropdown-item" href="{% get_dynamic_url 'signup' %}">Signup</a></li>
-</ul>
+                  <button class="btn btn-link dropdown-toggle text-decoration-none text-dark" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-circle"></i> {{ user.username }}
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                      <a class="dropdown-item" href="#"
+                         hx-get="{% url 'profile_edit' %}"
+                         hx-target="#profile-modal-container"
+                         hx-swap="innerHTML">Profile</a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                      <form method="post" action="{% get_dynamic_url 'logout' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item">Logout</button>
+                      </form>
+                    </li>
+                  </ul>
                 </div>
+                {% else %}
+                <a class="btn btn-outline-secondary btn-sm me-1" href="{% url 'account_login' %}">Sign In</a>
+                <a class="btn btn-outline-primary btn-sm" href="{% get_dynamic_url 'signup' %}">Sign Up</a>
+                {% endif %}
             </div>
             
 

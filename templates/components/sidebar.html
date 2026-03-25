@@ -24,16 +24,6 @@
 .sidebar-collapsed .sidebar-submenu {
     display: none !important;
 }
-.sidebar-collapsed .sidebar-user-menu .btn {
-    padding: 0.5rem;
-    width: 100%;
-}
-.sidebar-collapsed .sidebar-user-menu .btn span {
-    display: none;
-}
-.sidebar-collapsed .sidebar-user-menu .btn .bi-caret-down-fill {
-    display: none;
-}
 .sidebar-collapsed .sidebar-item,
 .sidebar-collapsed .sidebar-subitem {
     justify-content: center;
@@ -82,11 +72,6 @@
 .sidebar-submenu {
     padding-left: 1.5rem;
     margin-bottom: 0.5rem;
-}
-.sidebar-user-menu {
-    padding: 1rem;
-    border-top: 1px solid #dee2e6;
-    background: #fff;
 }
 /* Remove all badge color definitions - they now come from colors.css */
 </style>
@@ -138,38 +123,20 @@
             <span class="sidebar-item-text">Plans</span>
         </a>
         
-        <!-- Separator -->
-        
-        <!-- User menu -->
-        <div class="sidebar-user-menu mt-4">
-            <div class="dropdown">
-                <button class="btn btn-light dropdown-toggle" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-person-circle"></i>
-                    {% if request.user.is_authenticated %}
-                        {{ request.user.username }}
-                    {% else %}
-                        Guest
-                    {% endif %}
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="userMenuDropdown">
-                    {% if request.user.is_authenticated %}
-                        <li>
-                            <form id="logout-form" method="post" action="{% get_dynamic_url 'logout' %}" style="display:inline;">
-                                {% csrf_token %}
-                                <button type="submit" class="dropdown-item">Logout</button>
-                            </form>
-                        </li>
-                    {% else %}
-                        <li>
-                            <a class="dropdown-item" href="{% get_dynamic_url 'login' %}">Login</a>
-                        </li>
-                    {% endif %}
-                    <li>
-                        <a class="dropdown-item" href="{% get_dynamic_url 'signup' %}">Signup</a>
-                    </li>
-                </ul>
-            </div>
+        {% if perms.accounts.can_manage_users %}
+        <div class="sidebar-separator"></div>
+        <!-- Manage submenu -->
+        <div class="sidebar-item" data-submenu="manage-submenu">
+            <i class="bi bi-gear"></i>
+            <span class="sidebar-item-text">Manage</span>
+            <i class="bi bi-chevron-right sidebar-item-arrow"></i>
         </div>
+        <div class="sidebar-submenu" id="manage-submenu">
+            <a href="{% url 'admin_users' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'admin_users' %}active{% endif %}">
+                Users
+            </a>
+        </div>
+        {% endif %}
     </div>
 </div>
 

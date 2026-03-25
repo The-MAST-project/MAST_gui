@@ -19,34 +19,7 @@
         </thead>
         <tbody>
             {% for user in users %}
-            <tr>
-                <td>{{ user.username }}</td>
-                <td>{{ user.first_name }} {{ user.last_name }}</td>
-                <td>{{ user.email }}</td>
-                <td>{{ user.affiliation|default:"—" }}</td>
-                <td>
-                    {% if user.is_active %}
-                        <span class="badge bg-success">Active</span>
-                    {% else %}
-                        <span class="badge bg-secondary">Inactive</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% for group in user.groups.all %}
-                        <span class="badge bg-info">{{ group.name }}</span>
-                    {% empty %}
-                        <span class="badge bg-secondary">None</span>
-                    {% endfor %}
-                </td>
-                <td>
-                    <button class="btn btn-outline-secondary btn-sm" 
-                            hx-get="{% url 'admin_user_edit' user.id %}"
-                            hx-target="#profile-modal-container"
-                            hx-swap="innerHTML">
-                        Edit
-                    </button>
-                </td>
-            </tr>
+            {% include "admin/partials/user_row.html" %}
             {% endfor %}
         </tbody>
     </table>

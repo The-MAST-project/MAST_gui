@@ -35,11 +35,15 @@
 								   :title="p.ulid"></i>
 								<a :href="ownerUrl(p.owner)" x-text="ownerName(p.owner)" @click.stop class="text-reset"></a>
 							</button>
-							<!-- Action button (right, not part of toggle) -->
-							<div class="btn-group">
-								<button class="btn btn-sm btn-danger" type="button" @click.stop="cancelPlan(p.ulid)" :disabled="!canManagePlans">Cancel</button>
-								<span style="margin-right: 0.5rem;"></span>
-							</div>
+              <!-- Action button (right, not part of toggle) -->
+              <div class="dropdown me-2" @click.stop>
+                <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
+                    :id="'actions-in-progress-' + p.ulid"
+                    data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
+                <ul class="dropdown-menu dropdown-menu-end" :aria-labelledby="'actions-in-progress-' + p.ulid">
+                  <li><button class="dropdown-item text-danger" type="button" @click="cancelPlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Cancel</button></li>
+                </ul>
+              </div>
 						</h2>
 						<div :id="'in-progress-'+p.ulid" class="accordion-collapse collapse">
 							<div class="accordion-body" style="padding: 0.75cm;"
@@ -135,60 +139,6 @@
 .json-node { margin-left: 14px; }
 .json-collapsed > .json-children { display: none; }
 
-/* Subdued button backgrounds for all buttons */
-.btn, .btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-warning, .btn-info, .btn-light, .btn-dark {
-    background-color: #e9ecef !important;
-    color: #333 !important;
-    border-color: #ced4da !important;
-    border-radius: 0.375rem !important;
-}
-.btn-primary {
-    background-color: #cfe2ff !important;
-    color: #084298 !important;
-    border-color: #b6d4fe !important;
-}
-.btn-secondary {
-    background-color: #e2e3e5 !important;
-    color: #41464b !important;
-    border-color: #d3d6d8 !important;
-}
-.btn-success {
-    background-color: #d1e7dd !important;
-    color: #0f5132 !important;
-    border-color: #badbcc !important;
-}
-.btn-danger {
-    background-color: #f8d7da !important;
-    color: #842029 !important;
-    border-color: #f5c2c7 !important;
-}
-.btn-warning {
-    background-color: #fff3cd !important;
-    color: #664d03 !important;
-    border-color: #ffecb5 !important;
-}
-.btn-info {
-    background-color: #cff4fc !important;
-    color: #055160 !important;
-    border-color: #b6effb !important;
-}
-.btn-light {
-    background-color: #f8f9fa !important;
-    color: #636464 !important;
-    border-color: #f8f9fa !important;
-}
-.btn-dark {
-    background-color: #ced4da !important;
-    color: #212529 !important;
-    border-color: #adb5bd !important;
-}
-.btn:disabled, .btn.disabled {
-    opacity: 0.6 !important;
-}
-/* Add spacing between adjacent buttons */
-.btn + .btn, .btn-group > .btn + .btn, .btn-group > .btn + .btn-group, .btn-group > .btn-group + .btn {
-    margin-left: 0.375rem !important;
-}
 
 /* Subdued badge backgrounds for all pages */
 .badge {
