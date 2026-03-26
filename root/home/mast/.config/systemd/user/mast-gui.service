@@ -1,0 +1,16 @@
+[Unit]
+Description=MAST GUI (Django)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mast/PycharmProjects/MAST_gui
+Environment=DJANGO_SETTINGS_MODULE=config.settings
+ExecStart=/home/mast/PycharmProjects/MAST_gui/.venv/bin/python manage.py runserver 0.0.0.0:8010
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
