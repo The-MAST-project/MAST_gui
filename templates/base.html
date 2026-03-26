@@ -201,6 +201,36 @@
     });
     </script>
 
+    <!-- MAST logo URL for JS use -->
+    <script>
+    window.MAST_LOGO_URL = "{% get_dynamic_static_url 'img/mast-logo.png' %}";
+    </script>
+
+    <!-- Inject MAST logo into every modal header before the close button -->
+    <script>
+    function injectModalLogo(root) {
+        (root || document).querySelectorAll('.modal-header').forEach(function (header) {
+            if (header.querySelector('.modal-header-logo')) return;
+            var closeBtn = header.querySelector('.btn-close');
+            if (!closeBtn) return;
+            var img = document.createElement('img');
+            img.src = window.MAST_LOGO_URL;
+            img.alt = 'MAST';
+            img.className = 'modal-header-logo';
+            header.insertBefore(img, closeBtn);
+        });
+    }
+    new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+            mutation.addedNodes.forEach(function (node) {
+                if (node.nodeType !== 1) return;
+                if (node.classList && node.classList.contains('modal-header')) injectModalLogo(node.parentElement);
+                else if (node.querySelector) injectModalLogo(node);
+            });
+        });
+    }).observe(document.body, {childList: true, subtree: true});
+    </script>
+
     <!-- SSE Toast Card Handler - Global -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {

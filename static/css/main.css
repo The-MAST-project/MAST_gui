@@ -197,3 +197,15 @@ body {
     white-space: nowrap;
     text-align: left;
 }
+
+/* Modals */
+.modal-content {
+    box-shadow: 0 0 24px rgba(13, 110, 253, 0.18);
+}
+
+.modal-header-logo {
+    height: 36px;
+    opacity: 0.85;
+    margin-left: auto;
+    margin-right: 0.75rem;
+}
