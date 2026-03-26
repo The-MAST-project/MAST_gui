@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Resources{% endblock %}
+
+{% block content %}
+<div style="display:flex; flex-direction:column; height:calc(100vh - 60px);">
+  <iframe src="{{ grafana_url }}"
+          style="flex:1; border:none; width:100%;"
+          allowfullscreen>
+    Your browser does not support iframes.
+  </iframe>
+</div>
+{% endblock %}

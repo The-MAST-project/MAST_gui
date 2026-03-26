@@ -9,7 +9,6 @@ import time
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.csrf import csrf_exempt
-import requests
 from django.contrib.auth.models import Group
 from django.contrib import messages
 from django.db import IntegrityError
@@ -69,86 +68,6 @@ def admin_users(request):
         'signup_requests': signup_requests,
     })
 
-
-@login_required
-def admin_resources(request):
-    """
-    System resources monitoring page (Netdata iframe)
-    """
-    # Use the new Netdata URL
-    netdata_url = (
-        "http://localhost:19999/spaces/theblumz-space/rooms/mast-wis-control-local/nodes"
-        "#metrics_correlation=false&after=-900&before=0&utc=Asia%2FJerusalem"
-        "&offset=%2B2&timezoneName=Jerusalem&modal=&modalTab=&_o=zc7BCoJAGATgd9lzP6it69oLRBBdii4R8rs7pqAuuKsR0btH0qFbhy7dZmAYvrswNQ9hxx1o4lasRId-LPY3H9BRJBYC0KrUcU5VJi3JJAVprZhSqdnkMkYm5alHsBy44Av6ULTOcHsm-nbdO4uNPbi1-xxsmwmFH8u5ZKmOqiwtCXmiSFbRkrSxMS0Tm8dJBGWN-gn5Mvhjg-uc_kfjMUwYPAVn9uDB1G-UeDwB"
-    )
-    proxy_url = netdata_url  # No proxy, direct link
-
-    return render(request, 'admin/resources.html', {
-        'netdata_url': netdata_url,
-        'proxy_url': proxy_url,
-        'netdata_host': "mast-wis-control",
-    })
-
-
-@csrf_exempt
-@login_required
-def netdata_proxy(request, netdata_path=''):
-    """
-    Proxy Netdata requests through Django to bypass client proxy.
-    This fetches from Netdata server-side and returns to client.
-    Handles both root path and sub-paths like /api/v1/registry
-    """
-    host = request.GET.get('host', 'mast-wis-control')
-    
-    # Build the full URL with path and query string
-    netdata_url = f"http://{host}:19999/{netdata_path}"
-    
-    # Preserve query string (but remove 'host' param as it's not for Netdata)
-    query_string = request.META.get('QUERY_STRING', '')
-    if query_string:
-        # Remove 'host' parameter from query string
-        from urllib.parse import parse_qs, urlencode
-        params = parse_qs(query_string)
-        params.pop('host', None)
-        if params:
-            netdata_url += f'?{urlencode(params, doseq=True)}'
-    
-    try:
-        # Forward the request with the same method (GET/POST/etc)
-        method = request.method.lower()
-        req_func = getattr(requests, method)
-        
-        # Forward headers (excluding host-specific ones)
-        headers = {
-            key: value for key, value in request.headers.items()
-            if key.lower() not in ['host', 'cookie', 'authorization']
-        }
-        
-        # Make the request
-        response = req_func(
-            netdata_url,
-            headers=headers,
-            data=request.body if request.method == 'POST' else None,
-            timeout=10,
-            allow_redirects=False  # Don't follow redirects automatically
-        )
-        
-        # Return the response
-        django_response = HttpResponse(
-            response.content,
-            content_type=response.headers.get('content-type', 'text/html'),
-            status=response.status_code
-        )
-        
-        # Forward important headers
-        for header in ['location', 'set-cookie']:
-            if header in response.headers:
-                django_response[header] = response.headers[header]
-        
-        return django_response
-        
-    except requests.RequestException as e:
-        return HttpResponse(f"Error connecting to Netdata: {e}", status=502)
 
 
 @login_required
@@ -408,6 +327,17 @@ def sse_stream(request):
     response['Cache-Control'] = 'no-cache'
     response['X-Accel-Buffering'] = 'no'  # Disable nginx buffering
     return response
+
+
+_GRAFANA_DASHBOARD_URLS = {
+    'linux':   '/grafana/d/rYdddlPWk/node-exporter-full',
+    'windows': '/grafana/d/IV0hu1m7z/windows-exporter-dashboard',
+}
+
+@login_required
+def grafana(request, tag=None):
+    grafana_url = _GRAFANA_DASHBOARD_URLS.get(tag, '/grafana/dashboards/')
+    return render(request, 'grafana.html', {'grafana_url': grafana_url})
 
 
 @login_required

@@ -7,7 +7,6 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-import requests
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib import messages
@@ -45,81 +44,6 @@ def admin_users(request):
         'groups': groups,
         'signup_requests': signup_requests,
     })
-
-
-@login_required
-def admin_resources(request):
-    """
-    System resources monitoring page (Netdata iframe)
-    """
-    # Use selected site's control machine
-    site = request.session.get('selected_site')
-    if not site:
-        messages.error(request, "No site selected.")
-        return redirect(get_dynamic_url(request, 'dashboard'))
-    netdata_host = f"mast-{site}-control"
-    netdata_url = f"http://{netdata_host}:8000/mast-netdata"
-    proxy_url = f"/manage/netdata-proxy/?host={netdata_host}"
-
-    return render(request, get_dynamic_url(request, 'admin/resources.html'), {
-        'netdata_url': netdata_url,
-        'proxy_url': proxy_url,
-        'netdata_host': netdata_host,
-    })
-
-
-@csrf_exempt
-@login_required
-def netdata_proxy(request, netdata_path=''):
-    """
-    Proxy Netdata requests through Django to bypass client proxy.
-    This fetches from Netdata server-side and returns to client.
-    Handles both root path and sub-paths like /api/v1/registry
-    """
-    # Use selected site's control machine
-    site = request.session.get('selected_site')
-    if not site:
-        return HttpResponse("No site selected", status=400)
-    host = f"{site}-control"
-
-    # Build the full URL with mast-netdata root and path
-    netdata_url = f"http://{host}:8000/mast-netdata/{netdata_path}"
-
-    # Preserve query string (but remove 'host' param as it's not for Netdata)
-    query_string = request.META.get('QUERY_STRING', '')
-    if query_string:
-        from urllib.parse import parse_qs, urlencode
-        params = parse_qs(query_string)
-        params.pop('host', None)
-        if params:
-            netdata_url += f'?{urlencode(params, doseq=True)}'
-
-    try:
-        method = request.method.lower()
-        req_func = getattr(requests, method)
-        headers = {
-            key: value for key, value in request.headers.items()
-            if key.lower() not in ['host', 'cookie', 'authorization']
-        }
-        response = req_func(
-            netdata_url,
-            headers=headers,
-            data=request.body if request.method == 'POST' else None,
-            timeout=10,
-            allow_redirects=False
-        )
-        django_response = HttpResponse(
-            response.content,
-            content_type=response.headers.get('content-type', 'text/html'),
-            status=response.status_code
-        )
-        for header in ['location', 'set-cookie']:
-            if header in response.headers:
-                django_response[header] = response.headers[header]
-        return django_response
-
-    except requests.RequestException as e:
-        return HttpResponse(f"Error connecting to Netdata: {e}", status=502)
 
 
 @login_required

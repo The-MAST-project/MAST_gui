@@ -41,6 +41,8 @@ urlpatterns = [
     
     # Admin/management URLs
     path('manage/users/', views.admin_users, name='admin_users'),
+    path('monitoring/linux/', views.grafana, {'tag': 'linux'}, name='grafana_linux'),
+    path('monitoring/windows/', views.grafana, {'tag': 'windows'}, name='grafana_windows'),
     path('manage/ownerships/', views.manage_ownerships, name='manage_ownerships'),
     path('manage/ownerships/assets/', views.ownerships_assets, name='ownerships_assets'),
     path('manage/ownerships/transfer/', views.ownerships_transfer, name='ownerships_transfer'),
@@ -53,10 +55,6 @@ urlpatterns = [
     path('manage/users/<int:user_id>/delete/', views.admin_user_delete, name='admin_user_delete'),
     path('manage/groups/<int:group_id>/edit/', views.admin_group_edit, name='admin_group_edit'),
     path('manage/groups/<int:group_id>/delete/', views.admin_group_delete, name='admin_group_delete'),
-    path('manage/resources/', views.admin_resources, name='admin_resources'),
-    path('manage/netdata-proxy/', views.netdata_proxy, name='netdata_proxy'),
-    path('manage/netdata-proxy/<path:netdata_path>', views.netdata_proxy, name='netdata_proxy_path'),
-        
     # User management actions
     path('manage/users/<int:user_id>/approve/', accounts_views.admin_approve_user, name='admin_approve_user'),
     path('manage/users/<int:user_id>/reject/', accounts_views.admin_reject_user, name='admin_reject_user'),

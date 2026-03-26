@@ -73,6 +73,9 @@
     padding-left: 1.5rem;
     margin-bottom: 0.5rem;
 }
+.sidebar-item[data-bs-toggle="collapse"] {
+    cursor: pointer;
+}
 /* Remove all badge color definitions - they now come from colors.css */
 </style>
 
@@ -97,12 +100,12 @@
         </a>
         
         <!-- Safety (with submenu) -->
-        <div class="sidebar-item" data-submenu="safety-submenu">
+        <div class="sidebar-item" data-bs-toggle="collapse" data-bs-target="#safety-submenu" aria-expanded="false">
             <i class="bi bi-shield-check"></i>
             <span class="sidebar-item-text">Safety</span>
             <i class="bi bi-chevron-right sidebar-item-arrow"></i>
         </div>
-        <div class="sidebar-submenu" id="safety-submenu">
+        <div class="collapse sidebar-submenu" id="safety-submenu">
             <a href="{% get_dynamic_url 'safety:graphs' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'graphs' %}active{% endif %}">
                 Graphs
             </a>
@@ -122,16 +125,31 @@
             <i class="bi bi-calendar-event"></i>
             <span class="sidebar-item-text">Plans</span>
         </a>
+
+        <!-- Monitoring (Grafana) -->
+        <div class="sidebar-item" data-bs-toggle="collapse" data-bs-target="#monitoring-submenu" aria-expanded="false">
+            <i class="bi bi-bar-chart-line"></i>
+            <span class="sidebar-item-text">Monitoring</span>
+            <i class="bi bi-chevron-right sidebar-item-arrow"></i>
+        </div>
+        <div class="collapse sidebar-submenu" id="monitoring-submenu">
+            <a href="{% get_dynamic_url 'grafana_linux' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'grafana_linux' %}active{% endif %}">
+                Linux machines
+            </a>
+            <a href="{% get_dynamic_url 'grafana_windows' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'grafana_windows' %}active{% endif %}">
+                Windows machines
+            </a>
+        </div>
         
         {% if perms.accounts.can_manage_users %}
         <div class="sidebar-separator"></div>
         <!-- Manage submenu -->
-        <div class="sidebar-item" data-submenu="manage-submenu">
+        <div class="sidebar-item" data-bs-toggle="collapse" data-bs-target="#manage-submenu" aria-expanded="false">
             <i class="bi bi-gear"></i>
             <span class="sidebar-item-text">Manage</span>
             <i class="bi bi-chevron-right sidebar-item-arrow"></i>
         </div>
-        <div class="sidebar-submenu" id="manage-submenu">
+        <div class="collapse sidebar-submenu" id="manage-submenu">
             <a href="{% url 'admin_users' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'admin_users' %}active{% endif %}">
                 Users
             </a>
@@ -144,11 +162,42 @@
 </div>
 
 <script>
+// Arrow rotation: sync with Bootstrap collapse events
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.sidebar-submenu').forEach(function(submenu) {
+        var trigger = document.querySelector('[data-bs-target="#' + submenu.id + '"]');
+
+        // Auto-open if contains active item
+        if (submenu.querySelector('.sidebar-subitem.active')) {
+            new bootstrap.Collapse(submenu, {toggle: false}).show();
+        }
+
+        submenu.addEventListener('show.bs.collapse', function() {
+            if (trigger) {
+                var arrow = trigger.querySelector('.sidebar-item-arrow');
+                if (arrow) {
+                    arrow.classList.replace('bi-chevron-right', 'bi-chevron-down');
+                }
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+        });
+        submenu.addEventListener('hide.bs.collapse', function() {
+            if (trigger) {
+                var arrow = trigger.querySelector('.sidebar-item-arrow');
+                if (arrow) {
+                    arrow.classList.replace('bi-chevron-down', 'bi-chevron-right');
+                }
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+        });
+    });
+});
+
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const toggleIcon = document.getElementById('toggleIcon');
     const isCollapsed = sidebar.classList.toggle('sidebar-collapsed');
-    
+
     if (isCollapsed) {
         toggleIcon.classList.remove('bi-chevron-left');
         toggleIcon.classList.add('bi-chevron-right');

@@ -10,46 +10,40 @@
 
   <form id="ownership-form" method="post">
     {% csrf_token %}
-    <div class="row g-3 align-items-end mt-2">
+    <div class="d-flex align-items-center gap-3 mt-3 flex-wrap">
 
-      <div class="col-auto">
-        <label for="from-user" class="form-label fw-bold">From</label>
-        <select id="from-user" name="from_user_id" class="form-select"
-                hx-get="{% url 'ownerships_assets' %}"
-                hx-target="#asset-list-container"
-                hx-trigger="change"
-                hx-include="[name='from_user_id']">
-          <option value="">— select user —</option>
-          {% for u in users %}
-          <option value="{{ u.id }}" {% if from_user and from_user.id == u.id %}selected{% endif %}>
-            {{ u.username }}{% if not u.is_active %} (inactive){% endif %}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
+      <label for="from-user" class="fw-bold mb-0">From</label>
+      <select id="from-user" name="from_user_id" class="form-select w-auto"
+              hx-get="{% url 'ownerships_assets' %}"
+              hx-target="#asset-list-container"
+              hx-trigger="change"
+              hx-include="[name='from_user_id']">
+        <option value="">— select user —</option>
+        {% for u in users %}
+        <option value="{{ u.id }}" {% if from_user and from_user.id == u.id %}selected{% endif %}>
+          {{ u.username }}{% if not u.is_active %} (inactive){% endif %}
+        </option>
+        {% endfor %}
+      </select>
 
-      <div class="col-auto">
-        <label for="to-user" class="form-label fw-bold">To</label>
-        <select id="to-user" name="to_user_id" class="form-select">
-          <option value="">— select user —</option>
-          {% for u in users %}
-          <option value="{{ u.id }}" {% if to_user and to_user.id == u.id %}selected{% endif %}>
-            {{ u.username }}{% if not u.is_active %} (inactive){% endif %}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
+      <label for="to-user" class="fw-bold mb-0">To</label>
+      <select id="to-user" name="to_user_id" class="form-select w-auto">
+        <option value="">— select user —</option>
+        {% for u in users %}
+        <option value="{{ u.id }}" {% if to_user and to_user.id == u.id %}selected{% endif %}>
+          {{ u.username }}{% if not u.is_active %} (inactive){% endif %}
+        </option>
+        {% endfor %}
+      </select>
 
-      <div class="col-auto d-flex flex-column">
-        <label class="form-label invisible">x</label>
-        <button type="button" class="btn btn-primary" id="transfer-btn"
-                onclick="confirmTransfer()" disabled>
-          Transfer
-        </button>
-      </div>
+      <button type="button" class="btn btn-primary" id="transfer-btn"
+              onclick="confirmTransfer()" disabled>
+        Transfer
+      </button>
+
+      <span id="user-select-error" class="text-danger small" style="display:none;"></span>
 
     </div>
-    <div id="user-select-error" class="text-danger small mt-2" style="display:none;"></div>
   </form>
 
   <div id="asset-list-container" class="mt-4">
