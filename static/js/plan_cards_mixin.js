@@ -115,7 +115,10 @@ function planCardsMixin() {
 
         // Defaults — override in consuming component as needed
         _fmtWhen(when)                  { return when ? when.replace('T', ' ').substring(0, 16) + ' UTC' : '—'; },
-        _resolveUser(uid)               { return ((window.__PLANS_INIT || {}).owners || {})[uid] || null; },
+        _resolveUser(uid)               {
+            const owners = (window.__PLANS_INIT || {}).owners || (window.__PLAN_NEW_INIT || {}).owners || {};
+            return owners[uid] || null;
+        },
         isEditable(field)               { return true; },
         cardBorderClass(key)            { return ''; },
         fieldBorderClass(cardKey, field){ return ''; },

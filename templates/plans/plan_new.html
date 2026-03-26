@@ -2,13 +2,13 @@
 {% load static %}
 {% load dynamic_urls %}
 
-{% block title %}New Plan — MAST{% endblock %}
+{% block title %}{% if edit_ulid %}Edit Plan{% else %}New Plan{% endif %} — MAST{% endblock %}
 
 {% block content %}
 <div x-data="planNewPage()" x-init="init()" class="container py-3">
 
     <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="mb-0">New Plan</h1>
+        <h1 class="mb-0">{% if edit_ulid %}Edit Plan{% else %}New Plan{% endif %}</h1>
         <a href="{% url 'plans_index' %}" class="btn btn-secondary">Back to Plans</a>
     </div>
 
@@ -16,7 +16,7 @@
     <template x-if="loading">
         <div class="text-muted py-4 text-center">
             <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-            Loading plan template…
+            {% if edit_ulid %}Loading plan…{% else %}Loading plan template…{% endif %}
         </div>
     </template>
 
@@ -32,7 +32,7 @@
 
             <!-- Action bar -->
             <div class="d-flex gap-2 mt-4">
-                <button class="btn btn-primary" @click="submitPlan()" :disabled="!isValid()">Submit</button>
+                {% include "components/submit_button.html" with action="submitPlan()" %}
                 <a href="{% url 'plans_index' %}" class="btn btn-secondary">Cancel</a>
             </div>
         </div>
@@ -47,6 +47,9 @@
 window.__PLAN_NEW_INIT = {
     fieldMeta: {{ field_meta_json|safe }},
     plansUrl: "{% url 'plans_index' %}",
+    currentUserUid: "{{ current_user_uid }}",
+    owners: {{ owners_json|safe }},
+    editUlid: "{{ edit_ulid|default:'' }}",
 };
 </script>
 <script src="{% get_dynamic_static_url 'js/plan_new.js' %}"></script>

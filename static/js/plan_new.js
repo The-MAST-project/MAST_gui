@@ -17,27 +17,35 @@
             cardErrors: {},   // { cardKey: string|null }
 
             async init() {
-                const meta = (window.__PLAN_NEW_INIT || {}).fieldMeta || {};
+                const init = window.__PLAN_NEW_INIT || {};
+                const meta = init.fieldMeta || {};
+                const editUlid = init.editUlid || '';
                 try {
-                    const data = await ControlApi('/plans/new');
-                    if (!data) throw new Error('Backend returned no data — check console for details');
+                    let data;
+                    if (editUlid) {
+                        const plans = await ControlApi('/plans/get');
+                        const all = [
+                            ...(plans.submitted || []), ...(plans.pending || []),
+                            ...(plans.in_progress || []), ...(plans.completed || []),
+                            ...(plans.postponed || []), ...(plans.failed || []),
+                            ...(plans.expired || []),
+                        ];
+                        data = all.find(p => p.ulid === editUlid) || null;
+                        if (!data) throw new Error(`Plan ${editUlid} not found`);
+                    } else {
+                        data = await ControlApi('/plans/new');
+                        if (!data) throw new Error('Backend returned no data — check console for details');
+                        this.specDefaults = data.spec_defaults || {};
+                        this.filter_options = data.filter_options || [];
+                        if (data.owner == null)
+                            data.owner = init.currentUserUid || null;
+                    }
                     this.plan = data;
                     this.initialPlan = JSON.parse(JSON.stringify(data));
-                    this.specDefaults = data.spec_defaults || {};
-                    this.filter_options = data.filter_options || [];
-                    // No instrument selected yet — clear exposure fields so the
-                    // user must pick an instrument before values are populated.
-                    if (this.plan.spec_assignment && !this.plan.spec_assignment.instrument) {
-                        if (this.plan.target) {
-                            this.plan.target.requested_exposure_duration = null;
-                            this.plan.target.requested_number_of_exposures = null;
-                        }
-                    }
                     this.cards = this._buildCards(meta);
-                    // all cards start collapsed
                     this.cards.forEach(c => this.openCards[c.key] = false);
                 } catch (e) {
-                    this.error = 'Failed to load plan template: ' + e;
+                    this.error = 'Failed to load plan: ' + e;
                 } finally {
                     this.loading = false;
                 }
@@ -71,12 +79,6 @@
                         this.plan[cardKey][fieldName] = value;
                     }
 
-                    // When instrument changes, apply spec defaults to target
-                    if (cardKey === 'spec_assignment' && fieldName === 'instrument') {
-                        const defaults = (this.specDefaults || {})[value];
-                        this.plan.target.requested_exposure_duration = defaults ? defaults.requested_exposure_duration : null;
-                        this.plan.target.requested_number_of_exposures = defaults ? defaults.requested_number_of_exposures : null;
-                    }
                 } else {
                     this.plan[fieldName] = value;
                 }
@@ -152,8 +154,12 @@
                     for (const sf of card.fields.filter(f => !f._isSectionHeader && !f.hidden)) {
                         const current = this.getFieldValue(key, sf.name, sf._groupKey);
                         const original = this._getOriginalValue(key, sf.name, sf._groupKey);
-                        if (JSON.stringify(current) !== JSON.stringify(original))
-                            changed.push({ label: sf.label, value: current, unit: sf.unit });
+                        if (JSON.stringify(current) !== JSON.stringify(original)) {
+                            const display = (sf.widget === 'user')
+                                ? (this._resolveUser(current)?.name || current)
+                                : current;
+                            changed.push({ label: sf.label, value: display, unit: sf.unit });
+                        }
                     }
                     return changed.length ? changed : [{ message: 'Default' }];
                 }
@@ -172,11 +178,16 @@
             async submitPlan() {
                 if (!this.isValid()) return;
                 try {
-                    await ControlApi('/plans/submit', {
+                    const { filter_options, ...payload } = this.plan;
+                    const result = await ControlApi('/plans/submit', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(this.plan),
+                        body: JSON.stringify(payload),
                     });
+                    if (result === null) {
+                        this.error = 'Submission failed — check browser console for details.';
+                        return;
+                    }
                     window.location.href = (window.__PLAN_NEW_INIT || {}).plansUrl || '/plans/';
                 } catch (e) {
                     this.error = 'Submission failed: ' + e;

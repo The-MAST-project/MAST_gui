@@ -15,6 +15,7 @@
 
             canManagePlans: false,
             canSubmitPlans: false,
+            currentUserUid: null,
 
             ownerName(uid) {
                 if (!uid) return 'n/a';
@@ -32,6 +33,7 @@
                 try {
                     this.canManagePlans = window.__PLANS_INIT && window.__PLANS_INIT.canManagePlans === true;
                     this.canSubmitPlans = window.__PLANS_INIT && window.__PLANS_INIT.canSubmitPlans === true;
+                    this.currentUserUid = (window.__PLANS_INIT || {}).currentUserUid || null;
                 } catch (e) {
                     this.canManagePlans = false;
                     this.canSubmitPlans = false;
@@ -174,6 +176,15 @@
                 if ((this.canceled || []).some(p => p.ulid === ulid)) return 'canceled';
                 if ((this.deleted || []).some(p => p.ulid === ulid)) return 'deleted';
                 return 'pending';
+            },
+
+            isOwner(plan) {
+                return this.currentUserUid && plan.owner === this.currentUserUid;
+            },
+
+            editPlan(ulid) {
+                const base = ((window.__PLANS_INIT || {}).editPlanUrl || '').replace('ULID_PLACEHOLDER', ulid);
+                window.location.href = base;
             },
 
             // Helpers to perform actions, then refresh

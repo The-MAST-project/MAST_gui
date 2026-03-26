@@ -31,6 +31,7 @@ urlpatterns = [
     # Plans pages
     path('plans/', plans_views.plans_index, name='plans_index'),
     path('plans/new/', plans_views.plans_new, name='plans_new'),
+    path('plans/<str:ulid>/edit/', plans_views.plans_edit, name='plans_edit'),
     
     # App includes
     path('accounts/', include('accounts.urls', namespace='accounts')),

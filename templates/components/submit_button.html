@@ -1,0 +1,18 @@
+{% comment %}
+Reusable submit button with validation tooltip.
+Requires formValidationMixin() in the Alpine.js component.
+
+Usage:
+  {% include "components/submit_button.html" %}
+  {% include "components/submit_button.html" with label="Save" action="savePlan()" %}
+
+Variables (all optional):
+  label   — button text (default: "Submit")
+  action  — Alpine @click expression (default: "submitForm()")
+{% endcomment %}
+<span x-tooltip="submitTooltip()" style="display:inline-block;">
+  <button class="btn btn-primary"
+          @click="{{ action|default:'submitForm()' }}"
+          :disabled="!isValid()"
+          :style="isValid() ? '' : 'pointer-events:none;'">{{ label|default:"Submit" }}</button>
+</span>

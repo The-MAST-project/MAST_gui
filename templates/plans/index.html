@@ -124,6 +124,8 @@
         canSubmitPlans: {% if canSubmitPlans %}true{% else %}false{% endif %},
         fieldMeta: {{ field_meta_json|safe }},
         owners: {{ owners_json|safe }},
+        currentUserUid: "{{ current_user_uid }}",
+        editPlanUrl: "{% url 'plans_edit' ulid='ULID_PLACEHOLDER' %}",
     };
 </script>
 

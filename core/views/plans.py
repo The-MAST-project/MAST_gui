@@ -36,9 +36,59 @@ def plans_new(request):
 		logger.exception(f"plans_new: failed to build field metadata: {e}")
 		field_meta_json = '{}'
 
+	from accounts.models import User as MASTUser
+	from django.urls import reverse
+	owners = {
+		str(u.uid): {
+			'name': u.full_name or u.username,
+			'url': reverse('accounts:user_profile', args=[u.uid]),
+		}
+		for u in MASTUser.objects.filter(is_active=True)
+	}
+
 	return render(request, "plans/plan_new.html", {
 		"SCRIPT_PREFIX": request.META.get("SCRIPT_NAME", ""),
 		"field_meta_json": field_meta_json,
+		"current_user_uid": str(user.uid),
+		"owners_json": json.dumps(owners),
+	})
+
+
+@login_required
+def plans_edit(request, ulid):
+	from django.http import HttpResponseForbidden
+	user = request.user
+	can_submit = user.has_perm('accounts.can_submit_plans') or user.is_superuser
+	if not can_submit:
+		return HttpResponseForbidden()
+
+	try:
+		common_path = os.environ.get('MAST_COMMON_PATH', os.path.join(os.path.dirname(__file__), '../../common'))
+		if common_path not in sys.path:
+			sys.path.insert(0, common_path)
+		from common.models.plans import Plan
+		from units.config_utils import extract_field_metadata_recursive
+		field_meta_json = json.dumps(extract_field_metadata_recursive(Plan))
+	except Exception as e:
+		logger.exception(f"plans_edit: failed to build field metadata: {e}")
+		field_meta_json = '{}'
+
+	from accounts.models import User as MASTUser
+	from django.urls import reverse
+	owners = {
+		str(u.uid): {
+			'name': u.full_name or u.username,
+			'url': reverse('accounts:user_profile', args=[u.uid]),
+		}
+		for u in MASTUser.objects.filter(is_active=True)
+	}
+
+	return render(request, "plans/plan_new.html", {
+		"SCRIPT_PREFIX": request.META.get("SCRIPT_NAME", ""),
+		"field_meta_json": field_meta_json,
+		"current_user_uid": str(user.uid),
+		"owners_json": json.dumps(owners),
+		"edit_ulid": ulid,
 	})
 
 
@@ -85,5 +135,6 @@ def plans_index(request):
 			"SCRIPT_PREFIX": script_prefix,
 			"field_meta_json": field_meta_json,
 			"owners_json": json.dumps(owners),
+			"current_user_uid": str(user.uid),
 		}
 	)

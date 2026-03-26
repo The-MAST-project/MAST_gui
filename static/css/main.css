@@ -173,11 +173,13 @@ body {
     --bs-tooltip-color: #212529;
     --bs-tooltip-opacity: 1;
     --bs-tooltip-max-width: max-content;
+    opacity: 1 !important;
 }
 
 .tooltip-inner {
-    border: 1px solid #dee2e6;
+    border: 1px solid #9ec5fe;
     text-align: left;
+    box-shadow: 0 0 8px rgba(13, 110, 253, 0.25);
 }
 
 .tooltip-inner p:last-child {

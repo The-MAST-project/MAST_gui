@@ -25,6 +25,10 @@
                 :id="'actions-{{ tab }}-' + p.ulid"
                 data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
             <ul class="dropdown-menu dropdown-menu-end" :aria-labelledby="'actions-{{ tab }}-' + p.ulid">
+              {% if tab != "canceled" and tab != "deleted" %}
+                <li><button class="dropdown-item" type="button" @click="editPlan(p.ulid)" :disabled="!isOwner(p) && !canManagePlans" :class="{'disabled': !isOwner(p) && !canManagePlans}">Edit</button></li>
+                <li><hr class="dropdown-divider"></li>
+              {% endif %}
               {% if tab == "submitted" %}
                 <li><button class="dropdown-item" type="button" @click="approvePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Approve</button></li>
                 <li><hr class="dropdown-divider"></li>

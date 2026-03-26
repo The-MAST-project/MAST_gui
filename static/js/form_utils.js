@@ -96,14 +96,44 @@ function formValidationMixin() {
 
         // Returns Bootstrap border class for a field input
         fieldBorderClass(cardKey, field) {
-            if (!this.isFieldChanged(cardKey, field)) return '';
             const key = this._fieldKey(cardKey, field);
-            return this.fieldErrors[key] ? 'border-danger' : 'border-success';
+            if (this.isFieldChanged(cardKey, field)) {
+                return this.fieldErrors[key] ? 'border-danger' : 'border-success';
+            }
+            // Required fields that are still empty glow red immediately on load
+            if (field.required) {
+                const v = this.getFieldValue(cardKey, field.name, field._groupKey);
+                if (v === null || v === undefined || v === '') return 'border-danger';
+            }
+            return '';
         },
 
         // Returns error string for display under the field, or null
         fieldError(cardKey, field) {
             return this.fieldErrors[this._fieldKey(cardKey, field)] || null;
+        },
+
+        // Returns array of human-readable strings describing why the form can't be submitted
+        submitBlockers() {
+            const reasons = [];
+            for (const card of (this.cards || [])) {
+                for (const field of card.fields.filter(f => !f._isSectionHeader)) {
+                    const key = this._fieldKey(card.key, field);
+                    if (this.fieldErrors[key]) {
+                        reasons.push(`${field.label}: ${this.fieldErrors[key]}`);
+                    } else if (field.required) {
+                        const v = this.getFieldValue(card.key, field.name, field._groupKey);
+                        if (v === null || v === undefined || v === '')
+                            reasons.push(`${field.label} is required`);
+                    }
+                }
+            }
+            return reasons;
+        },
+
+        submitTooltip() {
+            const blockers = this.submitBlockers();
+            return blockers.length ? blockers.join('\n') : 'Valid for submission';
         },
 
         // True when no field has an active error AND all required fields have values
