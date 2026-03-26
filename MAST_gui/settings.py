@@ -20,6 +20,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,mast-wis-co
                        cast=lambda v: [s.strip() for s in v.split(',')])
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Application definition
 INSTALLED_APPS = [
