@@ -14,6 +14,7 @@
             ...planCardsMixin(),
 
             plan: plan || {},
+            cardErrors: {},
 
             init() {
                 this.cards = this._buildCards(fieldMeta || {});

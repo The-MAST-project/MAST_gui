@@ -178,6 +178,33 @@
                 return 'pending';
             },
 
+            // ── plan validation ──────────────────────────────────────────────
+
+            planErrors(p) {
+                const meta = (window.__PLANS_INIT || {}).fieldMeta || {};
+                const ctx = { ...planCardsMixin(), plan: p, openCards: {} };
+                const cards = ctx._buildCards.call(ctx, meta);
+                const errors = [];
+                for (const card of cards) {
+                    for (const field of card.fields) {
+                        if (field._isSectionHeader || !field.required) continue;
+                        const v = ctx.getFieldValue.call(ctx, card.key, field.name, field._groupKey);
+                        if (v === null || v === undefined || v === '')
+                            errors.push(`${field.label} is required`);
+                    }
+                }
+                return errors;
+            },
+
+            planValid(p) { return this.planErrors(p).length === 0; },
+
+            planValidTooltip(p) {
+                const errs = this.planErrors(p);
+                return errs.length
+                    ? '<ul class="mb-0 ps-3">' + errs.map(e => `<li>${e}</li>`).join('') + '</ul>'
+                    : 'Valid';
+            },
+
             isOwner(plan) {
                 return this.currentUserUid && plan.owner === this.currentUserUid;
             },

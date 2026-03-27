@@ -29,9 +29,14 @@
 									data-bs-toggle="collapse"
 									:data-bs-target="'#in-progress-'+p.ulid">
 								<span style="min-width: 30px; margin-right: 0.75rem;"></span>
-								<i class="bi bi-person-badge me-2" 
-								   data-bs-toggle="tooltip" 
-								   data-bs-placement="top" 
+								<span style="width: 20px; margin-right: 0.5rem; display:flex; align-items:center; justify-content:center;"
+								      x-tooltip="planValidTooltip(p)">
+								  <i :class="planValid(p) ? 'bi bi-check-circle-fill text-success' : 'bi bi-x-circle-fill text-danger'"
+								     style="font-size: 0.9rem;"></i>
+								</span>
+								<i class="bi bi-person-badge me-2"
+								   data-bs-toggle="tooltip"
+								   data-bs-placement="top"
 								   :title="p.ulid"></i>
 								<a :href="ownerUrl(p.owner)" x-text="ownerName(p.owner)" @click.stop class="text-reset"></a>
 							</button>
