@@ -68,6 +68,8 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/', accounts_views.signup, name='signup'),
     path('signup/local/', accounts_views.local_signup, name='local_signup'),  # <-- Add this line
+    # Override allauth's social signup to auto-connect when email already exists
+    path('accounts/3rdparty/signup/', accounts_views.social_signup_auto_connect, name='socialaccount_signup'),
     # django-allauth OAuth callbacks
     path('accounts/', include('allauth.urls')),
     # Catch-all pattern for all non-static/media URLs

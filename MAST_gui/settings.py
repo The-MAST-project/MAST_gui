@@ -160,6 +160,8 @@ ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
 ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'
 ACCOUNT_ADAPTER = 'accounts.adapter.CustomAccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'accounts.adapter.CustomSocialAccountAdapter'
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # console only; configure SMTP in production
 DEFAULT_FROM_EMAIL = 'MAST <noreply@mast-wis-control.weizmann.ac.il>'

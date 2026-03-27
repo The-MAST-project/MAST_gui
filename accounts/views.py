@@ -1,6 +1,8 @@
 import logging
 from pathlib import Path
 
+from allauth.socialaccount.views import SignupView as SocialSignupView
+
 import tomlkit
 
 from django.contrib import messages
@@ -301,3 +303,31 @@ def _user_edit(request, user, post_url, submit_label='Save', approve=False):
         'submit_label': submit_label,
         'capabilities': caps,
     })
+
+
+class SocialSignupAutoConnectView(SocialSignupView):
+    """
+    Override allauth's social signup view so that when a user enters an email
+    that already belongs to an existing account (common with ORCID, which does
+    not return email addresses), we auto-connect the social account and log in
+    rather than refusing with an 'email already exists' error.
+    """
+
+    def form_invalid(self, form):
+        from django.contrib.auth import get_user_model
+        from allauth.account.utils import perform_login
+
+        email = form.data.get('email', '').strip()
+        if email:
+            User = get_user_model()
+            try:
+                user = User.objects.get(email__iexact=email)
+                self.sociallogin.user = user
+                self.sociallogin.save(self.request, connect=True)
+                return perform_login(self.request, user, email_verification='none')
+            except Exception:
+                pass
+        return super().form_invalid(form)
+
+
+social_signup_auto_connect = SocialSignupAutoConnectView.as_view()
