@@ -22,10 +22,7 @@
               <i :class="planValid(p) ? 'bi bi-check-circle-fill text-success' : 'bi bi-x-circle-fill text-danger'"
                  style="font-size: 0.9rem;"></i>
             </span>
-            <i class="bi bi-person-badge me-2"
-               data-bs-toggle="tooltip"
-               data-bs-placement="top"
-               :title="p.ulid"></i>
+            <i class="bi bi-person-badge me-2" x-tooltip="p.ulid"></i>
             <a :href="ownerUrl(p.owner)" x-text="ownerName(p.owner)" @click.stop class="text-reset"></a>
           </button>
           <div class="dropdown me-2" @click.stop>

@@ -241,8 +241,10 @@
     });
 
     function initTooltips(root) {
-        (root || document).querySelectorAll('[data-bs-toggle="tooltip"]:not([data-bs-original-title])').forEach(function (el) {
-            new bootstrap.Tooltip(el, {html: true, placement: 'top'});
+        (root || document).querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            if (!bootstrap.Tooltip.getInstance(el)) {
+                new bootstrap.Tooltip(el, {html: true, placement: 'top'});
+            }
         });
     }
 
