@@ -310,18 +310,14 @@
                                         <div class="d-flex flex-wrap gap-2 mb-3">
                                             <template x-for="fits in images.fits" :key="fits">
                                                 <div x-show="true" style="display:block !important;">
-                                                    <!-- JS9 controls menubar for this image -->
-                                                    <div
-                                                        x-bind:id="'js9-menubar-' + _sanitizeFilename( getImageBaseName(fits) )"
-                                                        class="JS9Menubar"
-                                                        style="width:300px; min-width:100px; background:#eee; border:1px solid #ccc; border-bottom:none; border-radius:0.375rem 0.375rem 0 0;">
-                                                    </div>
-                                                    <!-- JS9 display for this image -->
+                                                    <!-- JS9 display for this image (menubar is injected dynamically by loadJs9Images) -->
                                                     <div
                                                         x-bind:id="'js9-' + _sanitizeFilename( getImageBaseName(fits) )"
                                                         x-bind:data-filename="fits"
+                                                        data-width="300"
+                                                        data-height="300"
                                                         class="JS9"
-                                                        style="width:300px; height:300px; border:1px solid #ccc; min-width: 100px; min-height: 100px; background: #222; display: block !important;">
+                                                        style="width:300px; height:300px; border:1px solid #ccc; background: #222; display: block !important;">
                                                     </div>
                                                     <!-- Caption: base name (filename without .fits*), centered -->
                                                     <div class="text-center mt-1 small text-truncate" style="max-width:300px;" x-text="getImageBaseName(fits)"></div>
@@ -597,13 +593,9 @@ window.autofocusDetails = function(unitName) {
                 return cs && cs.display !== 'none' && cs.visibility !== 'hidden' && pane.offsetParent !== null;
             };
 
-            // Ensure a JS9.Display exists for divId (create and wait until registered)
+            // Ensure a JS9.Display exists for divId (create and wait until registered),
+            // then detach its ResizeSensor to prevent resize feedback loops.
             const ensureDisplayExists = async (divId, el, timeoutMs = 10000, intervalMs = 50) => {
-                // Quick check
-                // try {
-                //     if (window.JS9 && JS9.lookupDisplay(divId)) return true;
-                // } catch (e) {}
-
                 // Try to create a display if JS9 available
                 try {
                     if (window.JS9 && typeof JS9.Display === 'function') {
@@ -615,7 +607,17 @@ window.autofocusDetails = function(unitName) {
                 const start = Date.now();
                 while (Date.now() - start < timeoutMs) {
                     try {
-                        if (window.JS9 && JS9.lookupDisplay(divId)) return true;
+                        if (window.JS9 && JS9.lookupDisplay(divId)) {
+                            // Detach the ResizeSensor immediately to prevent it from
+                            // firing during Bootstrap accordion/tab transitions and
+                            // causing a feedback loop that continuously shrinks the display.
+                            const display = JS9.lookupDisplay(divId);
+                            if (display && display.resizeSensor) {
+                                try { display.resizeSensor.detach(display.divjq[0]); } catch (e) {}
+                                display.resizeSensor = null;
+                            }
+                            return true;
+                        }
                     } catch (e) {}
                     await new Promise(r => setTimeout(r, intervalMs));
                 }
@@ -641,6 +643,18 @@ window.autofocusDetails = function(unitName) {
                     return;
                 }
 
+                // Patch JS9.Display.prototype.resize once to suppress the
+                // "invalid dimension(s)" error that fires when the ResizeSensor
+                // detects near-zero dimensions during Bootstrap accordion/tab transitions.
+                if (JS9.Display && JS9.Display.prototype && !JS9.Display.prototype._resizePatched) {
+                    const _origResize = JS9.Display.prototype.resize;
+                    JS9.Display.prototype.resize = function(width, height, opts) {
+                        if ((width < 10) || (height < 10)) return; // skip transient zero-size events
+                        return _origResize.call(this, width, height, opts);
+                    };
+                    JS9.Display.prototype._resizePatched = true;
+                }
+
                 for (const url of this.images.fits) {
                     try {
                         // console.log('Loading JS9 image for URL:', url);
@@ -660,6 +674,70 @@ window.autofocusDetails = function(unitName) {
                             continue;
                         }
 
+                        // Inject a simple custom toolbar above the display.
+                        // We use direct JS9 API calls so there is no dependency on the
+                        // JS9 plugin initialisation system (which is unreliable for
+                        // programmatically created displays).
+                        const toolbarId = 'js9-toolbar-' + this._sanitizeFilename(base);
+                        if (!document.getElementById(toolbarId)) {
+                            const toolbar = document.createElement('div');
+                            toolbar.id = toolbarId;
+                            toolbar.style.cssText = [
+                                'width:300px',
+                                'border:1px solid #ccc',
+                                'border-bottom:none',
+                                'border-radius:0.375rem 0.375rem 0 0',
+                                'padding:3px 5px',
+                                'background:#f8f9fa',
+                                'display:flex',
+                                'align-items:center',
+                                'gap:4px',
+                            ].join(';');
+
+                            const btn = (label, title, fn) => {
+                                const b = document.createElement('button');
+                                b.type = 'button';
+                                b.textContent = label;
+                                b.title = title;
+                                b.style.cssText = 'font-size:0.72rem; padding:1px 5px; border:1px solid #adb5bd; border-radius:3px; background:#fff; cursor:pointer;';
+                                b.addEventListener('click', fn);
+                                return b;
+                            };
+
+                            const sel = (options, title, fn) => {
+                                const s = document.createElement('select');
+                                s.title = title;
+                                s.style.cssText = 'font-size:0.72rem; padding:1px 2px; border:1px solid #adb5bd; border-radius:3px; background:#fff; cursor:pointer;';
+                                options.forEach(([val, label, dflt]) => {
+                                    const o = document.createElement('option');
+                                    o.value = val; o.textContent = label;
+                                    if (dflt) o.selected = true;
+                                    s.appendChild(o);
+                                });
+                                s.addEventListener('change', () => fn(s.value));
+                                return s;
+                            };
+
+                            toolbar.appendChild(btn('⊡ Fit',  'Zoom to fit',  () => { try { JS9.SetZoom('ToFit', {display: divId}); } catch(e) {} }));
+                            toolbar.appendChild(btn('+',      'Zoom in',      () => { try { JS9.SetZoom('In',    {display: divId}); } catch(e) {} }));
+                            toolbar.appendChild(btn('−',      'Zoom out',     () => { try { JS9.SetZoom('Out',   {display: divId}); } catch(e) {} }));
+                            toolbar.appendChild(btn('↺',      'Reset zoom',   () => { try { JS9.SetZoom(1,       {display: divId}); } catch(e) {} }));
+
+                            toolbar.appendChild(sel(
+                                [['log','log',true],['linear','linear'],['sqrt','sqrt'],['histeq','histeq'],['power','power']],
+                                'Scale',
+                                v => { try { JS9.SetScale(v, {display: divId}); } catch(e) {} }
+                            ));
+
+                            toolbar.appendChild(sel(
+                                [['heat','heat',true],['grey','grey'],['cool','cool'],['rainbow','rainbow'],['bb','bb'],['a','a']],
+                                'Colormap',
+                                v => { try { JS9.SetColormap(v, {display: divId}); } catch(e) {} }
+                            ));
+
+                            el.parentNode.insertBefore(toolbar, el);
+                        }
+
                         // Use resolved absolute URL for loading
                         const urlToLoad = this.getImageUrl(url);
                         try {
@@ -667,7 +745,9 @@ window.autofocusDetails = function(unitName) {
                             JS9.Load(urlToLoad, {
                                 display: divId,
                                 scale: "log",
-                                menubar: 'js9-menubar-' + this._sanitizeFilename(base)
+                                onload: (im) => {
+                                    try { JS9.SetZoom('ToFit', {display: divId}); } catch (e) { /* ignore */ }
+                                }
                             });
                         } catch (e) {
                             console.error('JS9.Load failed for', urlToLoad, '->', divId, e);
