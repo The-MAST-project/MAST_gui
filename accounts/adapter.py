@@ -45,9 +45,10 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         log.warning("pre_social_login: no existing user found")
 
     def save_user(self, request, sociallogin, form=None):
-        from accounts.models import unique_username
+        from accounts.models import unique_username, unique_display
         user = super().save_user(request, sociallogin, form)
         user.username = unique_username(user.first_name, '', user.last_name)
+        user.display = unique_display(user.first_name, user.last_name)
         user.is_active = False
         user.is_registered = False
         user.save()

@@ -17,7 +17,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from accounts.forms import RegistrationForm, LocalSignupForm, ProfileForm
-from accounts.models import User, MASTPermissions
+from accounts.models import User, MASTPermissions, unique_display
 
 logger = logging.getLogger('mast.accounts')
 
@@ -118,6 +118,7 @@ def local_signup(request):
             user = form.save(commit=False)
             user.is_active = False
             user.is_registered = False
+            user.display = unique_display(user.first_name, user.last_name)
             user.save()
             messages.info(request, 'Registration submitted. Awaiting admin approval.')
             return redirect('login')
@@ -133,6 +134,7 @@ def register(request):
             user = form.save(commit=False)
             user.is_registered = False
             user.set_password(request.POST.get('password', ''))
+            user.display = unique_display(user.first_name, user.last_name, user.middle)
             user.save()
             form.save_m2m()
             messages.info(request, 'Registration submitted. Awaiting admin approval.')

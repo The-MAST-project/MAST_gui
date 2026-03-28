@@ -433,6 +433,19 @@ def ownerships_transfer(request):
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
 
 
+def api_users(request):
+    """Return [{uuid, display}] for all active registered users."""
+    from django.http import JsonResponse
+    from accounts.models import User
+    users = (
+        User.objects
+        .filter(is_active=True, is_registered=True)
+        .exclude(display='')
+        .values('uid', 'display')
+    )
+    return JsonResponse([{'uuid': str(u['uid']), 'display': u['display']} for u in users], safe=False)
+
+
 @csrf_exempt
 def debug_cache(request):
     """Debug endpoint to view cache contents"""

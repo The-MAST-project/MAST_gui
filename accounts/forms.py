@@ -43,7 +43,7 @@ class RegistrationForm(forms.ModelForm):
         })
     )
 
-    middle_name = forms.CharField(
+    middle = forms.CharField(
         label=_("Middle Name"),
         max_length=64,
         required=False,
@@ -213,7 +213,7 @@ class RegistrationForm(forms.ModelForm):
 
     class Meta:
         model = get_user_model()
-        fields = ['username', 'prefix', 'first_name', 'middle_name', 'last_name', 'email', 'affiliation', 'groups']
+        fields = ['username', 'prefix', 'first_name', 'middle', 'last_name', 'email', 'affiliation', 'groups']
 
 class LocalSignupForm(UserCreationForm):
     email = forms.EmailField(
@@ -240,7 +240,8 @@ class ProfileForm(forms.ModelForm):
     prefix = forms.CharField(max_length=32, required=False, label="Prefix",
         help_text="e.g. Dr, Prof, Mr, Mrs")
     first_name = forms.CharField(max_length=64, required=False, label="First name")
-    middle_name = forms.CharField(max_length=64, required=False, label="Middle name")
+    middle = forms.CharField(max_length=64, required=False, label="Middle name",
+        widget=forms.TextInput(attrs={'placeholder': 'Optional'}))
     last_name = forms.CharField(max_length=64, required=False, label="Last name")
     email = forms.EmailField(max_length=254, required=False, label="Email")
     affiliation = forms.CharField(max_length=128, required=False, label="Affiliation")
@@ -254,7 +255,7 @@ class ProfileForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ("username", "prefix", "first_name", "middle_name", "last_name",
+        fields = ("username", "prefix", "first_name", "middle", "last_name",
                   "email", "affiliation", "groups")
 
     def __init__(self, *args, **kwargs):

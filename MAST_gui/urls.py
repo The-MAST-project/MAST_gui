@@ -74,6 +74,7 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     # Catch-all pattern for all non-static/media URLs
     # re_path(r'^.*$', mast_dash_redirect),
+    path('api/users/', views.api_users, name='api_users'),
     path('api/debug/cache', views.debug_cache, name='debug_cache'),
     path('api/debug/refresh', views.refresh_cache_endpoint, name='refresh_cache'),
     

@@ -27,6 +27,38 @@ def unique_username(first: str, middle: str = '', last: str = '') -> str:
     return f'{base}.{i}'
 
 
+def generate_display(first: str, last: str) -> str:
+    """Build a display name: first.last (lowercase, dots collapsed)."""
+    parts = [first.strip().lower(), last.strip().lower()]
+    name = '.'.join(p for p in parts if p)
+    name = re.sub(r'[^a-z0-9.]', '', name)
+    name = re.sub(r'\.{2,}', '.', name)
+    return name.strip('.') or 'user'
+
+
+def unique_display(first: str, last: str, middle: str = '') -> str:
+    """Generate a unique display name.
+
+    Disambiguation order:
+      1. first.last
+      2. first.middle.last   (if middle is available and first.last is taken)
+      3. first.last.2, first.last.3 … (numeric suffix as last resort)
+    """
+    base = generate_display(first, last)
+    if not User.objects.filter(display=base).exists():
+        return base
+    if middle:
+        initial = re.sub(r'[^a-z0-9]', '', middle.strip().lower())[:1]
+        if initial:
+            with_middle = re.sub(r'\.{2,}', '.', f'{base.split(".")[0]}.{initial}.{base.split(".")[-1]}')
+            if not User.objects.filter(display=with_middle).exists():
+                return with_middle
+    i = 2
+    while User.objects.filter(display=f'{base}.{i}').exists():
+        i += 1
+    return f'{base}.{i}'
+
+
 class MASTPermissions:
     CAN_VIEW = 'can_view'
     CAN_SUBMIT_PLANS = 'can_submit_plans'
@@ -51,12 +83,13 @@ class User(AbstractUser):
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     is_registered = models.BooleanField(default=False)
     prefix = models.CharField(max_length=32, blank=True)
-    middle_name = models.CharField(max_length=64, blank=True)
+    middle = models.CharField(max_length=64, blank=True)
     affiliation = models.CharField(max_length=128, blank=True)
+    display = models.CharField(max_length=64, blank=True)
 
     @property
     def full_name(self) -> str:
-        parts = [self.prefix, self.first_name, self.middle_name, self.last_name]
+        parts = [self.prefix, self.first_name, self.middle, self.last_name]
         return ' '.join(p for p in parts if p)
 
     def has_mast_permission(self, codename: str) -> bool:
