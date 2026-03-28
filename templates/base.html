@@ -193,7 +193,7 @@
                 getText(function (value) {
                     if (instance) { instance.dispose(); instance = null; }
                     if (value) {
-                        instance = new bootstrap.Tooltip(el, {html: true, placement: 'top', title: value});
+                        instance = new bootstrap.Tooltip(el, {html: true, sanitize: false, placement: 'top', title: value});
                     }
                 });
             });

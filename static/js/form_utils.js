@@ -124,7 +124,7 @@ function formValidationMixin() {
                     } else if (field.required) {
                         const v = this.getFieldValue(card.key, field.name, field._groupKey);
                         if (v === null || v === undefined || v === '')
-                            reasons.push(`${field.label} is required`);
+                            reasons.push(`<span style="font-weight:700;font-style:italic">${field.label}</span> is required`);
                     }
                 }
             }
@@ -133,7 +133,9 @@ function formValidationMixin() {
 
         submitTooltip() {
             const blockers = this.submitBlockers();
-            return blockers.length ? blockers.join('\n') : 'Valid for submission';
+            return blockers.length
+                ? blockers.map(b => `• ${b}`).join('<br>')
+                : 'Valid for submission';
         },
 
         // True when no field has an active error AND all required fields have values

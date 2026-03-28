@@ -190,7 +190,7 @@
                         if (field._isSectionHeader || !field.required) continue;
                         const v = ctx.getFieldValue.call(ctx, card.key, field.name, field._groupKey);
                         if (v === null || v === undefined || v === '')
-                            errors.push(`${field.label} is required`);
+                            errors.push(`<span style="font-weight:700;font-style:italic">${field.label}</span> is required`);
                     }
                 }
                 return errors;
