@@ -11,7 +11,7 @@
             plan: null,
             initialPlan: null,
             specDefaults: {},
-            filter_options: [],
+            filter_options: (window.__PLAN_NEW_INIT || {}).filter_options || [],
 
             // UI state
             cardErrors: {},   // { cardKey: string|null }
@@ -36,7 +36,7 @@
                         data = await ControlApi('/plans/new');
                         if (!data) throw new Error('Backend returned no data — check console for details');
                         this.specDefaults = data.spec_defaults || {};
-                        this.filter_options = data.filter_options || [];
+                        this.filter_options = data.filter_options || this.filter_options;
                         if (data.owner == null)
                             data.owner = init.currentUserUid || null;
                     }
@@ -132,24 +132,63 @@
                     const dec = this.getFieldValue('target', 'dec_degrees');
                     if (ra == null || dec == null)
                         return [{ message: 'Not set' }];
-                    return card.summaryFields.map(sf => ({
-                        label: sf.label,
-                        value: this.getFieldValue(key, sf.name, sf._groupKey),
-                        unit: sf.unit,
-                    }));
+
+                    const name = this.getFieldValue('target', 'name');
+                    const duration = this.getFieldValue('target', 'requested_exposure_duration');
+                    const nExp = this.getFieldValue('target', 'requested_number_of_exposures');
+
+                    const items = [];
+                    items.push({ message: name || `(${ra}, ${dec})`, bold: true });
+                    if (duration != null)
+                        items.push({ message: `${duration} seconds`, plain: true });
+                    if (nExp != null && nExp > 1)
+                        items.push({ message: `${nExp} exposures`, plain: true });
+                    return items.map((item, i) =>
+                        i < items.length - 1 && item.message ? { ...item, message: item.message + ',' } : item
+                    );
                 }
 
                 if (key === 'spec_assignment') {
                     const instr = this.getFieldValue('spec_assignment', 'instrument');
                     if (!instr) return [{ message: 'Not selected' }];
-                    return card.summaryFields.map(sf => ({
-                        label: sf.label,
-                        value: this.getFieldValue(key, sf.name, sf._groupKey),
-                        unit: sf.unit,
-                    }));
+
+                    const items = [];
+                    items.push({ message: instr, bold: true });
+
+                    const lampOn = this.getFieldValue('spec_assignment', 'lamp_on', 'calibration');
+                    if (lampOn) {
+                        const filter = this.getFieldValue('spec_assignment', 'filter', 'calibration');
+                        items.push({ message: filter ? `ThAr ${filter}` : 'ThAr', plain: true });
+                    }
+
+                    return items.map((item, i) =>
+                        i < items.length - 1 && item.message ? { ...item, message: item.message + ',' } : item
+                    );
                 }
 
-                if (key === '_details' || key === 'constraints') {
+                if (key === '_details') {
+                    const items = [];
+
+                    const ownerUid = this.getFieldValue('_details', 'owner');
+                    const ownerName = this._resolveUser(ownerUid)?.name || ownerUid;
+                    if (ownerName) items.push({ message: ownerName, bold: true });
+
+                    const merit = this.getFieldValue('_details', 'merit');
+                    if (merit != null) items.push({ message: `Merit: ${merit}`, plain: true });
+
+                    const autofocus = this.getFieldValue('_details', 'autofocus');
+                    if (autofocus) items.push({ message: 'Autofocus', plain: true });
+
+                    const units = this.getFieldValue('_details', 'requested_units');
+                    const unitsList = Array.isArray(units) ? units.join(', ') : units;
+                    if (unitsList) items.push({ message: unitsList, plain: true });
+
+                    return items.length
+                        ? items.map((item, i) => i < items.length - 1 ? { ...item, message: item.message + ',' } : item)
+                        : [{ message: 'Default' }];
+                }
+
+                if (key === 'constraints') {
                     const changed = [];
                     for (const sf of card.fields.filter(f => !f._isSectionHeader && !f.hidden)) {
                         const current = this.getFieldValue(key, sf.name, sf._groupKey);

@@ -36,6 +36,13 @@ def plans_new(request):
 		logger.exception(f"plans_new: failed to build field metadata: {e}")
 		field_meta_json = '{}'
 
+	try:
+		from common.config import Config
+		filter_options = Config().get_thar_filters()
+	except Exception as e:
+		logger.warning(f"plans_new: could not fetch ThAr filter options: {e}")
+		filter_options = []
+
 	from accounts.models import User as MASTUser
 	from django.urls import reverse
 	owners = {
@@ -49,6 +56,7 @@ def plans_new(request):
 	return render(request, "plans/plan_new.html", {
 		"SCRIPT_PREFIX": request.META.get("SCRIPT_NAME", ""),
 		"field_meta_json": field_meta_json,
+		"filter_options_json": json.dumps(filter_options),
 		"current_user_uid": str(user.uid),
 		"owners_json": json.dumps(owners),
 	})
@@ -73,6 +81,13 @@ def plans_edit(request, ulid):
 		logger.exception(f"plans_edit: failed to build field metadata: {e}")
 		field_meta_json = '{}'
 
+	try:
+		from common.config import Config
+		filter_options = Config().get_thar_filters()
+	except Exception as e:
+		logger.warning(f"plans_edit: could not fetch ThAr filter options: {e}")
+		filter_options = []
+
 	from accounts.models import User as MASTUser
 	from django.urls import reverse
 	owners = {
@@ -86,6 +101,7 @@ def plans_edit(request, ulid):
 	return render(request, "plans/plan_new.html", {
 		"SCRIPT_PREFIX": request.META.get("SCRIPT_NAME", ""),
 		"field_meta_json": field_meta_json,
+		"filter_options_json": json.dumps(filter_options),
 		"current_user_uid": str(user.uid),
 		"owners_json": json.dumps(owners),
 		"edit_ulid": ulid,

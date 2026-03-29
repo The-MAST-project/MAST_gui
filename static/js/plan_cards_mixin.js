@@ -106,6 +106,9 @@ function planCardsMixin() {
         },
 
         resolveOptions(field) {
+            if (field.options_key && this[field.options_key] && this[field.options_key].length) {
+                return this[field.options_key];
+            }
             return field.options || [];
         },
 

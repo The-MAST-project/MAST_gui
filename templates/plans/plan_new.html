@@ -50,6 +50,7 @@ window.__PLAN_NEW_INIT = {
     currentUserUid: "{{ current_user_uid }}",
     owners: {{ owners_json|safe }},
     editUlid: "{{ edit_ulid|default:'' }}",
+    filter_options: {{ filter_options_json|default:"[]"|safe }},
 };
 </script>
 <script src="{% get_dynamic_static_url 'js/plan_new.js' %}"></script>

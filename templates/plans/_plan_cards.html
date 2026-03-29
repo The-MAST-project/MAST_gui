@@ -11,7 +11,15 @@
                         <template x-for="item in cardSummaryItems(card)" :key="item.label || item.message">
                             <span>
                                 <template x-if="item.message">
-                                    <span class="fst-italic" x-text="item.message"></span>
+                                    <span>
+                                        <template x-if="item.bold">
+                                            <strong x-text="item.message"></strong>
+                                        </template>
+                                        <template x-if="!item.bold">
+                                            <span :class="item.plain ? '' : 'fst-italic'" x-text="item.message"></span>
+                                        </template>
+                                        <span class="me-2"></span>
+                                    </span>
                                 </template>
                                 <template x-if="!item.message">
                                     <span>
@@ -176,7 +184,7 @@
                                                            :disabled="!isEditable(field)"
                                                            :value="getFieldValue(card.key, 'end_after_nights', field._groupKey)"
                                                            @input="setFieldValue(card.key, 'end_after_nights', parseInt($event.target.value) || null, field._groupKey)">
-                                                    <span class="text-muted small">nights</span>
+                                                    <span class="small">nights</span>
                                                 </div>
                                             </template>
                                         </div>
@@ -198,10 +206,19 @@
                                 </span>
                             </template>
 
+                            <!-- textarea -->
+                            <template x-if="field.widget === 'textarea'">
+                                <textarea class="form-control form-control-sm"
+                                          rows="3"
+                                          :disabled="!isEditable(field)"
+                                          :class="fieldBorderClass(card.key, field)"
+                                          x-text="getFieldValue(card.key, field.name, field._groupKey)"
+                                          @input="setFieldValue(card.key, field.name, $event.target.value, field._groupKey)"></textarea>
+                            </template>
+
                             <!-- text (default) -->
                             <template x-if="!field.widget || field.widget === 'text'">
                                 <input type="text" class="form-control form-control-sm"
-                                       style="max-width: 16ch;"
                                        :disabled="!isEditable(field)"
                                        :class="fieldBorderClass(card.key, field)"
                                        :value="getFieldValue(card.key, field.name, field._groupKey)"
