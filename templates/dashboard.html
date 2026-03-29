@@ -3,18 +3,23 @@
 {% block title %}Dashboard - MAST GUI{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <!-- <h2>Dashboard</h2>
-        <p class="lead">Welcome to MAST GUI</p> -->
-        
-        <!-- <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Site Selection Test</h5>
-                <p>Use the dropdown in the toolbar above to switch between sites.</p>
-                <p>The selected site is stored in your session and persists across page loads.</p>
-            </div>
-        </div> -->
+{% if not user.is_authenticated %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-5 text-center">
+        <h2 class="mb-3">Welcome to the <b>MAST</b> Project's</h2>
+        <p class="lead text-muted mb-4">
+            control and observation management system.<br>
+            <br>
+            To get started, either:<br>
+              Sign in (if you already have an account) or<br>
+              Sign up to apply for a new account.
+            </ul>
+        </p>
+        <div class="d-flex gap-3 justify-content-center">
+            <a href="{% url 'account_login' %}" class="btn btn-primary btn-lg">Sign In</a>
+            <a href="{% url 'signup' %}" class="btn btn-outline-primary btn-lg">Sign Up</a>
+        </div>
     </div>
 </div>
+{% endif %}
 {% endblock %}

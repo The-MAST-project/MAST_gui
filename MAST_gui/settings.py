@@ -60,6 +60,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'MAST_gui.middleware.RequireLoginMiddleware',
     'MAST_gui.middleware.ProxyAwareLoginRedirectMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -70,8 +71,14 @@ MIDDLEWARE = [
 
 CSRF_TRUSTED_ORIGINS = [
     "http://10.23.3.73:8000",
+    "https://10.23.3.73",
+    "https://10.23.3.73:443",
+    "http://mast-wis-control",
+    "https://mast-wis-control",
     "http://mast-wis-control.weizmann.ac.il",
+    "https://mast-wis-control.weizmann.ac.il",
     "http://mast-wis-control.weizmann.ac.il:8000",
+    "https://mast-wis-control.weizmann.ac.il:443",
 ]
 
 ROOT_URLCONF = 'MAST_gui.urls'
@@ -170,27 +177,26 @@ SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
-        'APP': {
+        'APPS': [{
             'client_id': config('GOOGLE_CLIENT_ID', default=''),
             'secret': config('GOOGLE_CLIENT_SECRET', default=''),
             'key': '',
-        },
+        }],
     },
     'github': {
         'SCOPE': ['user', 'user:email'],
-        'APP': {
+        'APPS': [{
             'client_id': config('GITHUB_CLIENT_ID', default=''),
             'secret': config('GITHUB_CLIENT_SECRET', default=''),
-        },
+        }],
     },
     'orcid': {
-        # Uses ORCID public API sandbox by default; set BASE_DOMAIN for production
-        'BASE_DOMAIN': 'orcid.org',  # 'sandbox.orcid.org' for testing
-        'MEMBER_API': False,          # True if you have ORCID member API access
-        'APP': {
+        'BASE_DOMAIN': 'orcid.org',
+        'MEMBER_API': False,
+        'APPS': [{
             'client_id': config('ORCID_CLIENT_ID', default=''),
             'secret': config('ORCID_CLIENT_SECRET', default=''),
-        },
+        }],
     },
 }
 

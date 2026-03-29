@@ -5,6 +5,47 @@ from urllib.parse import parse_qs, urlencode, urlparse
 
 from common.proxy import ProxyContext
 
+# URL prefixes that unauthenticated users may access freely
+_PUBLIC_PREFIXES = (
+    '/login/',
+    '/logout/',
+    '/signup/',
+    '/accounts/',   # allauth OAuth callbacks
+    '/social/',     # social_force_select
+    '/admin/',
+    '/api/',
+    '/sse/',
+    '/controller-status/',
+    '/__debug__/',
+    '/static/',
+    '/media/',
+)
+
+
+class RequireLoginMiddleware:
+    """
+    Redirects unauthenticated users to the dashboard (welcome page) for any
+    full-page GET request that isn't a public URL.
+    HTMX partial requests are excluded so they can handle auth errors themselves.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        proxy = ProxyContext.from_request(request)
+        dashboard_path = (proxy.base or '') + '/'
+        if (
+            request.method == 'GET'
+            and not request.user.is_authenticated
+            and request.path.rstrip('/') + '/' != dashboard_path
+            and not request.path.startswith(_PUBLIC_PREFIXES)
+            and not any(request.path.startswith((proxy.base or '') + p) for p in _PUBLIC_PREFIXES)
+            and not request.headers.get('HX-Request')
+        ):
+            return HttpResponseRedirect(dashboard_path)
+        return self.get_response(request)
+
 
 class ProxyAwareLoginRedirectMiddleware:
     """

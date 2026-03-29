@@ -22,27 +22,22 @@
     <!-- Alpine.js (make sure this is present and only once) -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
-    <!-- Add this in the <head> of your base template or before any code that uses JS9: -->
-    <!-- Example: -->
-    <!-- JS9 from CDN (do NOT use for production, but OK for testing/demo) -->
+    {% if user.is_authenticated %}
     <link rel="stylesheet" type="text/css" href="{% get_dynamic_static_url 'js9/js9support.css' %}">
     <link rel="stylesheet" type="text/css" href="{% get_dynamic_static_url 'js9/js9.css' %}">
     <script type="text/javascript" src="{% get_dynamic_static_url 'js9/js9support.min.js' %}"></script>
     <script type="text/javascript" src="{% get_dynamic_static_url 'js9/js9.min.js' %}"></script>
     <script type="text/javascript" src="{% get_dynamic_static_url 'js9/js9plugins.js' %}"></script>
-
     <script>
-      // Global JS9 preferences for all displays
       window.JS9Prefs = {
-        // Example preferences (customize as needed)
         colormap: "heat",
         scale: "log",
         contrast: 2.0,
         bias: 0.5,
         menu: "all"
-        // Add more JS9 options here as needed
       };
     </script>
+    {% endif %}
 </head>
 <body>
     <script>

@@ -12,7 +12,7 @@
     {% include "account/snippets/provider_buttons.html" with process="login" %}
   </div>
 
-  <div class="text-center mb-3 text-muted">or local account</div>
+  <div class="text-center mb-3 text-muted">or with a local account</div>
 
   <form method="post" action="{% url 'account_login' %}">
     {% csrf_token %}
