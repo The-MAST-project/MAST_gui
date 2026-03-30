@@ -189,18 +189,7 @@
                 }
 
                 if (key === 'constraints') {
-                    const changed = [];
-                    for (const sf of card.fields.filter(f => !f._isSectionHeader && !f.hidden)) {
-                        const current = this.getFieldValue(key, sf.name, sf._groupKey);
-                        const original = this._getOriginalValue(key, sf.name, sf._groupKey);
-                        if (JSON.stringify(current) !== JSON.stringify(original)) {
-                            const display = (sf.widget === 'user')
-                                ? (this._resolveUser(current)?.name || current)
-                                : current;
-                            changed.push({ label: sf.label, value: display, unit: sf.unit });
-                        }
-                    }
-                    return changed.length ? changed : [{ message: 'Default' }];
+                    return this._constraintsSummaryItems();
                 }
 
                 return card.summaryFields.map(sf => ({
@@ -208,6 +197,56 @@
                     value: this.getFieldValue(key, sf.name, sf._groupKey),
                     unit: sf.unit,
                 }));
+            },
+
+            _constraintsSummaryItems() {
+                const items = [];
+
+                // Moon
+                const moonPhase = this.getFieldValue('constraints', 'max_phase', 'moon');
+                const moonDist  = this.getFieldValue('constraints', 'min_distance', 'moon');
+                if (moonPhase != null || moonDist != null) {
+                    const parts = [];
+                    if (moonPhase != null) parts.push(`${moonPhase}%`);
+                    if (moonDist  != null) parts.push(`distance ${moonDist}\u00b0`);
+                    items.push({ message: 'Moon', bold: true });
+                    items.push({ message: parts.join(', '), plain: true });
+                }
+
+                // Airmass
+                const airmass = this.getFieldValue('constraints', 'max', 'airmass');
+                if (airmass != null) {
+                    items.push({ message: 'Airmass', bold: true });
+                    items.push({ message: String(airmass), plain: true });
+                }
+
+                // Time window — Start
+                const startMode = this.getFieldValue('constraints', 'start_mode', 'time_window');
+                const start     = this.getFieldValue('constraints', 'start', 'time_window');
+                if (startMode && startMode !== 'Anytime' && start) {
+                    items.push({ message: 'Start', bold: true });
+                    items.push({ message: startMode === 'Date' ? String(start).substring(0, 10) : String(start).replace('T', ' ').substring(0, 16), plain: true });
+                }
+
+                // Time window — End
+                const endMode     = this.getFieldValue('constraints', 'end_mode', 'time_window');
+                const end         = this.getFieldValue('constraints', 'end', 'time_window');
+                const afterNights = this.getFieldValue('constraints', 'end_after_nights', 'time_window');
+                if (endMode && endMode !== 'Anytime') {
+                    items.push({ message: 'End', bold: true });
+                    if (endMode === 'After' && afterNights != null)
+                        items.push({ message: `After ${afterNights} nights`, plain: true });
+                    else if (end)
+                        items.push({ message: endMode === 'Date' ? String(end).substring(0, 10) : String(end).replace('T', ' ').substring(0, 16), plain: true });
+                }
+
+                // Comma after each plain item that is followed by a bold item
+                for (let i = 0; i < items.length - 1; i++) {
+                    if (items[i].plain && items[i + 1] && items[i + 1].bold)
+                        items[i] = { ...items[i], message: items[i].message + ',' };
+                }
+
+                return items.length ? items : [{ message: 'Default' }];
             },
 
             isValid() {

@@ -7,7 +7,10 @@
       "Bash(pip show:*)",
       "Bash(python -c \"import sys; [print\\(p\\) for p in sys.path]\")",
       "Bash(python manage.py shell -c \":*)",
-      "Bash(find /home/mast -name *find* -o -name *mast-plan*)"
+      "Bash(find /home/mast -name *find* -o -name *mast-plan*)",
+      "Bash(.venv/bin/python manage.py makemigrations accounts --name email_verification)",
+      "Bash(.venv/bin/python manage.py shell -c *)",
+      "Bash(.venv/bin/python -W ignore -c *)"
     ],
     "additionalDirectories": [
       "/home/mast/PycharmProjects/MAST_control/tools"
