@@ -12,7 +12,9 @@
     </td>
     <td>
         {% for group in user.groups.all %}
-            <span class="badge bg-info">{{ group.name }}</span>
+            {% if group.name != 'Everybody' %}
+                <span class="badge bg-info">{{ group.name }}</span>
+            {% endif %}
         {% empty %}
             <span class="badge bg-secondary">None</span>
         {% endfor %}

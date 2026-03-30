@@ -47,7 +47,6 @@ class RegistrationForm(forms.ModelForm):
         label=_("Middle Name"),
         max_length=64,
         required=False,
-        widget=forms.TextInput(attrs={'placeholder': 'Optional'})
     )
 
     last_name = forms.CharField(
@@ -240,8 +239,7 @@ class ProfileForm(forms.ModelForm):
     prefix = forms.CharField(max_length=32, required=False, label="Prefix",
         help_text="e.g. Dr, Prof, Mr, Mrs")
     first_name = forms.CharField(max_length=64, required=False, label="First name")
-    middle = forms.CharField(max_length=64, required=False, label="Middle name",
-        widget=forms.TextInput(attrs={'placeholder': 'Optional'}))
+    middle = forms.CharField(max_length=64, required=False, label="Middle name")
     last_name = forms.CharField(max_length=64, required=False, label="Last name")
     email = forms.EmailField(max_length=254, required=False, label="Email")
     affiliation = forms.CharField(max_length=128, required=False, label="Affiliation")
