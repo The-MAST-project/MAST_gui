@@ -20,18 +20,17 @@
                     {% elif not detected %}
                         <span class="badge bg-{{ severity|default:'error' }}">{{ "Not Detected" }}</span>
                     {% elif not operational %}
-                        <span
-                            class="badge bg-{{ severity|default:'error' }}"
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span class="badge bg-{{ severity|default:'error' }}">Not Operational</span>
                             {% if why_not_operational %}
-                                data-bs-toggle="tooltip"
-                                data-bs-placement="auto"
-                                data-bs-html="true"
-                                data-bs-custom-class="status-tooltip"
-                                data-bs-title="{% for reason in why_not_operational %}{{ reason|escape }}{% if not forloop.last %}<br>{% endif %}{% endfor %}"
-                                style="cursor: help;"
+                            <i class="bi bi-info-circle"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="auto"
+                               data-bs-html="true"
+                               data-bs-custom-class="status-tooltip"
+                               data-bs-title="{% for reason in why_not_operational %}{{ reason|escape }}{% if not forloop.last %}<br>{% endif %}{% endfor %}"
+                               style="cursor: help;"></i>
                             {% endif %}
-                        >
-                            Not Operational
                         </span>
                     {% else %}
                         <span class="badge bg-success">Operational</span>

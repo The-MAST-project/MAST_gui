@@ -10,7 +10,7 @@ logger = logging.getLogger('mast.safety')
 
 
 @login_required
-@capability_required('canView')
+@capability_required('can_view')
 def graphs(request):
     """Show Grafana dashboard iframe."""
     grafana_url = "http://10.23.1.25:3000/grafana/d/dk8DxsWVz/neot-smadar-weather?orgId=1&refresh=10s"
@@ -22,7 +22,7 @@ def graphs(request):
 
 
 @login_required
-@capability_required('canView')
+@capability_required('can_view')
 def data(request):
     """Show safety data (stations and sensors)."""
     # TODO: Fetch from safety service

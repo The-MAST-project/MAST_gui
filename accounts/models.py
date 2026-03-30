@@ -99,9 +99,9 @@ class User(AbstractUser):
     class Meta:
         permissions = [
             ('can_view',                 'Can view MAST pages'),
-            ('can_submit_plans',         'Can submit observation plans'),
+            ('can_submit_plans',         'Can submit plans'),
             ('can_manage_plans',         'Can manage plans'),
-            ('can_execute_plans',        'Can execute plans and batches'),
+            ('can_execute_plans',        'Can execute plans'),
             ('can_use_controls',         'Can use low-level controls'),
             ('can_change_configuration', 'Can change configuration'),
             ('can_manage_users',         'Can manage users'),
