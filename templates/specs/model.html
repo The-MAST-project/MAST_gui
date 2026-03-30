@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+{% load static %}
+{% load dynamic_urls %}
+
+{% block title %}Spectrograph 3D Model — MAST GUI{% endblock %}
+
+{% block extra_css %}
+<style>
+  #spec-model-page {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 110px);
+    margin: -1rem -12px 0;
+    padding: 0;
+  }
+  #spec-model-page .page-header {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #dee2e6;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  #spec-model-page .viewer-row {
+    display: flex;
+    flex: 1 1 0;
+    min-height: 0;
+  }
+  #canvas-container {
+    flex: 1 1 0;
+    min-width: 0;
+    position: relative;
+    background: #1a1a2e;
+  }
+  #spec-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+  #loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: #1a1a2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #adb5bd;
+    z-index: 10;
+  }
+  #loading-overlay .spinner-border { width: 3rem; height: 3rem; }
+  #info-panel {
+    width: 320px;
+    min-width: 280px;
+    max-width: 380px;
+    overflow-y: auto;
+    background: #f8f9fa;
+    border-left: 1px solid #dee2e6;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .control-card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+  .control-card h6 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+  }
+  .btn-group-wrap { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .btn-group-wrap .btn { font-size: 0.78rem; padding: 0.25rem 0.6rem; }
+  .light-toggle { display: flex; flex-direction: column; gap: 0.35rem; }
+  .light-toggle label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; }
+  .light-toggle input[type=checkbox] { width: 1.1rem; height: 1.1rem; cursor: pointer; }
+  .info-table { font-size: 0.82rem; }
+  .info-table td:first-child { color: #6c757d; width: 40%; }
+  .camera-hint {
+    font-size: 0.75rem;
+    color: #adb5bd;
+    text-align: center;
+    margin-top: auto;
+    padding-top: 0.5rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="spec-model-page">
+  <div class="page-header d-flex align-items-center justify-content-between">
+    <h5 class="mb-0"><i class="bi bi-box me-2"></i>Spectrograph 3D Model</h5>
+    <span class="text-muted small">MAST Spectrographs — Simulated Geometry</span>
+  </div>
+
+  <div class="viewer-row">
+    <!-- 3D Canvas -->
+    <div id="canvas-container">
+      <div id="loading-overlay">
+        <div class="spinner-border text-primary mb-3" role="status"></div>
+        <span>Loading 3D models…</span>
+      </div>
+      <canvas id="spec-canvas"></canvas>
+    </div>
+
+    <!-- Info / Controls Panel -->
+    <div id="info-panel">
+
+      <!-- Fiber Stage -->
+      <div class="control-card">
+        <h6><i class="bi bi-arrow-left-right me-1"></i>Fiber Stage</h6>
+        <div class="btn-group-wrap">
+          <button class="btn btn-outline-primary active" id="btn-fiber-deepspec" onclick="setFiberStage('deepspec')">
+            DeepSpec
+          </button>
+          <button class="btn btn-outline-primary" id="btn-fiber-highspec" onclick="setFiberStage('highspec')">
+            HighSpec
+          </button>
+        </div>
+      </div>
+
+      <!-- Disperser / Grating -->
+      <div class="control-card">
+        <h6><i class="bi bi-grid me-1"></i>Disperser Grating</h6>
+        <div class="btn-group-wrap">
+          <button class="btn btn-outline-secondary active" id="btn-grating-0" onclick="setGrating(0)">G0</button>
+          <button class="btn btn-outline-secondary" id="btn-grating-1" onclick="setGrating(1)">G1</button>
+          <button class="btn btn-outline-secondary" id="btn-grating-2" onclick="setGrating(2)">G2</button>
+          <button class="btn btn-outline-secondary" id="btn-grating-3" onclick="setGrating(3)">G3</button>
+        </div>
+        <div class="mt-2 info-table">
+          <table class="table table-sm table-borderless mb-0">
+            <tbody>
+              <tr><td>Stage X</td><td id="info-grating-x">—</td></tr>
+              <tr><td>Focus Z</td><td id="info-focus-z">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ThAr Filter Wheel -->
+      <div class="control-card">
+        <h6><i class="bi bi-circle me-1"></i>ThAr Filter Wheel</h6>
+        <div class="btn-group-wrap">
+          {% for i in "012345" %}
+          <button class="btn btn-outline-secondary {% if forloop.first %}active{% endif %}"
+                  id="btn-filter-{{ i }}" onclick="setFilter({{ i }})">F{{ i }}</button>
+          {% endfor %}
+        </div>
+        <div class="mt-2 info-table">
+          <table class="table table-sm table-borderless mb-0">
+            <tbody>
+              <tr><td>Rotation</td><td id="info-filter-rot">0°</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Light Paths -->
+      <div class="control-card">
+        <h6><i class="bi bi-diagram-3 me-1"></i>Light Paths</h6>
+        <div class="light-toggle">
+          <label>
+            <input type="checkbox" id="lp-highspec" checked onchange="toggleLightPath('highspec', this.checked)">
+            HighSpec beam
+          </label>
+          <label>
+            <input type="checkbox" id="lp-deepspec" checked onchange="toggleLightPath('deepspec', this.checked)">
+            DeepSpec beam
+          </label>
+          <label>
+            <input type="checkbox" id="lp-calibration" onchange="toggleLightPath('calibration', this.checked)">
+            Calibration beam
+          </label>
+        </div>
+      </div>
+
+      <!-- About -->
+      <div class="control-card">
+        <h6><i class="bi bi-info-circle me-1"></i>About</h6>
+        <table class="table table-sm table-borderless info-table mb-0">
+          <tbody>
+            <tr><td>HighSpec</td><td>Echelle spectrograph, R≈70 000</td></tr>
+            <tr><td>DeepSpec</td><td>Low-res IFU, 350–1000 nm</td></tr>
+            <tr><td>Calibration</td><td>ThAr arc lamp, 6 filters</td></tr>
+            <tr><td>Fiber stage</td><td>Switchable fiber bundle</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="camera-hint">
+        <i class="bi bi-mouse2"></i> Drag to orbit &nbsp;·&nbsp;
+        <i class="bi bi-zoom-in"></i> Scroll to zoom &nbsp;·&nbsp;
+        Right-drag to pan
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Three.js importmap -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+  }
+}
+</script>
+
+<script>
+// GLB file URLs (server-side rendered)
+window.SPEC_MODEL_URLS = {
+  table_static:          "{% get_dynamic_static_url 'cad/spec_simulated/table_static.glb' %}",
+  disperser_stage:       "{% get_dynamic_static_url 'cad/spec_simulated/disperser_stage.glb' %}",
+  focus_stage:           "{% get_dynamic_static_url 'cad/spec_simulated/focus_stage.glb' %}",
+  thar_filter_wheel:     "{% get_dynamic_static_url 'cad/spec_simulated/thar_filter_wheel.glb' %}",
+  fiber_stage:           "{% get_dynamic_static_url 'cad/spec_simulated/fiber_stage.glb' %}",
+  light_path_highspec:   "{% get_dynamic_static_url 'cad/spec_simulated/light_path_highspec.glb' %}",
+  light_path_deepspec:   "{% get_dynamic_static_url 'cad/spec_simulated/light_path_deepspec.glb' %}",
+  light_path_calibration:"{% get_dynamic_static_url 'cad/spec_simulated/light_path_calibration.glb' %}",
+};
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// --- Preset data ---
+const GRATING_PRESETS = [
+  { x: -1.5, focusZ: -0.3 },
+  { x: -0.5, focusZ: -0.1 },
+  { x:  0.5, focusZ:  0.1 },
+  { x:  1.5, focusZ:  0.3 },
+];
+const FIBER_PRESETS = { deepspec: -0.6, highspec: 0.6 };
+
+// --- Scene setup ---
+const canvas = document.getElementById('spec-canvas');
+const container = document.getElementById('canvas-container');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.Fog(0x1a1a2e, 15, 40);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+camera.position.set(3, 3, 5);
+camera.lookAt(0, 0, 0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 0.5;
+controls.maxDistance = 20;
+controls.minPolarAngle = THREE.MathUtils.degToRad(10);
+controls.maxPolarAngle = THREE.MathUtils.degToRad(90);
+controls.target.set(0, 0, 0);
+
+// Lighting
+const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(5, 8, 6);
+sun.castShadow = true;
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0x8899cc, 0.4);
+fill.position.set(-4, 2, -3);
+scene.add(fill);
+
+// Grid helper for orientation
+const grid = new THREE.GridHelper(6, 12, 0x334466, 0x223355);
+grid.position.y = -0.55;
+scene.add(grid);
+
+// --- Named-node registry ---
+const nodes = {};
+
+function registerNodes(gltfScene) {
+  gltfScene.traverse(obj => {
+    if (obj.name) nodes[obj.name] = obj;
+    // Enable shadows on meshes
+    if (obj.isMesh) {
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+    }
+  });
+}
+
+// --- Load GLB files ---
+const loader = new GLTFLoader();
+let loadedCount = 0;
+const totalFiles = Object.keys(window.SPEC_MODEL_URLS).length;
+
+function onFileLoaded(gltf) {
+  scene.add(gltf.scene);
+  registerNodes(gltf.scene);
+  loadedCount++;
+  if (loadedCount === totalFiles) {
+    document.getElementById('loading-overlay').style.display = 'none';
+    // Apply initial state
+    applyInitialState();
+  }
+}
+
+for (const [name, url] of Object.entries(window.SPEC_MODEL_URLS)) {
+  loader.load(url, onFileLoaded, undefined, (err) => {
+    console.warn(`Failed to load ${name}:`, err);
+    loadedCount++;
+    if (loadedCount === totalFiles) {
+      document.getElementById('loading-overlay').style.display = 'none';
+    }
+  });
+}
+
+// --- State ---
+let currentGrating = 0;
+let currentFiber = 'deepspec';
+let currentFilter = 0;
+
+const lightPathVisible = { highspec: true, deepspec: true, calibration: false };
+
+function applyInitialState() {
+  setFiberStageInternal('deepspec');
+  setGratingInternal(0);
+  setFilterInternal(0);
+  applyLightPaths();
+}
+
+// --- Control functions (exposed globally) ---
+window.setFiberStage = function(target) {
+  setFiberStageInternal(target);
+  document.getElementById('btn-fiber-deepspec').classList.toggle('active', target === 'deepspec');
+  document.getElementById('btn-fiber-highspec').classList.toggle('active', target === 'highspec');
+};
+
+function setFiberStageInternal(target) {
+  currentFiber = target;
+  const holder = nodes['fiber_bundle_holder'];
+  if (holder) holder.position.x = FIBER_PRESETS[target];
+}
+
+window.setGrating = function(idx) {
+  setGratingInternal(idx);
+  for (let i = 0; i < 4; i++) {
+    document.getElementById(`btn-grating-${i}`).classList.toggle('active', i === idx);
+  }
+  const p = GRATING_PRESETS[idx];
+  document.getElementById('info-grating-x').textContent = p.x.toFixed(2) + ' m';
+  document.getElementById('info-focus-z').textContent = p.focusZ.toFixed(2) + ' m';
+};
+
+function setGratingInternal(idx) {
+  currentGrating = idx;
+  const p = GRATING_PRESETS[idx];
+  // Move entire disperser stage frame
+  const frame = nodes['disperser_stage_frame'];
+  if (frame) frame.position.x = p.x;
+  // Move focus camera mount
+  const focusMount = nodes['focus_camera_mount'];
+  if (focusMount) focusMount.position.z = p.focusZ;
+}
+
+window.setFilter = function(n) {
+  setFilterInternal(n);
+  for (let i = 0; i < 6; i++) {
+    document.getElementById(`btn-filter-${i}`).classList.toggle('active', i === n);
+  }
+  document.getElementById('info-filter-rot').textContent = (n * 60) + '°';
+};
+
+function setFilterInternal(n) {
+  currentFilter = n;
+  const wheelBody = nodes['filter_wheel_body'];
+  if (wheelBody && wheelBody.parent) {
+    wheelBody.parent.rotation.y = n * (Math.PI / 3);
+  }
+}
+
+window.toggleLightPath = function(path, visible) {
+  lightPathVisible[path] = visible;
+  applyLightPaths();
+};
+
+function applyLightPaths() {
+  const mapping = {
+    highspec:    ['beam_fiber_to_grating', 'beam_grating_to_camera'],
+    deepspec:    ['beam_fiber_to_prisms', 'beam_band_uv', 'beam_band_vis'],
+    calibration: ['beam_fiber_to_grating_cal', 'beam_to_highspec_cal', 'beam_to_deepspec_cal'],
+  };
+  for (const [path, beamNames] of Object.entries(mapping)) {
+    const vis = lightPathVisible[path];
+    beamNames.forEach(name => {
+      const obj = nodes[name];
+      if (obj) obj.visible = vis;
+    });
+  }
+}
+
+// --- Resize ---
+function resize() {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+window.addEventListener('resize', resize);
+resize();
+
+// --- Animate ---
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// Expose for initial UI updates (run after DOM ready, which it is here)
+window.setGrating(0);
+</script>
+{% endblock %}

@@ -11,6 +11,15 @@ logger = logging.getLogger('mast.specs')
 
 @login_required
 @capability_required('canView')
+def spec_model(request):
+    """Interactive 3D model viewer for the MAST spectrographs."""
+    return render(request, 'specs/model.html', {
+        'page_title': 'Spectrograph 3D Model',
+    })
+
+
+@login_required
+@capability_required('canView')
 def spec_list(request):
     """List spectrographs."""
     try:

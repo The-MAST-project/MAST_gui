@@ -93,10 +93,10 @@
             <span class="sidebar-item-text">Sites</span>
         </a>
         
-        <!-- Specs -->
-        <a href="{% get_dynamic_url 'specs:list' %}" class="sidebar-item {% if request.resolver_match.app_name == 'specs' %}active{% endif %}">
+        <!-- Spectrograph -->
+        <a href="{% get_dynamic_url 'specs:model' %}" class="sidebar-item {% if request.resolver_match.app_name == 'specs' %}active{% endif %}">
             <i class="bi bi-box"></i>
-            <span class="sidebar-item-text">Specs</span>
+            <span class="sidebar-item-text">Spectrograph</span>
         </a>
         
         <!-- Safety (with submenu) -->

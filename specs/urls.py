@@ -6,4 +6,5 @@ app_name = 'specs'
 
 urlpatterns = [
     path('', views.spec_list, name='list'),
+    path('model/', views.spec_model, name='model'),
 ]
