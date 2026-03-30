@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import common.config; print\\(common.config.__path__\\)\")",
+      "Bash(python -c \"import importlib; spec = importlib.util.find_spec\\(''common.config''\\); print\\(spec\\)\")",
+      "Bash(python -c \"from common.config import Config; print\\(Config\\)\")",
+      "Bash(pip show:*)",
+      "Bash(python -c \"import sys; [print\\(p\\) for p in sys.path]\")",
+      "Bash(python manage.py shell -c \":*)",
+      "Bash(find /home/mast -name *find* -o -name *mast-plan*)"
+    ],
+    "additionalDirectories": [
+      "/home/mast/PycharmProjects/MAST_control/tools"
+    ]
+  }
+}
