@@ -53,7 +53,6 @@ urlpatterns = [
     path('profile/edit/', accounts_views.profile_edit, name='profile_edit'),
     path('manage/users/<int:user_id>/edit/', accounts_views.admin_user_edit, name='admin_user_edit'),
     path('manage/users/<int:user_id>/approve-edit/', accounts_views.admin_approve_edit, name='admin_approve_edit'),
-    path('manage/users/<int:user_id>/delete/', views.admin_user_delete, name='admin_user_delete'),
     path('manage/groups/', views.admin_groups, name='admin_groups'),
     path('manage/groups/<int:group_id>/edit/', views.admin_group_edit, name='admin_group_edit'),
     path('manage/groups/<int:group_id>/delete-modal/', views.admin_group_delete_modal, name='admin_group_delete_modal'),

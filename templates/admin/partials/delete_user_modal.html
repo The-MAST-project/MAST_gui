@@ -8,9 +8,9 @@
             <div class="modal-body">
                 <p>You are about to permanently delete <strong>{{ user.username }}</strong>.</p>
                 <p class="text-muted">
-                    Ownership of all plans and other entities belonging to this user
-                    will be transferred to <strong>mast</strong>.
-                    This action cannot be undone.
+                    Ownership of all assets (plans, etc.) belonging to this user
+                    will be transferred to the user <strong>mast</strong>.<br><br>
+                    <center><strong>This action cannot be undone.</strong></center>
                 </p>
             </div>
             <div class="modal-footer">
@@ -19,7 +19,7 @@
                         hx-post="{% url 'admin_delete_user' user.id %}"
                         hx-target="#user-row-{{ user.id }}"
                         hx-swap="outerHTML"
-                        hx-on::after-request="bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide()">
+                        hx-on::after-swap="bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide()">
                     Delete
                 </button>
             </div>
@@ -29,4 +29,7 @@
 <script>
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
     deleteModal.show();
+    document.getElementById('deleteUserModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('profile-modal-container').innerHTML = '';
+    });
 </script>
