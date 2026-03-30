@@ -39,7 +39,6 @@ class Command(BaseCommand):
                     last_name=spec['last_name'],
                     email=spec['email'],
                     is_active=True,
-                    is_registered=True,
                     display=unique_display(spec['first_name'], spec['last_name']),
                 ),
             )

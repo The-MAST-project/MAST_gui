@@ -219,7 +219,7 @@ class LocalSignupForm(UserCreationForm):
         max_length=254,
         required=True,
         label="Email address",
-        help_text="Required. This will be used as your username."
+        help_text="Required. A verification link will be sent to this address."
     )
     first_name = forms.CharField(max_length=30, required=True, label="First name")
     last_name = forms.CharField(max_length=30, required=True, label="Last name")

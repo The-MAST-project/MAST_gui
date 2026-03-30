@@ -81,11 +81,12 @@ class MASTPermissions:
 
 class User(AbstractUser):
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
-    is_registered = models.BooleanField(default=False)
     prefix = models.CharField(max_length=32, blank=True)
     middle = models.CharField(max_length=64, blank=True)
     affiliation = models.CharField(max_length=128, blank=True)
     display = models.CharField(max_length=64, blank=True)
+    email_verified = models.BooleanField(default=False)
+    email_verification_token = models.CharField(max_length=64, blank=True)
 
     @property
     def full_name(self) -> str:

@@ -7,20 +7,20 @@ from accounts.models import User, MASTPermissions
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'full_name', 'affiliation', 'is_registered', 'is_active', 'group_list')
-    list_filter = ('is_registered', 'is_active', 'is_staff', 'groups')
+    list_display = ('username', 'email', 'full_name', 'affiliation', 'is_active', 'group_list')
+    list_filter = ('is_active', 'is_staff', 'groups')
     search_fields = ('username', 'email', 'first_name', 'last_name', 'affiliation')
     ordering = ('username',)
 
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Personal info', {'fields': ('prefix', 'first_name', 'middle_name', 'last_name', 'email', 'affiliation')}),
-        ('Access', {'fields': ('is_active', 'is_registered', 'is_staff', 'groups')}),
+        ('Access', {'fields': ('is_active', 'is_staff', 'groups')}),
     )
     add_fieldsets = (
         (None, {'fields': ('username', 'password1', 'password2')}),
         ('Personal info', {'fields': ('prefix', 'first_name', 'middle_name', 'last_name', 'email', 'affiliation')}),
-        ('Access', {'fields': ('is_active', 'is_registered', 'groups')}),
+        ('Access', {'fields': ('is_active', 'groups')}),
     )
 
     filter_horizontal = ('groups',)
@@ -33,7 +33,7 @@ class UserAdmin(BaseUserAdmin):
 
     @admin.action(description='Approve selected users')
     def approve_users(self, request, queryset):
-        updated = queryset.update(is_registered=True, is_active=True)
+        updated = queryset.update(is_active=True)
         self.message_user(request, f'{updated} user(s) approved.')
 
     @admin.action(description='Deactivate selected users')

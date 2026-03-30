@@ -1,5 +1,5 @@
 """
-Export active registered users to a JSON file readable by mast-plan-find.
+Export active users to a JSON file readable by mast-plan-find.
 
 Usage: python manage.py export_users
 Output: /Storage/mast-share/MAST/plans/files/users.json
@@ -21,7 +21,7 @@ class Command(BaseCommand):
         USERS_JSON.parent.mkdir(parents=True, exist_ok=True)
         users = [
             {'uuid': str(u.uid), 'display': u.display}
-            for u in User.objects.filter(is_active=True, is_registered=True).exclude(display='')
+            for u in User.objects.filter(is_active=True).exclude(display='')
         ]
         USERS_JSON.write_text(json.dumps(users, indent=2))
         self.stdout.write(self.style.SUCCESS(

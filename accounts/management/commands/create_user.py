@@ -42,7 +42,6 @@ class Command(BaseCommand):
             password=password,
             first_name=options['first_name'],
             last_name=options['last_name'],
-            is_registered=True,
             is_active=True,
         )
         self.stdout.write(f'Created user: {username}')

@@ -446,12 +446,12 @@ def ownerships_transfer(request):
 
 
 def api_users(request):
-    """Return [{uuid, display}] for all active registered users."""
+    """Return [{uuid, display}] for all active users."""
     from django.http import JsonResponse
     from accounts.models import User
     users = (
         User.objects
-        .filter(is_active=True, is_registered=True)
+        .filter(is_active=True)
         .exclude(display='')
         .values('uid', 'display')
     )

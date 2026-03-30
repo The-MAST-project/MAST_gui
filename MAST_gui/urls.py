@@ -10,7 +10,7 @@ from . import views
 from mast_utils.views import django_controller_status_check
 from core.views import plans as plans_views  # new: plans view for /plans/ page
 from accounts import views as accounts_views
-from django.contrib.auth.views import LogoutView, LoginView
+from django.contrib.auth.views import LogoutView
 
 def mast_dash_redirect(request, *args, **kwargs):
     # The site is selected and stored in the session by views.select_site (see 'select-site/' route)
@@ -65,7 +65,7 @@ urlpatterns = [
     path('manage/users/<int:user_id>/delete-modal/', accounts_views.admin_delete_user_modal, name='admin_delete_user_modal'),
 
     # Add login route for user menu
-    path('login/', LoginView.as_view(), name='login'),
+    path('login/', accounts_views.MastLoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/', accounts_views.signup, name='signup'),
     path('signup/local/', accounts_views.local_signup, name='local_signup'),  # <-- Add this line

@@ -1,6 +1,6 @@
 """
 Bootstrap the first MAST admin user.
-Creates the user, assigns to Admin group, sets is_registered and is_staff.
+Creates the user, assigns to Admin group, sets is_staff.
 Run after: python manage.py migrate && python manage.py init_mast_groups
 
 Usage:
@@ -43,7 +43,6 @@ class Command(BaseCommand):
             username=username,
             email=options['email'],
             password=password,
-            is_registered=True,
             is_active=True,
             is_staff=True,   # required for Django /admin/ access
         )

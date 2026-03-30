@@ -1,4 +1,6 @@
 import logging
+import re
+import secrets
 from pathlib import Path
 
 from allauth.socialaccount.views import SignupView as SocialSignupView
@@ -9,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import Group
+from django.contrib.auth.views import LoginView
 from django.core.mail import send_mail
 from django.conf import settings
 from django.http import HttpResponse
@@ -38,6 +41,50 @@ def _build_capabilities(user):
         {'code': code, 'name': name, 'has_permission': user.has_perm(f'accounts.{code}')}
         for code, name in _CAPABILITIES
     ]
+
+
+class MastLoginView(LoginView):
+    """
+    Login view with specific messages for: unknown username, unverified email,
+    unapproved account, and wrong password.
+    """
+    def form_invalid(self, form):
+        username = self.request.POST.get('username', '')
+        if username:
+            try:
+                user = User.objects.get(username=username)
+                form.errors.clear()
+                if not user.email_verified:
+                    form.add_error(None,
+                        'Your email address has not been verified yet. '
+                        'Please check your inbox for the verification link.')
+                elif not user.is_active:
+                    form.add_error(None,
+                        'Your account is awaiting admin approval. '
+                        'You will be notified by email when it is approved.')
+                # else: wrong password — keep the default form error
+                else:
+                    return super().form_invalid(form)
+            except User.DoesNotExist:
+                form.errors.clear()
+                form.add_error(None,
+                    f'No account found for "{username}". '
+                    'You may sign up first.')
+        return super().form_invalid(form)
+
+
+@require_http_methods(['GET'])
+def verify_email(request, token):
+    try:
+        user = User.objects.get(email_verification_token=token)
+    except User.DoesNotExist:
+        messages.error(request, 'Invalid or expired verification link.')
+        return redirect('login')
+    user.email_verified = True
+    user.email_verification_token = ''
+    user.save(update_fields=['email_verified', 'email_verification_token'])
+    messages.success(request, 'Email verified. Your account is awaiting admin approval.')
+    return redirect('login')
 
 
 @require_http_methods(['GET', 'POST'])
@@ -111,16 +158,50 @@ def signup(request):
     return render(request, 'registration/signup.html')
 
 
+def _username_from_email(email: str) -> str:
+    """Generate a unique username from the local part of an email address."""
+    base = re.sub(r'[^a-z0-9.]', '.', email.split('@')[0].lower())
+    base = re.sub(r'\.{2,}', '.', base).strip('.')
+    username = base
+    i = 2
+    while User.objects.filter(username=username).exists():
+        username = f'{base}.{i}'
+        i += 1
+    return username
+
+
+def _send_verification_email(request, user):
+    verify_url = request.build_absolute_uri(
+        reverse('accounts:verify_email', args=[user.email_verification_token])
+    )
+    send_mail(
+        subject='Verify your MAST email address',
+        message=(
+            f'Hi {user.first_name or user.username},\n\n'
+            f'Please verify your email address by clicking the link below:\n\n'
+            f'{verify_url}\n\n'
+            f'If you did not sign up for MAST, you can ignore this email.\n\n'
+            f'The MAST team'
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+
+
 def local_signup(request):
     if request.method == 'POST':
         form = LocalSignupForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
             user.is_active = False
-            user.is_registered = False
+            user.email_verified = False
             user.display = unique_display(user.first_name, user.last_name)
+            user.username = _username_from_email(form.cleaned_data['email'])
+            user.email_verification_token = secrets.token_urlsafe(32)
             user.save()
-            messages.info(request, 'Registration submitted. Awaiting admin approval.')
+            _send_verification_email(request, user)
+            messages.info(request, 'Registration submitted. Please check your email to verify your address.')
             return redirect('login')
     else:
         form = LocalSignupForm()
@@ -132,7 +213,6 @@ def register(request):
         form = RegistrationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.is_registered = False
             user.set_password(request.POST.get('password', ''))
             user.display = unique_display(user.first_name, user.last_name, user.middle)
             user.save()
@@ -151,7 +231,7 @@ def admin_users(request):
     return render(request, 'admin/users.html', {
         'users': User.objects.all().order_by('username'),
         'groups': Group.objects.all().order_by('name'),
-        'pending_registrations': User.objects.filter(is_registered=False).order_by('-date_joined'),
+        'pending_registrations': User.objects.filter(is_active=False).order_by('-date_joined'),
     })
 
 
@@ -175,7 +255,6 @@ def _send_approval_email(request, user):
 
 def admin_approve_user(request, user_id):
     user = get_object_or_404(User, id=user_id)
-    user.is_registered = True
     user.is_active = True
     user.save()
     everybody = Group.objects.get(name='Everybody')
@@ -228,7 +307,6 @@ def _transfer_plan_ownership(from_uid: str, to_uid: str):
 def admin_deactivate_user(request, user_id):
     user = get_object_or_404(User, id=user_id)
     user.is_active = False
-    user.is_registered = False
     user.save()
     messages.success(request, f'User {user.username} deactivated.')
     return render(request, 'admin/partials/user_row.html', {'user': user})
@@ -285,8 +363,7 @@ def _user_edit(request, user, post_url, submit_label='Save', approve=False):
             form.save()
             if approve:
                 user.is_active = True
-                user.is_registered = True
-                user.save(update_fields=['is_active', 'is_registered'])
+                user.save(update_fields=['is_active'])
                 _send_approval_email(request, user)
             return HttpResponse('<script>window.location.reload();</script>')
     else:

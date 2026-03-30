@@ -22,7 +22,7 @@ class LocalUserBackend(BaseBackend):
 
 class RegisteredUserBackend(ModelBackend):
     """
-    Extends Django's ModelBackend with an is_registered gate.
+    Extends Django's ModelBackend with an is_active gate.
     Users must be explicitly approved before they can log in.
     Admin group members are granted all permissions (replaces is_superuser).
     """
@@ -30,14 +30,14 @@ class RegisteredUserBackend(ModelBackend):
         User = get_user_model()
         try:
             user = User.objects.get(username=username)
-            if user.check_password(password) and user.is_registered:
+            if user.check_password(password) and user.is_active:
                 return user
         except User.DoesNotExist:
             return None
         return None
 
     def _is_admin(self, user_obj):
-        return user_obj.is_active and user_obj.is_registered and \
+        return user_obj.is_active and \
                user_obj.groups.filter(name='Admin').exists()
 
     def has_perm(self, user_obj, perm, obj=None):
