@@ -144,57 +144,6 @@ def admin_user_delete(request, user_id):
             return HttpResponse('', content_type='text/html')
 
 
-@login_required
-@permission_required('accounts.can_manage_users', raise_exception=True)
-def admin_group_edit(request, group_id):
-    """
-    Edit group details and permissions
-    """
-    from django.contrib.auth.models import Permission
-    
-    group = get_object_or_404(Group, id=group_id)
-    all_permissions = Permission.objects.filter(
-        content_type__app_label='auth'
-    ).order_by('name')
-    
-    if request.method == 'POST':
-        group.name = request.POST.get('name', group.name)
-        
-        # Update permissions
-        selected_perms = request.POST.getlist('permissions')
-        group.permissions.clear()
-        for perm_id in selected_perms:
-            perm = Permission.objects.get(id=perm_id)
-            group.permissions.add(perm)
-        
-        group.save()
-        messages.success(request, f'Group {group.name} updated successfully')
-        
-        return render(request, 'admin/partials/group_row.html', {
-            'group': group
-        })
-    
-    return render(request, 'admin/partials/group_edit_modal.html', {
-        'edit_group': group,
-        'all_permissions': all_permissions,
-    })
-
-
-@login_required
-@permission_required('accounts.can_manage_users', raise_exception=True)
-@require_http_methods(["POST"])
-def admin_group_delete(request, group_id):
-    """
-    Delete group
-    """
-    group = get_object_or_404(Group, id=group_id)
-    group_name = group.name
-    group.delete()
-    messages.success(request, f'Group {group_name} deleted successfully')
-    
-    # Return empty response
-    return HttpResponse('')
-
 # Django's built-in Group model fields:
 # - id: AutoField (primary key)
 # - name: CharField (unique, required)

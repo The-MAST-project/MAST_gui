@@ -1,0 +1,36 @@
+<div class="modal fade show" id="groupDeleteModal" tabindex="-1" style="display:block;" aria-modal="true" role="dialog">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Delete Group</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                onclick="document.getElementById('group-modal-container').innerHTML = ''"></button>
+      </div>
+      <div class="modal-body">
+        <p>You are about to permanently delete group <strong>{{ group.name }}</strong>.</p>
+        {% if member_count %}
+        <p class="text-warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            This group has <strong>{{ member_count }}</strong> member{{ member_count|pluralize }}.
+            They will lose the associated capabilities.
+        </p>
+        {% endif %}
+        <p class="text-muted">This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
+                onclick="document.getElementById('group-modal-container').innerHTML = ''">Cancel</button>
+        <button type="button" class="btn btn-danger"
+                hx-post="{% url 'admin_group_delete' group.id %}"
+                hx-target="#group-row-{{ group.id }}"
+                hx-swap="outerHTML"
+                hx-on::after-request="document.getElementById('group-modal-container').innerHTML = ''">
+            Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+    new bootstrap.Modal(document.getElementById('groupDeleteModal')).show();
+</script>

@@ -171,37 +171,56 @@ def admin_user_delete(request, user_id):
 
 @login_required
 @permission_required('accounts.can_manage_users', raise_exception=True)
-def admin_group_edit(request, group_id):
-    """
-    Edit group details and permissions
-    """
+def admin_groups(request):
+    groups = Group.objects.all().order_by('name')
+    return render(request, 'admin/groups.html', {'groups': groups})
+
+
+def _mast_permissions():
     from django.contrib.auth.models import Permission
-    
+    from accounts.models import MASTPermissions
+    codenames = [
+        MASTPermissions.CAN_VIEW,
+        MASTPermissions.CAN_SUBMIT_PLANS,
+        MASTPermissions.CAN_MANAGE_PLANS,
+        MASTPermissions.CAN_EXECUTE_PLANS,
+        MASTPermissions.CAN_USE_CONTROLS,
+        MASTPermissions.CAN_CHANGE_CONFIGURATION,
+        MASTPermissions.CAN_MANAGE_USERS,
+    ]
+    return Permission.objects.filter(
+        content_type__app_label='accounts',
+        codename__in=codenames,
+    ).order_by('codename')
+
+
+@login_required
+@permission_required('accounts.can_manage_users', raise_exception=True)
+def admin_group_edit(request, group_id):
     group = get_object_or_404(Group, id=group_id)
-    all_permissions = Permission.objects.filter(
-        content_type__app_label='auth'
-    ).order_by('name')
-    
+    mast_permissions = _mast_permissions()
+
     if request.method == 'POST':
         group.name = request.POST.get('name', group.name)
-        
-        # Update permissions
         selected_perms = request.POST.getlist('permissions')
-        group.permissions.clear()
-        for perm_id in selected_perms:
-            perm = Permission.objects.get(id=perm_id)
-            group.permissions.add(perm)
-        
+        group.permissions.set(mast_permissions.filter(id__in=selected_perms))
         group.save()
-        messages.success(request, f'Group {group.name} updated successfully')
-        
-        return render(request, 'admin/partials/group_row.html', {
-            'group': group
-        })
-    
+        return render(request, 'admin/partials/group_row.html', {'group': group})
+
     return render(request, 'admin/partials/group_edit_modal.html', {
         'edit_group': group,
-        'all_permissions': all_permissions,
+        'mast_permissions': mast_permissions,
+        'members': group.user_set.order_by('username'),
+    })
+
+
+@login_required
+@permission_required('accounts.can_manage_users', raise_exception=True)
+def admin_group_delete_modal(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    return render(request, 'admin/partials/group_delete_modal.html', {
+        'group': group,
+        'member_count': group.user_set.count(),
     })
 
 
@@ -209,15 +228,8 @@ def admin_group_edit(request, group_id):
 @permission_required('accounts.can_manage_users', raise_exception=True)
 @require_http_methods(["POST"])
 def admin_group_delete(request, group_id):
-    """
-    Delete group
-    """
     group = get_object_or_404(Group, id=group_id)
-    group_name = group.name
     group.delete()
-    messages.success(request, f'Group {group_name} deleted successfully')
-    
-    # Return empty response
     return HttpResponse('')
 
 

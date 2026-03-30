@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Group Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Group Management</h2>
+    <div id="group-modal-container"></div>
+    <table class="table table-bordered table-hover mt-4 align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Name</th>
+                <th>Capabilities</th>
+                <th>Members</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="groups-table-body">
+            {% for group in groups %}
+            {% include "admin/partials/group_row.html" %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<style>
+.badge, .badge.bg-success, .badge.bg-secondary, .badge.bg-info {
+    background-color: #e9ecef !important;
+    color: #333 !important;
+    border-radius: 0.375rem !important;
+    font-weight: 500;
+}
+.badge.bg-success { background-color: #d1e7dd !important; color: #0f5132 !important; }
+.badge.bg-secondary { background-color: #e2e3e5 !important; color: #41464b !important; }
+.badge.bg-info { background-color: #cff4fc !important; color: #055160 !important; }
+.btn, .btn-outline-secondary, .btn-outline-danger, .btn-outline-primary {
+    background-color: #f8f9fa !important;
+    color: #333 !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 0.375rem !important;
+    font-weight: 500;
+    box-shadow: none !important;
+}
+.btn-outline-secondary {
+    background-color: #e2e3e5 !important;
+    color: #41464b !important;
+    border-color: #d3d6d8 !important;
+}
+.btn:active, .btn:focus, .btn:hover { filter: brightness(0.97); box-shadow: none !important; }
+</style>
+{% endblock %}

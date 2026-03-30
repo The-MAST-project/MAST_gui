@@ -153,6 +153,9 @@
             <a href="{% url 'admin_users' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'admin_users' %}active{% endif %}">
                 Users
             </a>
+            <a href="{% url 'admin_groups' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'admin_groups' %}active{% endif %}">
+                Groups
+            </a>
             <a href="{% url 'manage_ownerships' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'manage_ownerships' %}active{% endif %}">
                 Ownerships
             </a>

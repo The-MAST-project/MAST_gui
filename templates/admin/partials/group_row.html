@@ -1,0 +1,38 @@
+<tr id="group-row-{{ group.id }}">
+    <td>{{ group.name }}</td>
+    <td>
+        {% for perm in group.permissions.all %}
+            {% if perm.codename != 'can_view' %}
+                <span class="badge bg-info">{{ perm.name }}</span>
+            {% endif %}
+        {% empty %}
+            <span class="text-muted">—</span>
+        {% endfor %}
+    </td>
+    <td>{{ group.user_set.count }}</td>
+    <td>
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                Actions
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item"
+                       hx-get="{% url 'admin_group_edit' group.id %}"
+                       hx-target="#group-modal-container"
+                       hx-swap="innerHTML">
+                        Edit
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item text-danger"
+                       hx-get="{% url 'admin_group_delete_modal' group.id %}"
+                       hx-target="#group-modal-container"
+                       hx-swap="innerHTML">
+                        Delete…
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </td>
+</tr>
