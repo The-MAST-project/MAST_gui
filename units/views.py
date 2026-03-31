@@ -62,7 +62,7 @@ def units_list(request):
     if sites_status is None:
         error = 'No current sites status (yet?)'
     if not hasattr(sites_status, 'sites') or current_site not in sites_status.sites:
-        error = f"No status available for site '{current_site}' (yet?)"
+        error = f"No status for site '{current_site}' from '{site_config.controller_host}'"
     if error:
         return render(request, 'units/list.html', {
             'error': error,
