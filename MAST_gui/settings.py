@@ -171,10 +171,12 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'doar.weizmann.ac.il'
-EMAIL_PORT = 25
-EMAIL_USE_TLS = False
+EMAIL_HOST = 'smtp-relay.brevo.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
+EMAIL_HOST_USER = 'a6b936001@smtp-brevo.com'
+EMAIL_HOST_PASSWORD = 'YhdTrAcFgIPjqWp0'
 DEFAULT_FROM_EMAIL = 'MAST <noreply@mast-wis-control.weizmann.ac.il>'
 
 SOCIALACCOUNT_PROVIDERS = {
