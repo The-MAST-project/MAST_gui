@@ -161,7 +161,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # django-allauth
 ACCOUNT_LOGIN_METHODS = {'username', 'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
-ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
 ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'
@@ -170,14 +170,9 @@ SOCIALACCOUNT_ADAPTER = 'accounts.adapter.CustomSocialAccountAdapter'
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp-relay.brevo.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
-EMAIL_HOST_USER = 'a6b936001@smtp-brevo.com'
-EMAIL_HOST_PASSWORD = 'YhdTrAcFgIPjqWp0'
-DEFAULT_FROM_EMAIL = 'MAST <noreply@mast-wis-control.weizmann.ac.il>'
+EMAIL_BACKEND = 'mast_utils.brevo_backend.BrevoEmailBackend'
+BREVO_API_KEY = config('BREVO_API_KEY', default='')
+DEFAULT_FROM_EMAIL = 'MAST <theblumz@gmail.com>'
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
@@ -282,7 +277,6 @@ Q_CLUSTER = {
 
 # Proxy settings for internal network access
 # Bypass proxy for MAST internal hosts
-import os
 no_proxy = os.environ.get('NO_PROXY', '')
 
 # Add MAST internal network ranges and hosts

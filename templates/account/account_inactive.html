@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static dynamic_urls %}
+
+{% block title %}Account Pending Approval - MAST GUI{% endblock %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 480px;">
+    <div class="text-center mb-4">
+        <img src="{% get_dynamic_static_url 'img/mast-logo.png' %}" alt="MAST Logo" height="80" class="mb-3">
+        <div>
+            <i class="bi bi-hourglass-split" style="font-size: 2.5rem; color: var(--bs-warning);"></i>
+        </div>
+    </div>
+    <h4 class="text-center mb-3">Account Pending Approval</h4>
+    <p class="text-center text-muted">
+        Your signup has been registered but is awaiting approval by a MAST administrator.
+        You will be able to sign in once your account has been activated.
+    </p>
+    <p class="text-center text-muted small mt-4">
+        If you believe this is taking too long, please contact the MAST team.
+    </p>
+    <div class="text-center mt-4">
+        <a href="{% get_dynamic_url 'login' %}" class="btn btn-outline-secondary btn-sm">Back to login</a>
+    </div>
+</div>
+{% endblock %}

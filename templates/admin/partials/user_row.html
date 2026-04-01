@@ -31,8 +31,8 @@
                        hx-post="{% url 'admin_approve_user' user.id %}"
                        hx-target="#user-row-{{ user.id }}"
                        hx-swap="outerHTML"
-                       hx-confirm="Approve {{ user.username }}?">
-                        Approve
+                       hx-confirm="Activate {{ user.username }}?">
+                        Activate
                     </a>
                 </li>
                 <li>
@@ -40,7 +40,7 @@
                        hx-get="{% url 'admin_approve_edit' user.id %}"
                        hx-target="#profile-modal-container"
                        hx-swap="innerHTML">
-                        Approve and Edit…
+                        Activate and Edit…
                     </a>
                 </li>
                 <li>
@@ -55,11 +55,9 @@
                 {% else %}
                 <li>
                     <a class="dropdown-item"
-                       hx-post="{% url 'admin_deactivate_user' user.id %}"
-                       hx-target="#user-row-{{ user.id }}"
-                       hx-swap="outerHTML"
-                       hx-confirm="Deactivate {{ user.username }}? They can be re-approved later."
-                       title="Sets the user to inactive. Can be re-approved later.">
+                       hx-get="{% url 'admin_deactivate_user_modal' user.id %}"
+                       hx-target="#profile-modal-container"
+                       hx-swap="innerHTML">
                         Deactivate
                     </a>
                 </li>

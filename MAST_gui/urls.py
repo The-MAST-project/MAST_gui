@@ -61,6 +61,7 @@ urlpatterns = [
     path('manage/users/<int:user_id>/approve/', accounts_views.admin_approve_user, name='admin_approve_user'),
     path('manage/users/<int:user_id>/reject/', accounts_views.admin_reject_user, name='admin_reject_user'),
     path('manage/users/<int:user_id>/deactivate/', accounts_views.admin_deactivate_user, name='admin_deactivate_user'),
+    path('manage/users/<int:user_id>/deactivate-modal/', accounts_views.admin_deactivate_user_modal, name='admin_deactivate_user_modal'),
     path('manage/users/<int:user_id>/delete/', accounts_views.admin_delete_user, name='admin_delete_user'),
     path('manage/users/<int:user_id>/delete-modal/', accounts_views.admin_delete_user_modal, name='admin_delete_user_modal'),
 

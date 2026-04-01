@@ -1,0 +1,29 @@
+<div class="modal fade" id="deactivateUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Deactivate User</h5>
+                <button type="button" class="btn-close" aria-label="Close" onclick="location.reload()"></button>
+            </div>
+            <div class="modal-body">
+                <p>You are about to deactivate <strong>{{ user.username }}</strong>.</p>
+                <p class="text-muted">The user will no longer be able to sign in. You can re-activate them later.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">Cancel</button>
+                <button type="button" class="btn btn-warning"
+                        hx-post="{% url 'admin_deactivate_user' user.id %}"
+                        hx-target="body"
+                        hx-swap="none">
+                    Deactivate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    new bootstrap.Modal(document.getElementById('deactivateUserModal')).show();
+    document.getElementById('deactivateUserModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('profile-modal-container').innerHTML = '';
+    });
+</script>

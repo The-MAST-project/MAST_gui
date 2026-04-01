@@ -5,8 +5,7 @@
         {% csrf_token %}
         <div class="modal-header">
           <h5 class="modal-title">User profile</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
-                  onclick="document.getElementById('profile-modal-container').innerHTML = ''"></button>
+          <button type="button" class="btn-close" aria-label="Close" onclick="location.reload()"></button>
         </div>
         <div class="modal-body">
 
@@ -119,8 +118,7 @@
 
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
-                  onclick="document.getElementById('profile-modal-container').innerHTML = ''">Cancel</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">Cancel</button>
           <button type="submit" class="btn btn-primary">{{ submit_label|default:"Save" }}</button>
         </div>
       </form>

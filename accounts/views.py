@@ -1,6 +1,7 @@
 import logging
 import re
 import secrets
+import threading
 from pathlib import Path
 
 from allauth.socialaccount.views import SignupView as SocialSignupView
@@ -12,7 +13,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import Group
 from django.contrib.auth.views import LoginView
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -201,8 +203,7 @@ def local_signup(request):
             user.email_verification_token = secrets.token_urlsafe(32)
             user.save()
             _send_verification_email(request, user)
-            messages.info(request, 'Registration submitted. Please check your email to verify your address.')
-            return redirect('login')
+            return render(request, 'registration/verify_email_sent.html', {'email': user.email})
     else:
         form = LocalSignupForm()
     return render(request, 'registration/local_signup.html', {'form': form})
@@ -235,22 +236,38 @@ def admin_users(request):
     })
 
 
-@login_required
-@require_http_methods(['POST'])
+def _logo_data_uri():
+    logo_path = Path(settings.BASE_DIR) / 'static' / 'img' / 'mast-logo.png'
+    try:
+        import base64
+        data = base64.b64encode(logo_path.read_bytes()).decode()
+        suffix = logo_path.suffix.lstrip('.')
+        mime = 'jpeg' if suffix in ('jpg', 'jpeg') else suffix
+        return f'data:image/{mime};base64,{data}'
+    except Exception:
+        return ''
+
+
 def _send_approval_email(request, user):
-    if user.email:
-        send_mail(
-            subject='Your MAST account has been approved',
-            message=(
-                f'Hi {user.get_full_name() or user.username},\n\n'
-                f'Your account has been approved. You can now log in at:\n'
-                f'{request.build_absolute_uri(reverse("login"))}\n\n'
-                f'The MAST team'
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=True,
-        )
+    if not user.email:
+        return
+    login_url = request.build_absolute_uri(reverse("login"))
+    context = {'user': user, 'login_url': login_url, 'logo_data_uri': _logo_data_uri()}
+    text_body = (
+        f'Hi {user.get_full_name() or user.username},\n\n'
+        f'Your MAST account has been activated. You can now log in at:\n'
+        f'{login_url}\n\n'
+        f'The MAST team'
+    )
+    html_body = render_to_string('accounts/email/account_approved.html', context, request=request)
+    msg = EmailMultiAlternatives(
+        subject='Your MAST account has been activated',
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    msg.attach_alternative(html_body, 'text/html')
+    msg.send(fail_silently=True)
 
 
 def admin_approve_user(request, user_id):
@@ -259,9 +276,9 @@ def admin_approve_user(request, user_id):
     user.save()
     everybody = Group.objects.get(name='Everybody')
     user.groups.add(everybody)
-    _send_approval_email(request, user)
+    threading.Thread(target=_send_approval_email, args=(request, user), daemon=True).start()
     messages.success(request, f'User {user.username} approved.')
-    return render(request, 'admin/partials/user_row.html', {'user': user})
+    return HttpResponse(headers={'HX-Refresh': 'true'})
 
 
 @login_required
@@ -303,13 +320,20 @@ def _transfer_plan_ownership(from_uid: str, to_uid: str):
 
 
 @login_required
+@permission_required('accounts.can_manage_users', raise_exception=True)
+def admin_deactivate_user_modal(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    return render(request, 'admin/partials/deactivate_user_modal.html', {'user': user})
+
+
+@login_required
 @require_http_methods(['POST'])
 def admin_deactivate_user(request, user_id):
     user = get_object_or_404(User, id=user_id)
     user.is_active = False
     user.save()
     messages.success(request, f'User {user.username} deactivated.')
-    return render(request, 'admin/partials/user_row.html', {'user': user})
+    return HttpResponse(headers={'HX-Refresh': 'true'})
 
 
 @login_required
@@ -329,7 +353,7 @@ def admin_delete_user(request, user_id):
     except User.DoesNotExist:
         pass
     user.delete()
-    return HttpResponse('')
+    return HttpResponse(headers={'HX-Refresh': 'true'})
 
 
 @login_required
@@ -353,7 +377,7 @@ def admin_user_edit(request, user_id):
 def admin_approve_edit(request, user_id):
     user = get_object_or_404(User, id=user_id)
     return _user_edit(request, user, post_url=reverse('admin_approve_edit', args=[user_id]),
-                      submit_label='Approve', approve=True)
+                      submit_label='Activate', approve=True)
 
 
 def _user_edit(request, user, post_url, submit_label='Save', approve=False):
@@ -364,8 +388,8 @@ def _user_edit(request, user, post_url, submit_label='Save', approve=False):
             if approve:
                 user.is_active = True
                 user.save(update_fields=['is_active'])
-                _send_approval_email(request, user)
-            return HttpResponse('<script>window.location.reload();</script>')
+                threading.Thread(target=_send_approval_email, args=(request, user), daemon=True).start()
+            return HttpResponse(headers={'HX-Refresh': 'true'})
     else:
         form = ProfileForm(instance=user)
     social_providers = list(user.socialaccount_set.values_list('provider', flat=True))

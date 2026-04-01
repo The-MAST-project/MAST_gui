@@ -3,14 +3,12 @@
     <div class="modal-content">
       <form method="post"
             hx-post="{% url 'admin_group_edit' edit_group.id %}"
-            hx-target="#group-row-{{ edit_group.id }}"
-            hx-swap="outerHTML"
-            hx-on::after-request="document.getElementById('group-modal-container').innerHTML = ''">
+            hx-target="body"
+            hx-swap="none">
         {% csrf_token %}
         <div class="modal-header">
           <h5 class="modal-title">Edit Group — {{ edit_group.name }}</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
-                  onclick="document.getElementById('group-modal-container').innerHTML = ''"></button>
+          <button type="button" class="btn-close" aria-label="Close" onclick="location.reload()"></button>
         </div>
         <div class="modal-body">
 
@@ -53,8 +51,7 @@
 
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
-                  onclick="document.getElementById('group-modal-container').innerHTML = ''">Cancel</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">Cancel</button>
           <button type="submit" class="btn btn-primary">Save</button>
         </div>
       </form>

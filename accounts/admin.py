@@ -31,7 +31,7 @@ class UserAdmin(BaseUserAdmin):
     def group_list(self, obj):
         return ', '.join(g.name for g in obj.groups.all()) or '—'
 
-    @admin.action(description='Approve selected users')
+    @admin.action(description='Activate selected users')
     def approve_users(self, request, queryset):
         updated = queryset.update(is_active=True)
         self.message_user(request, f'{updated} user(s) approved.')

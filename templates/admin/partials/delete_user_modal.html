@@ -14,12 +14,11 @@
                 </p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">Cancel</button>
                 <button type="button" class="btn btn-danger"
                         hx-post="{% url 'admin_delete_user' user.id %}"
-                        hx-target="#user-row-{{ user.id }}"
-                        hx-swap="outerHTML"
-                        hx-on::after-swap="bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide()">
+                        hx-target="body"
+                        hx-swap="none">
                     Delete
                 </button>
             </div>
@@ -29,7 +28,4 @@
 <script>
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
     deleteModal.show();
-    document.getElementById('deleteUserModal').addEventListener('hidden.bs.modal', function () {
-        document.getElementById('profile-modal-container').innerHTML = '';
-    });
 </script>

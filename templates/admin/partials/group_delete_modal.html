@@ -3,8 +3,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Delete Group</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
-                onclick="document.getElementById('group-modal-container').innerHTML = ''"></button>
+        <button type="button" class="btn-close" aria-label="Close" onclick="location.reload()"></button>
       </div>
       <div class="modal-body">
         <p>You are about to permanently delete group <strong>{{ group.name }}</strong>.</p>
@@ -18,13 +17,11 @@
         <p class="text-muted">This action cannot be undone.</p>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
-                onclick="document.getElementById('group-modal-container').innerHTML = ''">Cancel</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">Cancel</button>
         <button type="button" class="btn btn-danger"
                 hx-post="{% url 'admin_group_delete' group.id %}"
-                hx-target="#group-row-{{ group.id }}"
-                hx-swap="outerHTML"
-                hx-on::after-request="document.getElementById('group-modal-container').innerHTML = ''">
+                hx-target="body"
+                hx-swap="none">
             Delete
         </button>
       </div>

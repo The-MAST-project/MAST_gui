@@ -205,7 +205,7 @@ def admin_group_edit(request, group_id):
         selected_perms = request.POST.getlist('permissions')
         group.permissions.set(mast_permissions.filter(id__in=selected_perms))
         group.save()
-        return render(request, 'admin/partials/group_row.html', {'group': group})
+        return HttpResponse(headers={'HX-Refresh': 'true'})
 
     return render(request, 'admin/partials/group_edit_modal.html', {
         'edit_group': group,
@@ -230,7 +230,7 @@ def admin_group_delete_modal(request, group_id):
 def admin_group_delete(request, group_id):
     group = get_object_or_404(Group, id=group_id)
     group.delete()
-    return HttpResponse('')
+    return HttpResponse(headers={'HX-Refresh': 'true'})
 
 
 @csrf_exempt

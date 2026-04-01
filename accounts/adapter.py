@@ -9,6 +9,16 @@ class CustomAccountAdapter(DefaultAccountAdapter):
             user.save()
         return user
 
+    def should_send_confirmation_mail(self, request, email_address, signup) -> bool:
+        user = email_address.user
+        if user and (user.is_staff or user.is_superuser):
+            # Auto-verify staff/superuser emails so the verification stage is skipped
+            if not email_address.verified:
+                email_address.verified = True
+                email_address.save(update_fields=['verified'])
+            return False
+        return True
+
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     def pre_social_login(self, request, sociallogin):
