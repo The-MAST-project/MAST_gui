@@ -189,7 +189,7 @@
       <table class="table table-sm table-borderless info-table mb-0">
         <tbody>
           <tr><td>HighSpec</td><td>Echelle spectrograph, R≈20 000</td></tr>
-          <tr><td>DeepSpec</td><td>Low-res IFU, 350–1000 nm</td></tr>
+          <tr><td>DeepSpec</td><td>Broad-band IFU, R≈650</td></tr>
           <tr><td>Calibration</td><td>ThAr arc lamp</td></tr>
           <tr><td>Fiber stage</td><td>Switchable fiber bundle</td></tr>
         </tbody>
@@ -469,7 +469,11 @@ class ModelUpdater {
         const x = tween.from + (tween.to - tween.from) * ease;
         const holder = nodes['fiber_bundle_holder'];
         if (holder) holder.position.x = x;
-        if (t >= 1) this.fiberNativePos = tween.targetNative;
+        if (t >= 1) {
+          this.fiberNativePos = tween.targetNative;
+          document.getElementById('btn-fiber-deepspec')?.classList.toggle('active', tween.targetName === 'Deepspec');
+          document.getElementById('btn-fiber-highspec')?.classList.toggle('active', tween.targetName === 'Highspec');
+        }
       }
       if (t >= 1) delete this.tweens[name];
     }
@@ -492,6 +496,7 @@ class ModelUpdater {
       from: fromX,
       to: toX,
       targetNative,
+      targetName: targetPresetName,
       startTime: performance.now(),
       duration: durationMs,
     };
@@ -590,13 +595,15 @@ function highlightFilterButton(idx) {
 }
 
 // Build grating buttons dynamically from server-provided names
+const GRATING_LABELS = { Halpha: 'Hα' };
+
 function buildGratingButtons() {
   const wrap = document.getElementById('grating-buttons');
-  CFG.gratingNames.forEach(name => {
+  CFG.gratingNames.filter(n => n !== 'Future').forEach(name => {
     const btn = document.createElement('button');
     btn.className = 'btn btn-outline-secondary';
     btn.id = `btn-grating-${name}`;
-    btn.textContent = name;
+    btn.textContent = GRATING_LABELS[name] ?? name;
     btn.onclick = () => simSetGrating(name);
     wrap.appendChild(btn);
   });
@@ -620,7 +627,7 @@ function buildFilterButtons() {
 // ---------------------------------------------------------------------------
 window.simSetFiberStage = function(target) {
   if (modelUpdater.mode !== 'simulated') return;
-  modelUpdater._snapFiber(target.charAt(0).toUpperCase() + target.slice(1));
+  modelUpdater._startFiberTween(target.charAt(0).toUpperCase() + target.slice(1));
 };
 
 window.simSetGrating = function(name) {
