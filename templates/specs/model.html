@@ -90,11 +90,7 @@
         <input class="form-check-input" type="checkbox" role="switch"
                id="mode-toggle" checked onchange="onModeToggle(this.checked)">
         <label class="form-check-label" for="mode-toggle" id="mode-label">
-          <span class="text-success fw-semibold"
-                data-bs-toggle="tooltip"
-                data-bs-placement="bottom"
-                data-bs-delay='{"show":0,"hide":100}'
-                title="Model rendering governed by realtime spectrograph data">Realtime</span>
+          <span class="text-success fw-semibold">Realtime</span>
         </label>
       </div>
       <button class="btn btn-sm btn-outline-secondary"
@@ -368,16 +364,9 @@ class ModelUpdater {
     offcanvas.classList.toggle('mode-simulated', mode === 'simulated');
 
     const label = document.getElementById('mode-label');
-    const tooltip = mode === 'realtime'
-      ? 'Model rendering governed by realtime spectrograph data'
-      : 'Model rendering governed by controls';
-    const cls = mode === 'realtime' ? 'text-success' : 'text-danger';
+    const cls  = mode === 'realtime' ? 'text-success' : 'text-danger';
     const text = mode === 'realtime' ? 'Realtime' : 'Simulated';
-    label.innerHTML = `<span class="${cls} fw-semibold"
-        data-bs-toggle="tooltip" data-bs-placement="bottom"
-        data-bs-delay='{"show":0,"hide":100}'
-        title="${tooltip}">${text}</span>`;
-    bootstrap.Tooltip.getOrCreateInstance(label.firstElementChild);
+    label.innerHTML = `<span class="${cls} fw-semibold">${text}</span>`;
 
     const isRealtime = mode === 'realtime';
     const panelIcon  = isRealtime ? 'bi-activity' : 'bi-sliders';
@@ -665,7 +654,6 @@ document.addEventListener('DOMContentLoaded', () => {
   buildFilterButtons();
   // Apply initial realtime-mode state to the controls body
   document.getElementById('controls-body').classList.add('sim-controls-disabled');
-  bootstrap.Tooltip.getOrCreateInstance(document.querySelector('#mode-label span'));
 
   // 120-second status poll
   setInterval(() => {
