@@ -2,7 +2,14 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-person-circle"></i> User Profile</h5>
+                <h5 class="modal-title">
+                    {% if user.avatar_url %}
+                    <img src="{{ user.avatar_url }}" class="rounded-circle me-1" style="width:24px;height:24px;object-fit:cover;" alt="">
+                    {% else %}
+                    <i class="bi bi-person-circle"></i>
+                    {% endif %}
+                    User Profile
+                </h5>
                 <button type="button" class="btn-close" onclick="document.getElementById('profile-modal-container').innerHTML=''"></button>
             </div>
             <div class="modal-body">

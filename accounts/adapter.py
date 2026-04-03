@@ -22,14 +22,22 @@ class CustomAccountAdapter(DefaultAccountAdapter):
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     def pre_social_login(self, request, sociallogin):
-        """Auto-connect social account to existing account with matching email."""
+        """Auto-connect social account to existing account with matching email.
+        Also refresh avatar_url from Google on every login."""
         import logging
         log = logging.getLogger(__name__)
         log.warning("pre_social_login: is_existing=%s emails=%s",
                     sociallogin.is_existing,
                     [e.email for e in sociallogin.email_addresses])
+
+        # Refresh avatar for existing linked accounts
         if sociallogin.is_existing:
+            picture = sociallogin.account.extra_data.get('picture', '')
+            if picture and sociallogin.user.avatar_url != picture:
+                sociallogin.user.avatar_url = picture
+                sociallogin.user.save(update_fields=['avatar_url'])
             return
+
         from allauth.account.models import EmailAddress
         from django.contrib.auth import get_user_model
         User = get_user_model()
@@ -59,5 +67,6 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         user.username = unique_username(user.first_name, '', user.last_name)
         user.display = unique_display(user.first_name, user.last_name)
         user.is_active = False
+        user.avatar_url = sociallogin.account.extra_data.get('picture', '')
         user.save()
         return user

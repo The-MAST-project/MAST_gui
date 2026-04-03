@@ -87,6 +87,7 @@ class User(AbstractUser):
     display = models.CharField(max_length=64, blank=True)
     email_verified = models.BooleanField(default=False)
     email_verification_token = models.CharField(max_length=64, blank=True)
+    avatar_url = models.URLField(blank=True, default='')
 
     @property
     def full_name(self) -> str:

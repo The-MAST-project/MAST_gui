@@ -83,7 +83,12 @@
                 {% if user.is_authenticated %}
                 <div class="dropdown">
                   <button class="btn btn-link dropdown-toggle text-decoration-none text-dark" type="button" data-bs-toggle="dropdown">
-                    <i class="bi bi-person-circle"></i> {{ user.username }}
+                    {% if user.avatar_url %}
+                    <img src="{{ user.avatar_url }}" class="rounded-circle" style="width:22px;height:22px;object-fit:cover;" alt="">
+                    {% else %}
+                    <i class="bi bi-person-circle"></i>
+                    {% endif %}
+                    {{ user.username }}
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
                     <li>
