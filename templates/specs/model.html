@@ -74,9 +74,10 @@
     text-align: center;
     padding-top: 0.5rem;
   }
-  /* Disable sim controls in realtime mode */
-  .sim-controls-disabled .btn-group-wrap .btn,
-  .sim-controls-disabled .light-toggle input { pointer-events: none; opacity: 0.5; }
+  /* Status mode (realtime): buttons are read-only indicators */
+  .sim-controls-disabled .btn-group-wrap .btn     { pointer-events: none; opacity: 0.35; }
+  .sim-controls-disabled .btn-group-wrap .btn.active { opacity: 1; }
+  .sim-controls-disabled .light-toggle input      { pointer-events: none; opacity: 0.5; }
 </style>
 {% endblock %}
 
@@ -96,12 +97,12 @@
                 title="Model rendering governed by realtime spectrograph data">Realtime</span>
         </label>
       </div>
-      <button class="btn btn-sm btn-outline-secondary d-none"
+      <button class="btn btn-sm btn-outline-secondary"
               id="controls-btn"
               type="button"
               data-bs-toggle="offcanvas"
               data-bs-target="#controls-offcanvas">
-        <i class="bi bi-sliders me-1"></i>Controls
+        <i class="bi bi-activity me-1"></i>Status
       </button>
     </div>
   </div>
@@ -120,7 +121,7 @@
 <div class="offcanvas offcanvas-end mode-realtime" tabindex="-1" id="controls-offcanvas"
      data-bs-backdrop="false" data-bs-scroll="true" style="width: 320px;">
   <div class="offcanvas-header border-bottom">
-    <h6 class="offcanvas-title mb-0"><i class="bi bi-sliders me-1"></i>Controls</h6>
+    <h6 class="offcanvas-title mb-0" id="offcanvas-title"><i class="bi bi-activity me-1"></i>Status</h6>
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
   </div>
   <div class="offcanvas-body d-flex flex-column gap-3" id="controls-body">
@@ -138,12 +139,13 @@
 
     <!-- Highspec / Grating -->
     <div class="control-card" id="sim-grating">
-      <h6><i class="bi bi-grid me-1"></i>Highspec Grating</h6>
+      <h6><i class="bi bi-grid me-1"></i>Highspec Gratings &amp; Focus</h6>
       <div class="btn-group-wrap" id="grating-buttons"></div>
       <div class="mt-2 info-table">
         <table class="table table-sm table-borderless mb-0">
           <tbody>
-            <tr><td>Stage X</td><td id="info-grating-x">—</td></tr>
+            <tr><td>Grating stage</td><td id="info-grating-x">—</td></tr>
+            <tr><td>Focus stage</td><td id="info-focus-z">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -254,6 +256,19 @@ const GRATING_PRESETS = {
 };
 const FIBER_PRESETS = { Deepspec: -0.6, Highspec: 0.6 };
 
+// Fiber stage physics (Zaber LRQ300AL-E01T3A)
+const FIBER_NATIVE_PER_MM  = 10080;
+const FIBER_MAX_SPEED_MM_S = 54;
+const FIBER_NATIVE_PER_SEC = FIBER_NATIVE_PER_MM * FIBER_MAX_SPEED_MM_S; // 544,320 native/s
+const FIBER_PRESETS_NATIVE = { Deepspec: 1300460, Highspec: 2713701 };
+
+// Linear mapping: native units → Three.js scene X
+function fiberNativeToScene(native) {
+  const { Deepspec: nA, Highspec: nB } = FIBER_PRESETS_NATIVE;
+  const { Deepspec: sA, Highspec: sB } = FIBER_PRESETS;
+  return sA + (native - nA) / (nB - nA) * (sB - sA);
+}
+
 // ---------------------------------------------------------------------------
 // Scene setup
 // ---------------------------------------------------------------------------
@@ -342,6 +357,7 @@ class ModelUpdater {
     this.mode = 'realtime';   // 'realtime' | 'simulated'
     this.tweens = {};          // { stageName: { from, to, startTime, duration } }
     this.lightPathVisible = { highspec: true, deepspec: true, calibration: false };
+    this.fiberNativePos = null; // last-known fiber position in native units
   }
 
   // -- Mode ------------------------------------------------------------------
@@ -363,7 +379,13 @@ class ModelUpdater {
         title="${tooltip}">${text}</span>`;
     bootstrap.Tooltip.getOrCreateInstance(label.firstElementChild);
 
-    document.getElementById('controls-btn').classList.toggle('d-none', mode === 'realtime');
+    const isRealtime = mode === 'realtime';
+    const panelIcon  = isRealtime ? 'bi-activity' : 'bi-sliders';
+    const panelLabel = isRealtime ? 'Status'      : 'Controls';
+    document.getElementById('controls-btn').innerHTML =
+      `<i class="bi ${panelIcon} me-1"></i>${panelLabel}`;
+    document.getElementById('offcanvas-title').innerHTML =
+      `<i class="bi ${panelIcon} me-1"></i>${panelLabel}`;
 
     // Disable/enable sim controls
     const body = document.getElementById('controls-body');
@@ -422,12 +444,25 @@ class ModelUpdater {
   // e.g. id-wis-spec1-stages-disperser-position_m
   applyNotification(update) {
     if (this.mode !== 'realtime') return;
-    if (!update.doms) return;
 
-    const hasSpecUpdate = update.doms.some(dom =>
+    // --- Card-based fiber tween animation ---
+    for (const card of (update.cards || [])) {
+      if (!card.component?.toLowerCase().includes('fiber')) continue;
+      if (card.type === 'start' && card.data?.target?.value != null) {
+        const raw = String(card.data.target.value);
+        const key = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+        if (FIBER_PRESETS_NATIVE[key] != null) this._startFiberTween(key);
+      } else if (card.type === 'end') {
+        delete this.tweens['fiber'];
+        this._debouncedFetch(); // snap to final position from status
+      }
+    }
+
+    // --- DOM-based debounced refresh for other stages / wheels / lamps ---
+    const hasSpecDom = (update.doms || []).some(dom =>
       /^id-[^-]+-[^-]+-(stages|wheels|lamps)-/.test(dom.id || '')
     );
-    if (hasSpecUpdate) this._debouncedFetch();
+    if (hasSpecDom) this._debouncedFetch();
   }
 
   // -- Tweening --------------------------------------------------------------
@@ -441,8 +476,36 @@ class ModelUpdater {
         this._setDisperserNodes(x, z);
         updateGratingInfo(x, z);
       }
+      if (name === 'fiber') {
+        const x = tween.from + (tween.to - tween.from) * ease;
+        const holder = nodes['fiber_bundle_holder'];
+        if (holder) holder.position.x = x;
+        if (t >= 1) this.fiberNativePos = tween.targetNative;
+      }
       if (t >= 1) delete this.tweens[name];
     }
+  }
+
+  // -- Fiber tween start -----------------------------------------------------
+  _startFiberTween(targetPresetName) {
+    const targetNative = FIBER_PRESETS_NATIVE[targetPresetName];
+    if (targetNative == null) return;
+
+    const currentNative = this.fiberNativePos ?? FIBER_PRESETS_NATIVE.Deepspec;
+    const distance  = Math.abs(targetNative - currentNative);
+    const durationMs = Math.max(500, Math.min(3000, (distance / FIBER_NATIVE_PER_SEC) * 1000));
+
+    const holder = nodes['fiber_bundle_holder'];
+    const fromX  = holder ? holder.position.x : fiberNativeToScene(currentNative);
+    const toX    = FIBER_PRESETS[targetPresetName];
+
+    this.tweens['fiber'] = {
+      from: fromX,
+      to: toX,
+      targetNative,
+      startTime: performance.now(),
+      duration: durationMs,
+    };
   }
 
   // -- Node manipulation -----------------------------------------------------
@@ -470,15 +533,21 @@ class ModelUpdater {
   }
 
   _setFiberPosition(posM) {
+    // Convert m → native units, cancel any running tween, snap to scene position
+    const native = posM * 1000 * FIBER_NATIVE_PER_MM;
+    this.fiberNativePos = native;
+    delete this.tweens['fiber'];
     const holder = nodes['fiber_bundle_holder'];
-    if (holder) holder.position.x = posM;
+    if (holder) holder.position.x = fiberNativeToScene(native);
   }
 
   _snapFiber(name) {
-    const pos = FIBER_PRESETS[name];
-    if (pos == null) return;
+    const native = FIBER_PRESETS_NATIVE[name];
+    if (native == null) return;
+    this.fiberNativePos = native;
+    delete this.tweens['fiber'];
     const holder = nodes['fiber_bundle_holder'];
-    if (holder) holder.position.x = pos;
+    if (holder) holder.position.x = fiberNativeToScene(native);
     document.getElementById('btn-fiber-deepspec')?.classList.toggle('active', name === 'Deepspec');
     document.getElementById('btn-fiber-highspec')?.classList.toggle('active', name === 'Highspec');
   }
@@ -516,6 +585,7 @@ const modelUpdater = new ModelUpdater();
 // ---------------------------------------------------------------------------
 function updateGratingInfo(x, focusZ) {
   document.getElementById('info-grating-x').textContent = x.toFixed(3) + ' m';
+  document.getElementById('info-focus-z').textContent   = focusZ.toFixed(3) + ' m';
 }
 
 function highlightGratingButton(name) {
@@ -593,6 +663,8 @@ window.onModeToggle = function(isRealtime) {
 document.addEventListener('DOMContentLoaded', () => {
   buildGratingButtons();
   buildFilterButtons();
+  // Apply initial realtime-mode state to the controls body
+  document.getElementById('controls-body').classList.add('sim-controls-disabled');
   bootstrap.Tooltip.getOrCreateInstance(document.querySelector('#mode-label span'));
 
   // 120-second status poll
