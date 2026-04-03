@@ -231,6 +231,7 @@
         
         // SSE Toast Card Listener
         const eventSource = new EventSource('/sse/stream/');
+        window.__sseSource = eventSource;  // expose for page-specific listeners
         console.log('SSE Handler: EventSource created');
         
         let reconnectCount = 0;

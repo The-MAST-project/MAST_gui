@@ -99,6 +99,7 @@ class CardSSEMessage(BaseModel):
     details: list[str] = []
     duration: str | None = None  # For 'end' type cards
     component: str | None = None
+    data: dict | None = None  # Machine-readable payload (e.g. motion target)
 
 def card_sses_from_update_request(update_request: UiUpdateNotifications) -> list[CardSSEMessage] | None:
     """
@@ -119,6 +120,7 @@ def card_sses_from_update_request(update_request: UiUpdateNotifications) -> list
                 details=notification.card.details,
                 duration=notification.card.duration,
                 component=notification.card.component,
+                data=notification.card.data,
             )
                 
             card_sse_messages.append(card_sse_message.model_dump())  # Change: append to list

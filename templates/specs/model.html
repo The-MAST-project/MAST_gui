@@ -2,7 +2,7 @@
 {% load static %}
 {% load dynamic_urls %}
 
-{% block title %}Spectrograph 3D Model — MAST GUI{% endblock %}
+{% block title %}Spectrograph 3D Model — MAST{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -19,14 +19,9 @@
     background: #fff;
     flex-shrink: 0;
   }
-  #spec-model-page .viewer-row {
-    display: flex;
-    flex: 1 1 0;
-    min-height: 0;
-  }
   #canvas-container {
     flex: 1 1 0;
-    min-width: 0;
+    min-height: 0;
     position: relative;
     background: #1a1a2e;
   }
@@ -47,18 +42,11 @@
     z-index: 10;
   }
   #loading-overlay .spinner-border { width: 3rem; height: 3rem; }
-  #info-panel {
-    width: 320px;
-    min-width: 280px;
-    max-width: 380px;
-    overflow-y: auto;
-    background: #f8f9fa;
-    border-left: 1px solid #dee2e6;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
+
+  /* Offcanvas mode border */
+  #controls-offcanvas.mode-realtime  { border-left: 3px solid #198754; }
+  #controls-offcanvas.mode-simulated { border-left: 3px solid #dc3545; }
+
   .control-card {
     background: #fff;
     border: 1px solid #dee2e6;
@@ -84,9 +72,11 @@
     font-size: 0.75rem;
     color: #adb5bd;
     text-align: center;
-    margin-top: auto;
     padding-top: 0.5rem;
   }
+  /* Disable sim controls in realtime mode */
+  .sim-controls-disabled .btn-group-wrap .btn,
+  .sim-controls-disabled .light-toggle input { pointer-events: none; opacity: 0.5; }
 </style>
 {% endblock %}
 
@@ -94,116 +84,133 @@
 <div id="spec-model-page">
   <div class="page-header d-flex align-items-center justify-content-between">
     <h5 class="mb-0"><i class="bi bi-box me-2"></i>Spectrograph 3D Model</h5>
-    <span class="text-muted small">MAST Spectrographs — Simulated Geometry</span>
+    <div class="d-flex align-items-center gap-2">
+      <span id="mode-badge" class="badge bg-success">Realtime</span>
+      <button class="btn btn-sm btn-outline-secondary"
+              type="button"
+              data-bs-toggle="offcanvas"
+              data-bs-target="#controls-offcanvas">
+        <i class="bi bi-sliders me-1"></i>Controls
+      </button>
+    </div>
   </div>
 
-  <div class="viewer-row">
-    <!-- 3D Canvas -->
-    <div id="canvas-container">
-      <div id="loading-overlay">
-        <div class="spinner-border text-primary mb-3" role="status"></div>
-        <span>Loading 3D models…</span>
+  <!-- 3D Canvas -->
+  <div id="canvas-container">
+    <div id="loading-overlay">
+      <div class="spinner-border text-primary mb-3" role="status"></div>
+      <span>Loading 3D models…</span>
+    </div>
+    <canvas id="spec-canvas"></canvas>
+  </div>
+</div>
+
+<!-- Controls Offcanvas -->
+<div class="offcanvas offcanvas-end mode-realtime" tabindex="-1" id="controls-offcanvas"
+     style="width: 320px;">
+  <div class="offcanvas-header border-bottom">
+    <h6 class="offcanvas-title mb-0"><i class="bi bi-sliders me-1"></i>Controls</h6>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body d-flex flex-column gap-3" id="controls-body">
+
+    <!-- Mode Toggle -->
+    <div class="control-card">
+      <h6>Mode</h6>
+      <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
+        <input class="form-check-input" type="checkbox" role="switch"
+               id="mode-toggle" checked onchange="onModeToggle(this.checked)">
+        <label class="form-check-label" for="mode-toggle" id="mode-label">
+          <span class="text-success fw-semibold">Realtime</span>
+        </label>
       </div>
-      <canvas id="spec-canvas"></canvas>
     </div>
 
-    <!-- Info / Controls Panel -->
-    <div id="info-panel">
-
-      <!-- Fiber Stage -->
-      <div class="control-card">
-        <h6><i class="bi bi-arrow-left-right me-1"></i>Fiber Stage</h6>
-        <div class="btn-group-wrap">
-          <button class="btn btn-outline-primary active" id="btn-fiber-deepspec" onclick="setFiberStage('deepspec')">
-            DeepSpec
-          </button>
-          <button class="btn btn-outline-primary" id="btn-fiber-highspec" onclick="setFiberStage('highspec')">
-            HighSpec
-          </button>
-        </div>
+    <!-- Fiber Stage -->
+    <div class="control-card" id="sim-fiber">
+      <h6><i class="bi bi-arrow-left-right me-1"></i>Fiber Stage</h6>
+      <div class="btn-group-wrap">
+        <button class="btn btn-outline-primary active" id="btn-fiber-deepspec"
+                onclick="simSetFiberStage('deepspec')">DeepSpec</button>
+        <button class="btn btn-outline-primary" id="btn-fiber-highspec"
+                onclick="simSetFiberStage('highspec')">HighSpec</button>
       </div>
+    </div>
 
-      <!-- Disperser / Grating -->
-      <div class="control-card">
-        <h6><i class="bi bi-grid me-1"></i>Disperser Grating</h6>
-        <div class="btn-group-wrap">
-          <button class="btn btn-outline-secondary active" id="btn-grating-0" onclick="setGrating(0)">G0</button>
-          <button class="btn btn-outline-secondary" id="btn-grating-1" onclick="setGrating(1)">G1</button>
-          <button class="btn btn-outline-secondary" id="btn-grating-2" onclick="setGrating(2)">G2</button>
-          <button class="btn btn-outline-secondary" id="btn-grating-3" onclick="setGrating(3)">G3</button>
-        </div>
-        <div class="mt-2 info-table">
-          <table class="table table-sm table-borderless mb-0">
-            <tbody>
-              <tr><td>Stage X</td><td id="info-grating-x">—</td></tr>
-              <tr><td>Focus Z</td><td id="info-focus-z">—</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- ThAr Filter Wheel -->
-      <div class="control-card">
-        <h6><i class="bi bi-circle me-1"></i>ThAr Filter Wheel</h6>
-        <div class="btn-group-wrap">
-          {% for i in "012345" %}
-          <button class="btn btn-outline-secondary {% if forloop.first %}active{% endif %}"
-                  id="btn-filter-{{ i }}" onclick="setFilter({{ i }})">F{{ i }}</button>
-          {% endfor %}
-        </div>
-        <div class="mt-2 info-table">
-          <table class="table table-sm table-borderless mb-0">
-            <tbody>
-              <tr><td>Rotation</td><td id="info-filter-rot">0°</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Light Paths -->
-      <div class="control-card">
-        <h6><i class="bi bi-diagram-3 me-1"></i>Light Paths</h6>
-        <div class="light-toggle">
-          <label>
-            <input type="checkbox" id="lp-highspec" checked onchange="toggleLightPath('highspec', this.checked)">
-            HighSpec beam
-          </label>
-          <label>
-            <input type="checkbox" id="lp-deepspec" checked onchange="toggleLightPath('deepspec', this.checked)">
-            DeepSpec beam
-          </label>
-          <label>
-            <input type="checkbox" id="lp-calibration" onchange="toggleLightPath('calibration', this.checked)">
-            Calibration beam
-          </label>
-        </div>
-      </div>
-
-      <!-- About -->
-      <div class="control-card">
-        <h6><i class="bi bi-info-circle me-1"></i>About</h6>
-        <table class="table table-sm table-borderless info-table mb-0">
+    <!-- Disperser / Grating -->
+    <div class="control-card" id="sim-grating">
+      <h6><i class="bi bi-grid me-1"></i>Disperser Grating</h6>
+      <div class="btn-group-wrap" id="grating-buttons"></div>
+      <div class="mt-2 info-table">
+        <table class="table table-sm table-borderless mb-0">
           <tbody>
-            <tr><td>HighSpec</td><td>Echelle spectrograph, R≈20 000</td></tr>
-            <tr><td>DeepSpec</td><td>Low-res IFU, 350–1000 nm</td></tr>
-            <tr><td>Calibration</td><td>ThAr arc lamp, 6 filters</td></tr>
-            <tr><td>Fiber stage</td><td>Switchable fiber bundle</td></tr>
+            <tr><td>Stage X</td><td id="info-grating-x">—</td></tr>
+            <tr><td>Focus Z</td><td id="info-focus-z">—</td></tr>
           </tbody>
         </table>
       </div>
+    </div>
 
-      <div class="camera-hint">
-        <i class="bi bi-mouse2"></i> Drag to orbit &nbsp;·&nbsp;
-        <i class="bi bi-zoom-in"></i> Scroll to zoom &nbsp;·&nbsp;
-        Right-drag to pan
+    <!-- ThAr Filter Wheel -->
+    <div class="control-card" id="sim-filter">
+      <h6><i class="bi bi-circle me-1"></i>ThAr Filter Wheel</h6>
+      <div class="btn-group-wrap" id="filter-buttons"></div>
+      <div class="mt-2 info-table">
+        <table class="table table-sm table-borderless mb-0">
+          <tbody>
+            <tr><td>Filter</td><td id="info-filter-name">—</td></tr>
+            <tr><td>Rotation</td><td id="info-filter-rot">—</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
+
+    <!-- Light Paths -->
+    <div class="control-card" id="sim-lightpaths">
+      <h6><i class="bi bi-diagram-3 me-1"></i>Light Paths</h6>
+      <div class="light-toggle">
+        <label>
+          <input type="checkbox" id="lp-highspec" checked
+                 onchange="simToggleLightPath('highspec', this.checked)">
+          HighSpec beam
+        </label>
+        <label>
+          <input type="checkbox" id="lp-deepspec" checked
+                 onchange="simToggleLightPath('deepspec', this.checked)">
+          DeepSpec beam
+        </label>
+        <label>
+          <input type="checkbox" id="lp-calibration"
+                 onchange="simToggleLightPath('calibration', this.checked)">
+          Calibration beam
+        </label>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div class="control-card">
+      <h6><i class="bi bi-info-circle me-1"></i>About</h6>
+      <table class="table table-sm table-borderless info-table mb-0">
+        <tbody>
+          <tr><td>HighSpec</td><td>Echelle spectrograph, R≈20 000</td></tr>
+          <tr><td>DeepSpec</td><td>Low-res IFU, 350–1000 nm</td></tr>
+          <tr><td>Calibration</td><td>ThAr arc lamp</td></tr>
+          <tr><td>Fiber stage</td><td>Switchable fiber bundle</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="camera-hint">
+      <i class="bi bi-mouse2"></i> Drag to orbit &nbsp;·&nbsp;
+      <i class="bi bi-zoom-in"></i> Scroll to zoom &nbsp;·&nbsp;
+      Right-drag to pan
+    </div>
+
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<!-- Three.js importmap -->
 <script type="importmap">
 {
   "imports": {
@@ -214,16 +221,20 @@
 </script>
 
 <script>
-// GLB file URLs (server-side rendered)
-window.SPEC_MODEL_URLS = {
-  table_static:          "{% get_dynamic_static_url 'cad/spec_simulated/table_static.glb' %}",
-  disperser_stage:       "{% get_dynamic_static_url 'cad/spec_simulated/disperser_stage.glb' %}",
-  focus_stage:           "{% get_dynamic_static_url 'cad/spec_simulated/focus_stage.glb' %}",
-  thar_filter_wheel:     "{% get_dynamic_static_url 'cad/spec_simulated/thar_filter_wheel.glb' %}",
-  fiber_stage:           "{% get_dynamic_static_url 'cad/spec_simulated/fiber_stage.glb' %}",
-  light_path_highspec:   "{% get_dynamic_static_url 'cad/spec_simulated/light_path_highspec.glb' %}",
-  light_path_deepspec:   "{% get_dynamic_static_url 'cad/spec_simulated/light_path_deepspec.glb' %}",
-  light_path_calibration:"{% get_dynamic_static_url 'cad/spec_simulated/light_path_calibration.glb' %}",
+window.SPEC_MODEL_CONFIG = {
+  urls: {
+    table_static:           "{% get_dynamic_static_url 'cad/spec_simulated/table_static.glb' %}",
+    disperser_stage:        "{% get_dynamic_static_url 'cad/spec_simulated/disperser_stage.glb' %}",
+    focus_stage:            "{% get_dynamic_static_url 'cad/spec_simulated/focus_stage.glb' %}",
+    thar_filter_wheel:      "{% get_dynamic_static_url 'cad/spec_simulated/thar_filter_wheel.glb' %}",
+    fiber_stage:            "{% get_dynamic_static_url 'cad/spec_simulated/fiber_stage.glb' %}",
+    light_path_highspec:    "{% get_dynamic_static_url 'cad/spec_simulated/light_path_highspec.glb' %}",
+    light_path_deepspec:    "{% get_dynamic_static_url 'cad/spec_simulated/light_path_deepspec.glb' %}",
+    light_path_calibration: "{% get_dynamic_static_url 'cad/spec_simulated/light_path_calibration.glb' %}",
+  },
+  statusUrl:    "{{ spec_status_url }}",
+  gratingNames: {{ grating_names_json|safe }},
+  tharFilters:  {{ thar_filters_json|safe }},
 };
 </script>
 
@@ -232,17 +243,23 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// --- Preset data ---
-const GRATING_PRESETS = [
-  { x: -1.5, focusZ: -0.3 },
-  { x: -0.5, focusZ: -0.1 },
-  { x:  0.5, focusZ:  0.1 },
-  { x:  1.5, focusZ:  0.3 },
-];
-const FIBER_PRESETS = { deepspec: -0.6, highspec: 0.6 };
+const CFG = window.SPEC_MODEL_CONFIG;
 
-// --- Scene setup ---
-const canvas = document.getElementById('spec-canvas');
+// ---------------------------------------------------------------------------
+// Presets — keyed by grating name and fiber target
+// ---------------------------------------------------------------------------
+const GRATING_PRESETS = {
+  Ca:     { x: -1.5, focusZ: -0.3 },
+  Mg:     { x: -0.5, focusZ: -0.1 },
+  Halpha: { x:  0.5, focusZ:  0.1 },
+  Future: { x:  1.5, focusZ:  0.3 },
+};
+const FIBER_PRESETS = { Deepspec: -0.6, Highspec: 0.6 };
+
+// ---------------------------------------------------------------------------
+// Scene setup
+// ---------------------------------------------------------------------------
+const canvas    = document.getElementById('spec-canvas');
 const container = document.getElementById('canvas-container');
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -267,149 +284,339 @@ controls.minPolarAngle = THREE.MathUtils.degToRad(10);
 controls.maxPolarAngle = THREE.MathUtils.degToRad(90);
 controls.target.set(0, 0, 0);
 
-// Lighting
-const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-scene.add(ambient);
-
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 const sun = new THREE.DirectionalLight(0xffffff, 1.2);
 sun.position.set(5, 8, 6);
 sun.castShadow = true;
 scene.add(sun);
-
 const fill = new THREE.DirectionalLight(0x8899cc, 0.4);
 fill.position.set(-4, 2, -3);
 scene.add(fill);
-
-// Grid helper for orientation
 const grid = new THREE.GridHelper(6, 12, 0x334466, 0x223355);
 grid.position.y = -0.55;
 scene.add(grid);
 
-// --- Named-node registry ---
+// ---------------------------------------------------------------------------
+// Node registry
+// ---------------------------------------------------------------------------
 const nodes = {};
-
 function registerNodes(gltfScene) {
   gltfScene.traverse(obj => {
     if (obj.name) nodes[obj.name] = obj;
-    // Enable shadows on meshes
-    if (obj.isMesh) {
-      obj.castShadow = true;
-      obj.receiveShadow = true;
-    }
+    if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; }
   });
 }
 
-// --- Load GLB files ---
+// ---------------------------------------------------------------------------
+// ModelUpdater instance — must be created before the loader callbacks fire
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Load GLB files
+// ---------------------------------------------------------------------------
 const loader = new GLTFLoader();
 let loadedCount = 0;
-const totalFiles = Object.keys(window.SPEC_MODEL_URLS).length;
+const totalFiles = Object.keys(CFG.urls).length;
+
+function onAllLoaded() {
+  document.getElementById('loading-overlay').style.display = 'none';
+  // modelUpdater is declared after the loader setup; call via queueMicrotask
+  // so the module finishes initialising before we use it.
+  queueMicrotask(() => modelUpdater.applyInitialState());
+}
 
 function onFileLoaded(gltf) {
   scene.add(gltf.scene);
   registerNodes(gltf.scene);
-  loadedCount++;
-  if (loadedCount === totalFiles) {
-    document.getElementById('loading-overlay').style.display = 'none';
-    // Apply initial state
-    applyInitialState();
-  }
+  if (++loadedCount === totalFiles) onAllLoaded();
 }
-
-for (const [name, url] of Object.entries(window.SPEC_MODEL_URLS)) {
-  loader.load(url, onFileLoaded, undefined, (err) => {
+for (const [name, url] of Object.entries(CFG.urls)) {
+  loader.load(url, onFileLoaded, undefined, err => {
     console.warn(`Failed to load ${name}:`, err);
-    loadedCount++;
-    if (loadedCount === totalFiles) {
-      document.getElementById('loading-overlay').style.display = 'none';
-    }
+    if (++loadedCount === totalFiles) onAllLoaded();
   });
 }
 
-// --- State ---
-let currentGrating = 0;
-let currentFiber = 'deepspec';
-let currentFilter = 0;
-
-const lightPathVisible = { highspec: true, deepspec: true, calibration: false };
-
-function applyInitialState() {
-  setFiberStageInternal('deepspec');
-  setGratingInternal(0);
-  setFilterInternal(0);
-  applyLightPaths();
-}
-
-// --- Control functions (exposed globally) ---
-window.setFiberStage = function(target) {
-  setFiberStageInternal(target);
-  document.getElementById('btn-fiber-deepspec').classList.toggle('active', target === 'deepspec');
-  document.getElementById('btn-fiber-highspec').classList.toggle('active', target === 'highspec');
-};
-
-function setFiberStageInternal(target) {
-  currentFiber = target;
-  const holder = nodes['fiber_bundle_holder'];
-  if (holder) holder.position.x = FIBER_PRESETS[target];
-}
-
-window.setGrating = function(idx) {
-  setGratingInternal(idx);
-  for (let i = 0; i < 4; i++) {
-    document.getElementById(`btn-grating-${i}`).classList.toggle('active', i === idx);
+// ---------------------------------------------------------------------------
+// ModelUpdater — owns all node manipulation and mode state
+// ---------------------------------------------------------------------------
+class ModelUpdater {
+  constructor() {
+    this.mode = 'realtime';   // 'realtime' | 'simulated'
+    this.tweens = {};          // { stageName: { from, to, startTime, duration } }
+    this.lightPathVisible = { highspec: true, deepspec: true, calibration: false };
   }
-  const p = GRATING_PRESETS[idx];
-  document.getElementById('info-grating-x').textContent = p.x.toFixed(2) + ' m';
-  document.getElementById('info-focus-z').textContent = p.focusZ.toFixed(2) + ' m';
-};
 
-function setGratingInternal(idx) {
-  currentGrating = idx;
-  const p = GRATING_PRESETS[idx];
-  // Move entire disperser stage frame
-  const frame = nodes['disperser_stage_frame'];
-  if (frame) frame.position.x = p.x;
-  // Move focus camera mount
-  const focusMount = nodes['focus_camera_mount'];
-  if (focusMount) focusMount.position.z = p.focusZ;
+  // -- Mode ------------------------------------------------------------------
+  setMode(mode) {
+    this.mode = mode;
+    const offcanvas = document.getElementById('controls-offcanvas');
+    offcanvas.classList.toggle('mode-realtime',  mode === 'realtime');
+    offcanvas.classList.toggle('mode-simulated', mode === 'simulated');
+
+    const badge = document.getElementById('mode-badge');
+    badge.className = mode === 'realtime' ? 'badge bg-success' : 'badge bg-danger';
+    badge.textContent = mode === 'realtime' ? 'Realtime' : 'Simulated';
+
+    const label = document.getElementById('mode-label');
+    label.innerHTML = mode === 'realtime'
+      ? '<span class="text-success fw-semibold">Realtime</span>'
+      : '<span class="text-danger fw-semibold">Simulated</span>';
+
+    // Disable/enable sim controls
+    const body = document.getElementById('controls-body');
+    body.classList.toggle('sim-controls-disabled', mode === 'realtime');
+
+    if (mode === 'realtime') {
+      this._fetchAndSnap();
+    }
+  }
+
+  // -- Initial state from cache -----------------------------------------------
+  applyInitialState() {
+    if (this.mode === 'realtime') {
+      this._fetchAndSnap();
+    } else {
+      this._snapGrating('Ca');
+      this._snapFiber('Deepspec');
+      this._setFilterByIndex(0);
+      this._applyLightPaths();
+    }
+  }
+
+  _fetchAndSnap() {
+    fetch(CFG.statusUrl)
+      .then(r => r.ok ? r.json() : null)
+      .then(status => { if (status) this.applyStatus(status); })
+      .catch(err => console.warn('spec status fetch failed:', err));
+  }
+
+  _debouncedFetch() {
+    clearTimeout(this._fetchTimer);
+    this._fetchTimer = setTimeout(() => this._fetchAndSnap(), 300);
+  }
+
+  applyStatus(spec) {
+    // Stages
+    const stages = spec.stages || {};
+    if (stages.disperser?.position_m != null)
+      this._setDisperserPosition(stages.disperser.position_m);
+    if (stages.fiber?.position_m != null)
+      this._setFiberPosition(stages.fiber.position_m);
+
+    // ThAr lamp → calibration beam
+    const tharLamp = spec.lamps?.ThAr;
+    this.lightPathVisible.calibration = !!(tharLamp?.powered);
+    this._applyLightPaths();
+
+    // Filter wheel
+    const tharWheel = spec.wheels?.ThAr;
+    if (tharWheel?.position != null)
+      this._setFilterByIndex(tharWheel.position);
+  }
+
+  // -- SSE notification handler ----------------------------------------------
+  // DOM ids from Django SSE have format: id-{site}-{hostname}-{path-joined-by-dash}
+  // e.g. id-wis-spec1-stages-disperser-position_m
+  applyNotification(update) {
+    if (this.mode !== 'realtime') return;
+    if (!update.doms) return;
+
+    const hasSpecUpdate = update.doms.some(dom =>
+      /^id-[^-]+-[^-]+-(stages|wheels|lamps)-/.test(dom.id || '')
+    );
+    if (hasSpecUpdate) this._debouncedFetch();
+  }
+
+  // -- Tweening --------------------------------------------------------------
+  tickTweens(now) {
+    for (const [name, tween] of Object.entries(this.tweens)) {
+      const t = Math.min(1, (now - tween.startTime) / tween.duration);
+      const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease in-out quad
+      if (name === 'disperser') {
+        const x = tween.from.x + (tween.to.x - tween.from.x) * ease;
+        const z = tween.from.focusZ + (tween.to.focusZ - tween.from.focusZ) * ease;
+        this._setDisperserNodes(x, z);
+        updateGratingInfo(x, z);
+      }
+      if (t >= 1) delete this.tweens[name];
+    }
+  }
+
+  // -- Node manipulation -----------------------------------------------------
+  _setDisperserPosition(posM) {
+    // Map real position_m to scene units — adjust scale as needed
+    const x = posM;
+    const focusZ = posM * 0.2;
+    this._setDisperserNodes(x, focusZ);
+    updateGratingInfo(x, focusZ);
+  }
+
+  _setDisperserNodes(x, focusZ) {
+    const frame = nodes['disperser_stage_frame'];
+    if (frame) frame.position.x = x;
+    const focusMount = nodes['focus_camera_mount'];
+    if (focusMount) focusMount.position.z = focusZ;
+  }
+
+  _snapGrating(name) {
+    const p = GRATING_PRESETS[name];
+    if (!p) return;
+    this._setDisperserNodes(p.x, p.focusZ);
+    updateGratingInfo(p.x, p.focusZ);
+    highlightGratingButton(name);
+  }
+
+  _setFiberPosition(posM) {
+    const holder = nodes['fiber_bundle_holder'];
+    if (holder) holder.position.x = posM;
+  }
+
+  _snapFiber(name) {
+    const pos = FIBER_PRESETS[name];
+    if (pos == null) return;
+    const holder = nodes['fiber_bundle_holder'];
+    if (holder) holder.position.x = pos;
+    document.getElementById('btn-fiber-deepspec')?.classList.toggle('active', name === 'Deepspec');
+    document.getElementById('btn-fiber-highspec')?.classList.toggle('active', name === 'Highspec');
+  }
+
+  _setFilterByIndex(idx) {
+    const wheelBody = nodes['filter_wheel_body'];
+    if (wheelBody?.parent) wheelBody.parent.rotation.y = idx * (Math.PI / 3);
+    const name = CFG.tharFilters[idx] || `F${idx}`;
+    document.getElementById('info-filter-name').textContent = name;
+    document.getElementById('info-filter-rot').textContent = (idx * 60) + '°';
+    highlightFilterButton(idx);
+  }
+
+  _applyLightPaths() {
+    const mapping = {
+      highspec:    ['beam_fiber_to_grating', 'beam_grating_to_camera'],
+      deepspec:    ['beam_fiber_to_prisms', 'beam_band_uv', 'beam_band_vis'],
+      calibration: ['beam_fiber_to_grating_cal', 'beam_to_highspec_cal', 'beam_to_deepspec_cal'],
+    };
+    for (const [path, names] of Object.entries(mapping)) {
+      const vis = this.lightPathVisible[path];
+      names.forEach(n => { if (nodes[n]) nodes[n].visible = vis; });
+    }
+    document.getElementById('lp-highspec').checked    = this.lightPathVisible.highspec;
+    document.getElementById('lp-deepspec').checked    = this.lightPathVisible.deepspec;
+    document.getElementById('lp-calibration').checked = this.lightPathVisible.calibration;
+  }
+
 }
 
-window.setFilter = function(n) {
-  setFilterInternal(n);
-  for (let i = 0; i < 6; i++) {
-    document.getElementById(`btn-filter-${i}`).classList.toggle('active', i === n);
-  }
-  document.getElementById('info-filter-rot').textContent = (n * 60) + '°';
-};
+const modelUpdater = new ModelUpdater();
 
-function setFilterInternal(n) {
-  currentFilter = n;
-  const wheelBody = nodes['filter_wheel_body'];
-  if (wheelBody && wheelBody.parent) {
-    wheelBody.parent.rotation.y = n * (Math.PI / 3);
-  }
+// ---------------------------------------------------------------------------
+// UI helpers
+// ---------------------------------------------------------------------------
+function updateGratingInfo(x, focusZ) {
+  document.getElementById('info-grating-x').textContent = x.toFixed(3) + ' m';
+  document.getElementById('info-focus-z').textContent   = focusZ.toFixed(3) + ' m';
 }
 
-window.toggleLightPath = function(path, visible) {
-  lightPathVisible[path] = visible;
-  applyLightPaths();
+function highlightGratingButton(name) {
+  CFG.gratingNames.forEach(n => {
+    document.getElementById(`btn-grating-${n}`)?.classList.toggle('active', n === name);
+  });
+}
+
+function highlightFilterButton(idx) {
+  CFG.tharFilters.forEach((_, i) => {
+    document.getElementById(`btn-filter-${i}`)?.classList.toggle('active', i === idx);
+  });
+}
+
+// Build grating buttons dynamically from server-provided names
+function buildGratingButtons() {
+  const wrap = document.getElementById('grating-buttons');
+  CFG.gratingNames.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-outline-secondary';
+    btn.id = `btn-grating-${name}`;
+    btn.textContent = name;
+    btn.onclick = () => simSetGrating(name);
+    wrap.appendChild(btn);
+  });
+}
+
+function buildFilterButtons() {
+  const wrap = document.getElementById('filter-buttons');
+  const labels = CFG.tharFilters.length ? CFG.tharFilters : Array.from({length: 6}, (_, i) => `F${i}`);
+  labels.forEach((label, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-outline-secondary';
+    btn.id = `btn-filter-${i}`;
+    btn.textContent = label;
+    btn.onclick = () => simSetFilter(i);
+    wrap.appendChild(btn);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Simulation controls (only active in simulated mode)
+// ---------------------------------------------------------------------------
+window.simSetFiberStage = function(target) {
+  if (modelUpdater.mode !== 'simulated') return;
+  modelUpdater._snapFiber(target.charAt(0).toUpperCase() + target.slice(1));
 };
 
-function applyLightPaths() {
-  const mapping = {
-    highspec:    ['beam_fiber_to_grating', 'beam_grating_to_camera'],
-    deepspec:    ['beam_fiber_to_prisms', 'beam_band_uv', 'beam_band_vis'],
-    calibration: ['beam_fiber_to_grating_cal', 'beam_to_highspec_cal', 'beam_to_deepspec_cal'],
-  };
-  for (const [path, beamNames] of Object.entries(mapping)) {
-    const vis = lightPathVisible[path];
-    beamNames.forEach(name => {
-      const obj = nodes[name];
-      if (obj) obj.visible = vis;
+window.simSetGrating = function(name) {
+  if (modelUpdater.mode !== 'simulated') return;
+  modelUpdater._snapGrating(name);
+};
+
+window.simSetFilter = function(idx) {
+  if (modelUpdater.mode !== 'simulated') return;
+  modelUpdater._setFilterByIndex(idx);
+};
+
+window.simToggleLightPath = function(path, visible) {
+  if (modelUpdater.mode !== 'simulated') return;
+  modelUpdater.lightPathVisible[path] = visible;
+  modelUpdater._applyLightPaths();
+};
+
+// ---------------------------------------------------------------------------
+// Mode toggle
+// ---------------------------------------------------------------------------
+window.onModeToggle = function(isRealtime) {
+  modelUpdater.setMode(isRealtime ? 'realtime' : 'simulated');
+};
+
+// ---------------------------------------------------------------------------
+// SSE integration — listen on the global EventSource opened in base.html
+// ---------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  buildGratingButtons();
+  buildFilterButtons();
+
+  // 120-second status poll
+  setInterval(() => {
+    if (modelUpdater.mode === 'realtime') modelUpdater._fetchAndSnap();
+  }, 120_000);
+
+  // Hook into the global SSE stream once it exists.
+  // base.html sets up window.__sseSource after DOMContentLoaded;
+  // we wait a tick to ensure it's ready.
+  setTimeout(() => {
+    const es = window.__sseSource;
+    if (!es) return;
+    es.addEventListener('notification', function(e) {
+      try {
+        const data = JSON.parse(e.data);
+        // data may be double-encoded (outer string wrapping inner JSON)
+        const update = typeof data === 'string' ? JSON.parse(data) : data;
+        modelUpdater.applyNotification(update);
+      } catch (_) {}
     });
-  }
-}
+  }, 100);
+});
 
-// --- Resize ---
+// ---------------------------------------------------------------------------
+// Resize
+// ---------------------------------------------------------------------------
 function resize() {
   const w = container.clientWidth;
   const h = container.clientHeight;
@@ -417,19 +624,18 @@ function resize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
-
 window.addEventListener('resize', resize);
 resize();
 
-// --- Animate ---
+// ---------------------------------------------------------------------------
+// Animate
+// ---------------------------------------------------------------------------
 function animate() {
   requestAnimationFrame(animate);
+  modelUpdater.tickTweens(performance.now());
   controls.update();
   renderer.render(scene, camera);
 }
 animate();
-
-// Expose for initial UI updates (run after DOM ready, which it is here)
-window.setGrating(0);
 </script>
 {% endblock %}
