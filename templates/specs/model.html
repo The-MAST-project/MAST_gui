@@ -84,9 +84,20 @@
 <div id="spec-model-page">
   <div class="page-header d-flex align-items-center justify-content-between">
     <h5 class="mb-0"><i class="bi bi-box me-2"></i>Spectrograph 3D Model</h5>
-    <div class="d-flex align-items-center gap-2">
-      <span id="mode-badge" class="badge bg-success">Realtime</span>
-      <button class="btn btn-sm btn-outline-secondary"
+    <div class="d-flex align-items-center gap-3" style="min-width:0">
+      <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
+        <input class="form-check-input" type="checkbox" role="switch"
+               id="mode-toggle" checked onchange="onModeToggle(this.checked)">
+        <label class="form-check-label" for="mode-toggle" id="mode-label">
+          <span class="text-success fw-semibold"
+                data-bs-toggle="tooltip"
+                data-bs-placement="bottom"
+                data-bs-delay='{"show":0,"hide":100}'
+                title="Model rendering governed by realtime spectrograph data">Realtime</span>
+        </label>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary d-none"
+              id="controls-btn"
               type="button"
               data-bs-toggle="offcanvas"
               data-bs-target="#controls-offcanvas">
@@ -107,24 +118,12 @@
 
 <!-- Controls Offcanvas -->
 <div class="offcanvas offcanvas-end mode-realtime" tabindex="-1" id="controls-offcanvas"
-     style="width: 320px;">
+     data-bs-backdrop="false" data-bs-scroll="true" style="width: 320px;">
   <div class="offcanvas-header border-bottom">
     <h6 class="offcanvas-title mb-0"><i class="bi bi-sliders me-1"></i>Controls</h6>
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
   </div>
   <div class="offcanvas-body d-flex flex-column gap-3" id="controls-body">
-
-    <!-- Mode Toggle -->
-    <div class="control-card">
-      <h6>Mode</h6>
-      <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
-        <input class="form-check-input" type="checkbox" role="switch"
-               id="mode-toggle" checked onchange="onModeToggle(this.checked)">
-        <label class="form-check-label" for="mode-toggle" id="mode-label">
-          <span class="text-success fw-semibold">Realtime</span>
-        </label>
-      </div>
-    </div>
 
     <!-- Fiber Stage -->
     <div class="control-card" id="sim-fiber">
@@ -137,15 +136,14 @@
       </div>
     </div>
 
-    <!-- Disperser / Grating -->
+    <!-- Highspec / Grating -->
     <div class="control-card" id="sim-grating">
-      <h6><i class="bi bi-grid me-1"></i>Disperser Grating</h6>
+      <h6><i class="bi bi-grid me-1"></i>Highspec Grating</h6>
       <div class="btn-group-wrap" id="grating-buttons"></div>
       <div class="mt-2 info-table">
         <table class="table table-sm table-borderless mb-0">
           <tbody>
             <tr><td>Stage X</td><td id="info-grating-x">—</td></tr>
-            <tr><td>Focus Z</td><td id="info-focus-z">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -353,14 +351,19 @@ class ModelUpdater {
     offcanvas.classList.toggle('mode-realtime',  mode === 'realtime');
     offcanvas.classList.toggle('mode-simulated', mode === 'simulated');
 
-    const badge = document.getElementById('mode-badge');
-    badge.className = mode === 'realtime' ? 'badge bg-success' : 'badge bg-danger';
-    badge.textContent = mode === 'realtime' ? 'Realtime' : 'Simulated';
-
     const label = document.getElementById('mode-label');
-    label.innerHTML = mode === 'realtime'
-      ? '<span class="text-success fw-semibold">Realtime</span>'
-      : '<span class="text-danger fw-semibold">Simulated</span>';
+    const tooltip = mode === 'realtime'
+      ? 'Model rendering governed by realtime spectrograph data'
+      : 'Model rendering governed by controls';
+    const cls = mode === 'realtime' ? 'text-success' : 'text-danger';
+    const text = mode === 'realtime' ? 'Realtime' : 'Simulated';
+    label.innerHTML = `<span class="${cls} fw-semibold"
+        data-bs-toggle="tooltip" data-bs-placement="bottom"
+        data-bs-delay='{"show":0,"hide":100}'
+        title="${tooltip}">${text}</span>`;
+    bootstrap.Tooltip.getOrCreateInstance(label.firstElementChild);
+
+    document.getElementById('controls-btn').classList.toggle('d-none', mode === 'realtime');
 
     // Disable/enable sim controls
     const body = document.getElementById('controls-body');
@@ -513,7 +516,6 @@ const modelUpdater = new ModelUpdater();
 // ---------------------------------------------------------------------------
 function updateGratingInfo(x, focusZ) {
   document.getElementById('info-grating-x').textContent = x.toFixed(3) + ' m';
-  document.getElementById('info-focus-z').textContent   = focusZ.toFixed(3) + ' m';
 }
 
 function highlightGratingButton(name) {
@@ -591,6 +593,7 @@ window.onModeToggle = function(isRealtime) {
 document.addEventListener('DOMContentLoaded', () => {
   buildGratingButtons();
   buildFilterButtons();
+  bootstrap.Tooltip.getOrCreateInstance(document.querySelector('#mode-label span'));
 
   // 120-second status poll
   setInterval(() => {
