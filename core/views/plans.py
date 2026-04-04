@@ -144,6 +144,16 @@ def plans_index(request):
 		for u in MASTUser.objects.filter(is_active=True)
 	}
 
+	scraping_results_json = '{}'
+	try:
+		sr_path = os.path.join(os.path.dirname(__file__), '../../static/plan-files/scraping_results.json')
+		sr_path = os.path.realpath(sr_path)
+		if os.path.exists(sr_path):
+			with open(sr_path) as f:
+				scraping_results_json = f.read()
+	except Exception as e:
+		logger.warning(f"plans_index: could not load scraping_results: {e}")
+
 	tab_defs = [
 		('submitted', 'Submitted', False),
 		('pending',   'Pending',   True),
@@ -167,5 +177,6 @@ def plans_index(request):
 			"field_meta_json": field_meta_json,
 			"owners_json": json.dumps(owners),
 			"current_user_uid": str(user.uid),
+		"scraping_results_json": scraping_results_json,
 		}
 	)

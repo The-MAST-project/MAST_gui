@@ -344,7 +344,7 @@
       </div>
     </template>
     <template x-if="filteredPlans('{{ tab }}').length === 0">
-      <div class="text-muted p-3">No {{ tab }} plans.</div>
+      <div class="text-muted p-3" x-text="isFiltered('{{ tab }}') ? 'No matching plans.' : 'No {{ tab }} plans.'"></div>
     </template>
   </div>
 </div>

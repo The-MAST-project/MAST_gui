@@ -72,6 +72,12 @@
                     this.canManagePlans = false;
                     this.canSubmitPlans = false;
                 }
+                // Pre-populate filter options from server-embedded scraping results
+                const sr = (window.__PLANS_INIT || {}).scrapingResults || {};
+                this.availableOwners          = sr.owners               || [];
+                this.availableClassifications = sr.known_classifications || sr.classifications || [];
+                this.availableUnits           = sr.requested_units       || [];
+
                 const TABS = ['submitted','pending','completed','postponed','expired','failed','canceled','deleted'];
                 TABS.forEach(t => {
                     this.filters[t]  = this._mkFilter();
@@ -103,11 +109,11 @@
                     this.deleted = data.deleted || [];
                     this.inProgress.forEach(p => p._tab = this.findTabForUlid(p.ulid));
 
-                    // populate scraping data
+                    // refresh scraping data from live API response
                     const sr = data.scraping_results || {};
-                    this.availableOwners          = sr.owners          || [];
-                    this.availableClassifications = sr.classifications  || [];
-                    this.availableUnits           = sr.requested_units || [];
+                    if (sr.owners)                                        this.availableOwners          = sr.owners;
+                    if (sr.known_classifications || sr.classifications)   this.availableClassifications = sr.known_classifications || sr.classifications;
+                    if (sr.requested_units)                               this.availableUnits           = sr.requested_units;
 
                     // reset selection on every load
                     Object.keys(this.selected).forEach(t => this.selected[t] = []);

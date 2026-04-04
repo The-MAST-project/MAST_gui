@@ -55,6 +55,7 @@
         owners: {{ owners_json|safe }},
         currentUserUid: "{{ current_user_uid }}",
         editPlanUrl: "{% url 'plans_edit' ulid='ULID_PLACEHOLDER' %}",
+        scrapingResults: {{ scraping_results_json|safe }},
     };
 </script>
 
