@@ -258,6 +258,10 @@ const FIBER_MAX_SPEED_MM_S = 54;
 const FIBER_NATIVE_PER_SEC = FIBER_NATIVE_PER_MM * FIBER_MAX_SPEED_MM_S; // 544,320 native/s
 const FIBER_PRESETS_NATIVE = { Deepspec: 1300460, Highspec: 2713701 };
 
+// Disperser/focus stage physics — TODO: replace with measured native unit positions
+const DISPERSER_NATIVE_PER_SEC = 500000; // TODO: measure real max speed
+const DISPERSER_PRESETS_NATIVE = { Ca: 1000000, Mg: 2000000, Halpha: 3000000, Future: 4000000 }; // TODO: real values
+
 // Linear mapping: native units → Three.js scene X
 function fiberNativeToScene(native) {
   const { Deepspec: nA, Highspec: nB } = FIBER_PRESETS_NATIVE;
@@ -353,7 +357,8 @@ class ModelUpdater {
     this.mode = 'realtime';   // 'realtime' | 'simulated'
     this.tweens = {};          // { stageName: { from, to, startTime, duration } }
     this.lightPathVisible = { highspec: true, deepspec: true, calibration: false };
-    this.fiberNativePos = null; // last-known fiber position in native units
+    this.fiberNativePos      = null; // last-known fiber position in native units
+    this.disperserNativePos  = null; // last-known disperser position in native units
   }
 
   // -- Mode ------------------------------------------------------------------
@@ -434,19 +439,23 @@ class ModelUpdater {
   applyNotification(update) {
     if (this.mode !== 'realtime') return;
 
-    // --- Card-based fiber tween animation ---
-    // component is always 'stage' (from StageActivities); distinguish fiber
-    // from disperser/focus by checking whether the preset name is a fiber preset.
+    // --- Card-based stage tween animations ---
+    // component is always 'stage' (from StageActivities); distinguish fiber vs
+    // disperser/focus by checking which preset table the name appears in.
     for (const card of (update.cards || [])) {
       if (card.component !== 'stage') continue;
       const raw = card.data?.target?.value != null ? String(card.data.target.value) : null;
       const key = raw ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : null;
-      const isFiberPreset = key != null && FIBER_PRESETS_NATIVE[key] != null;
-      if (card.type === 'start' && isFiberPreset) {
-        this._startFiberTween(key);
-      } else if (card.type === 'end' && isFiberPreset) {
-        delete this.tweens['fiber'];
-        this._debouncedFetch(); // snap to final position from status
+
+      const isFiberPreset    = key != null && FIBER_PRESETS_NATIVE[key] != null;
+      const isGratingPreset  = key != null && GRATING_PRESETS[key] != null;
+
+      if (card.type === 'start') {
+        if (isFiberPreset)   this._startFiberTween(key);
+        if (isGratingPreset) this._startDisperserTween(key);
+      } else if (card.type === 'end') {
+        if (isFiberPreset)   { delete this.tweens['fiber'];     this._debouncedFetch(); }
+        if (isGratingPreset) { delete this.tweens['disperser']; this._debouncedFetch(); }
       }
     }
 
@@ -499,6 +508,10 @@ class ModelUpdater {
         const z = tween.from.focusZ + (tween.to.focusZ - tween.from.focusZ) * ease;
         this._setDisperserNodes(x, z);
         updateGratingInfo(x, z);
+        if (t >= 1) {
+          this.disperserNativePos = tween.targetNative;
+          highlightGratingButton(tween.targetName);
+        }
       }
       if (name === 'fiber') {
         const x = tween.from + (tween.to - tween.from) * ease;
@@ -537,9 +550,37 @@ class ModelUpdater {
     };
   }
 
+  // -- Disperser/focus tween start -------------------------------------------
+  _startDisperserTween(targetGratingName) {
+    const targetScene  = GRATING_PRESETS[targetGratingName];
+    const targetNative = DISPERSER_PRESETS_NATIVE[targetGratingName];
+    if (!targetScene || targetNative == null) return;
+
+    const currentNative = this.disperserNativePos ?? DISPERSER_PRESETS_NATIVE.Ca;
+    const distance      = Math.abs(targetNative - currentNative);
+    const durationMs    = Math.max(500, Math.min(3000, (distance / DISPERSER_NATIVE_PER_SEC) * 1000));
+
+    const frame      = nodes['disperser_stage_frame'];
+    const focusMount = nodes['focus_camera_mount'];
+    const fromX      = frame      ? frame.position.x      : targetScene.x;
+    const fromZ      = focusMount ? focusMount.position.z : targetScene.focusZ;
+
+    this.tweens['disperser'] = {
+      from: { x: fromX, focusZ: fromZ },
+      to: targetScene,
+      targetNative,
+      targetName: targetGratingName,
+      startTime: performance.now(),
+      duration: durationMs,
+    };
+  }
+
   // -- Node manipulation -----------------------------------------------------
   _setDisperserPosition(posM) {
     // Map real position_m to scene units — adjust scale as needed
+    // TODO: replace placeholder native conversion with real stage calibration
+    this.disperserNativePos = posM * 1000 * (DISPERSER_NATIVE_PER_SEC / FIBER_MAX_SPEED_MM_S); // placeholder
+    delete this.tweens['disperser'];
     const x = posM;
     const focusZ = posM * 0.2;
     this._setDisperserNodes(x, focusZ);
