@@ -114,10 +114,10 @@
             </a>
         </div>
         
-        <!-- Assignments -->
-        <a href="{% get_dynamic_url 'assignments:list' %}" class="sidebar-item {% if request.resolver_match.app_name == 'assignments' %}active{% endif %}">
+        <!-- Scheduling -->
+        <a href="{% url 'scheduling' %}" class="sidebar-item {% if request.resolver_match.url_name == 'scheduling' %}active{% endif %}">
             <i class="bi bi-clipboard-check"></i>
-            <span class="sidebar-item-text">Assignments</span>
+            <span class="sidebar-item-text">Scheduling</span>
         </a>
         
         <!-- Plans -->

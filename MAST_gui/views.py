@@ -347,6 +347,11 @@ _GRAFANA_DASHBOARD_URLS = {
 }
 
 @login_required
+def scheduling(request):
+    return render(request, 'scheduling.html')
+
+
+@login_required
 def grafana(request, tag=None):
     grafana_url = _GRAFANA_DASHBOARD_URLS.get(tag, '/grafana/dashboards/')
     return render(request, 'grafana.html', {'grafana_url': grafana_url})
