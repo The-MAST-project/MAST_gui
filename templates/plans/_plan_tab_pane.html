@@ -39,7 +39,7 @@
                 <li><hr class="dropdown-divider"></li>
                 <li><button class="dropdown-item text-danger" type="button" @click="deletePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete</button></li>
               {% elif tab == "pending" %}
-                <li><button class="dropdown-item" type="button" @click="executePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Execute</button></li>
+                <li><button class="dropdown-item" type="button" @click="executePlan(p.ulid)" :disabled="!canExecutePlans" :class="{'disabled': !canExecutePlans}">Execute</button></li>
                 <li><button class="dropdown-item" type="button" @click="postponePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Postpone</button></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><button class="dropdown-item text-danger" type="button" @click="deletePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete</button></li>

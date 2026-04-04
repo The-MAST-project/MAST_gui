@@ -13,9 +13,10 @@
             canceled: [],
             deleted: [],
 
-            canManagePlans: false,
-            canSubmitPlans: false,
-            currentUserUid: null,
+            canManagePlans:  false,
+            canSubmitPlans:  false,
+            canExecutePlans: false,
+            currentUserUid:  null,
 
             ownerName(uid) {
                 if (!uid) return 'n/a';
@@ -31,9 +32,10 @@
             init() {
                 // initialize capability from server-provided object
                 try {
-                    this.canManagePlans = window.__PLANS_INIT && window.__PLANS_INIT.canManagePlans === true;
-                    this.canSubmitPlans = window.__PLANS_INIT && window.__PLANS_INIT.canSubmitPlans === true;
-                    this.currentUserUid = (window.__PLANS_INIT || {}).currentUserUid || null;
+                    this.canManagePlans  = window.__PLANS_INIT && window.__PLANS_INIT.canManagePlans  === true;
+                    this.canSubmitPlans  = window.__PLANS_INIT && window.__PLANS_INIT.canSubmitPlans  === true;
+                    this.canExecutePlans = window.__PLANS_INIT && window.__PLANS_INIT.canExecutePlans === true;
+                    this.currentUserUid  = (window.__PLANS_INIT || {}).currentUserUid || null;
                 } catch (e) {
                     this.canManagePlans = false;
                     this.canSubmitPlans = false;

@@ -130,8 +130,9 @@
 
 <script>
     window.__PLANS_INIT = {
-        canManagePlans: {% if canManagePlans %}true{% else %}false{% endif %},
-        canSubmitPlans: {% if canSubmitPlans %}true{% else %}false{% endif %},
+        canManagePlans:  {% if canManagePlans %}true{% else %}false{% endif %},
+        canSubmitPlans:  {% if canSubmitPlans %}true{% else %}false{% endif %},
+        canExecutePlans: {% if canExecutePlans %}true{% else %}false{% endif %},
         fieldMeta: {{ field_meta_json|safe }},
         owners: {{ owners_json|safe }},
         currentUserUid: "{{ current_user_uid }}",

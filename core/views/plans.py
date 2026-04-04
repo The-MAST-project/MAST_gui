@@ -112,15 +112,17 @@ def plans_edit(request, ulid):
 def plans_index(request):
 	"""
 	Renders the Plans page. Data is populated client-side via ControlApi('/plans/get').
-	Two capability flags are passed to the template:
-	  - canManagePlans: admins — can execute, postpone, cancel, delete, revive plans
-	  - canSubmitPlans: scientists — can submit new observation plans
+	Three capability flags are passed to the template:
+	  - canManagePlans:  can postpone, cancel, delete, revive plans
+	  - canSubmitPlans:  can submit new observation plans
+	  - canExecutePlans: can manually execute a single plan (dev/operator only)
 	"""
 	from accounts.models import User as MASTUser
 
 	user = request.user
-	can_manage = user.has_perm('accounts.can_manage_plans') or user.is_superuser
-	can_submit = user.has_perm('accounts.can_submit_plans') or user.is_superuser
+	can_manage  = user.has_perm('accounts.can_manage_plans')  or user.is_superuser
+	can_submit  = user.has_perm('accounts.can_submit_plans')  or user.is_superuser
+	can_execute = user.has_perm('accounts.can_execute_plans') or user.is_superuser
 	script_prefix = request.META.get("SCRIPT_NAME", "")
 
 	try:
@@ -146,8 +148,9 @@ def plans_index(request):
 		request,
 		"plans/index.html",
 		{
-			"canManagePlans": can_manage,
-			"canSubmitPlans": can_submit,
+			"canManagePlans":  can_manage,
+			"canSubmitPlans":  can_submit,
+			"canExecutePlans": can_execute,
 			"SCRIPT_PREFIX": script_prefix,
 			"field_meta_json": field_meta_json,
 			"owners_json": json.dumps(owners),
