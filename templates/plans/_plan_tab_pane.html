@@ -1,29 +1,302 @@
 <div class="tab-pane fade{% if active %} show active{% endif %}" id="pane-{{ tab }}" role="tabpanel">
-  <div class="d-flex align-items-center fw-bold mb-2 py-2" style="background-color: #f8f9fa; position: sticky; top: 0; z-index: 10; padding-left: 1.25rem; padding-right: 1rem;">
+
+  <!-- Filter drawer -->
+  <div x-show="filters['{{ tab }}'].open"
+       class="border rounded p-3 mb-2 bg-light"
+       style="display:none;">
+    <div class="row g-3">
+
+      <!-- Left column: boolean flags + merit -->
+      <div class="col-md-6">
+
+        <!-- Approved -->
+        <div class="mb-2 d-flex align-items-center gap-2">
+          <input type="checkbox" class="form-check-input flex-shrink-0"
+                 :checked="filters['{{ tab }}'].criteria.approved.enabled"
+                 @change="filters['{{ tab }}'].criteria.approved.enabled = $event.target.checked">
+          <span class="fw-semibold" style="min-width:5.5rem;">Approved</span>
+          <div class="d-flex gap-3 ms-1" style="display:none;"
+               x-show="filters['{{ tab }}'].criteria.approved.enabled">
+            <label class="d-flex align-items-center gap-1"><input type="radio" class="form-check-input"
+                          :checked="filters['{{ tab }}'].criteria.approved.value === true"
+                          @change="filters['{{ tab }}'].criteria.approved.value = true">Yes</label>
+            <label class="d-flex align-items-center gap-1"><input type="radio" class="form-check-input"
+                          :checked="filters['{{ tab }}'].criteria.approved.value === false"
+                          @change="filters['{{ tab }}'].criteria.approved.value = false">No</label>
+          </div>
+        </div>
+
+        <!-- Autofocus -->
+        <div class="mb-2 d-flex align-items-center gap-2">
+          <input type="checkbox" class="form-check-input flex-shrink-0"
+                 :checked="filters['{{ tab }}'].criteria.autofocus.enabled"
+                 @change="filters['{{ tab }}'].criteria.autofocus.enabled = $event.target.checked">
+          <span class="fw-semibold" style="min-width:5.5rem;">Autofocus</span>
+          <div class="d-flex gap-3 ms-1" style="display:none;"
+               x-show="filters['{{ tab }}'].criteria.autofocus.enabled">
+            <label class="d-flex align-items-center gap-1"><input type="radio" class="form-check-input"
+                          :checked="filters['{{ tab }}'].criteria.autofocus.value === true"
+                          @change="filters['{{ tab }}'].criteria.autofocus.value = true">Yes</label>
+            <label class="d-flex align-items-center gap-1"><input type="radio" class="form-check-input"
+                          :checked="filters['{{ tab }}'].criteria.autofocus.value === false"
+                          @change="filters['{{ tab }}'].criteria.autofocus.value = false">No</label>
+          </div>
+        </div>
+
+        <!-- TOO -->
+        <div class="mb-2 d-flex align-items-center gap-2">
+          <input type="checkbox" class="form-check-input flex-shrink-0"
+                 :checked="filters['{{ tab }}'].criteria.too.enabled"
+                 @change="filters['{{ tab }}'].criteria.too.enabled = $event.target.checked">
+          <span class="fw-semibold" style="min-width:5.5rem;">TOO</span>
+          <div class="d-flex gap-3 ms-1" style="display:none;"
+               x-show="filters['{{ tab }}'].criteria.too.enabled">
+            <label class="d-flex align-items-center gap-1"><input type="radio" class="form-check-input"
+                          :checked="filters['{{ tab }}'].criteria.too.value === true"
+                          @change="filters['{{ tab }}'].criteria.too.value = true">Yes</label>
+            <label class="d-flex align-items-center gap-1"><input type="radio" class="form-check-input"
+                          :checked="filters['{{ tab }}'].criteria.too.value === false"
+                          @change="filters['{{ tab }}'].criteria.too.value = false">No</label>
+          </div>
+        </div>
+
+        <!-- Not valid -->
+        <div class="mb-2">
+          <label class="d-flex align-items-center gap-2">
+            <input type="checkbox" class="form-check-input"
+                   :checked="filters['{{ tab }}'].criteria.notValid.enabled"
+                   @change="filters['{{ tab }}'].criteria.notValid.enabled = $event.target.checked">
+            <span class="fw-semibold">Not valid</span>
+          </label>
+        </div>
+
+        <!-- Merit -->
+        <div class="mb-2 d-flex align-items-center gap-2">
+          <input type="checkbox" class="form-check-input flex-shrink-0"
+                 :checked="filters['{{ tab }}'].criteria.merit.enabled"
+                 @change="filters['{{ tab }}'].criteria.merit.enabled = $event.target.checked">
+          <span class="fw-semibold" style="min-width:5.5rem;">Merit</span>
+          <div class="d-flex align-items-center gap-2" style="display:none;"
+               x-show="filters['{{ tab }}'].criteria.merit.enabled">
+            <select class="form-select form-select-sm w-auto"
+                    :value="filters['{{ tab }}'].criteria.merit.op"
+                    @change="filters['{{ tab }}'].criteria.merit.op = $event.target.value">
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+              <option value="<=">&lt;=</option>
+            </select>
+            <select class="form-select form-select-sm w-auto"
+                    :value="filters['{{ tab }}'].criteria.merit.val"
+                    @change="filters['{{ tab }}'].criteria.merit.val = Number($event.target.value)">
+              <template x-for="n in [1,2,3,4,5,6,7,8,9,10]" :key="n">
+                <option :value="n" :selected="filters['{{ tab }}'].criteria.merit.val === n" x-text="n"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right column: multi-select filters -->
+      <div class="col-md-6">
+
+        <!-- Owner -->
+        <div class="mb-2">
+          <label class="d-flex align-items-center gap-2">
+            <input type="checkbox" class="form-check-input"
+                   :checked="filters['{{ tab }}'].criteria.owners.enabled"
+                   @change="filters['{{ tab }}'].criteria.owners.enabled = $event.target.checked">
+            <span class="fw-semibold">Owner</span>
+          </label>
+          <template x-if="filters['{{ tab }}'].criteria.owners.enabled">
+            <div class="ms-4 mt-1 d-flex flex-wrap gap-2">
+              <template x-for="owner in availableOwners" :key="owner.uuid">
+                <label class="d-flex align-items-center gap-1">
+                  <input type="checkbox" class="form-check-input"
+                         :checked="filters['{{ tab }}'].criteria.owners.values.includes(owner.uuid)"
+                         @change="filters['{{ tab }}'].criteria.owners.values.includes(owner.uuid)
+                           ? filters['{{ tab }}'].criteria.owners.values.splice(filters['{{ tab }}'].criteria.owners.values.indexOf(owner.uuid), 1)
+                           : filters['{{ tab }}'].criteria.owners.values.push(owner.uuid)">
+                  <span x-text="owner.name"></span>
+                </label>
+              </template>
+              <span x-show="availableOwners.length === 0" class="text-muted small">None available</span>
+            </div>
+          </template>
+        </div>
+
+        <!-- Classification -->
+        <div class="mb-2">
+          <label class="d-flex align-items-center gap-2">
+            <input type="checkbox" class="form-check-input"
+                   :checked="filters['{{ tab }}'].criteria.classifications.enabled"
+                   @change="filters['{{ tab }}'].criteria.classifications.enabled = $event.target.checked">
+            <span class="fw-semibold">Classification</span>
+          </label>
+          <template x-if="filters['{{ tab }}'].criteria.classifications.enabled">
+            <div class="ms-4 mt-1 d-flex flex-wrap gap-2">
+              <template x-for="cls in availableClassifications" :key="cls">
+                <label class="d-flex align-items-center gap-1">
+                  <input type="checkbox" class="form-check-input"
+                         :checked="filters['{{ tab }}'].criteria.classifications.values.includes(cls)"
+                         @change="filters['{{ tab }}'].criteria.classifications.values.includes(cls)
+                           ? filters['{{ tab }}'].criteria.classifications.values.splice(filters['{{ tab }}'].criteria.classifications.values.indexOf(cls), 1)
+                           : filters['{{ tab }}'].criteria.classifications.values.push(cls)">
+                  <span x-text="cls"></span>
+                </label>
+              </template>
+              <span x-show="availableClassifications.length === 0" class="text-muted small">None available</span>
+            </div>
+          </template>
+        </div>
+
+        <!-- Requested units -->
+        <div class="mb-2">
+          <label class="d-flex align-items-center gap-2">
+            <input type="checkbox" class="form-check-input"
+                   :checked="filters['{{ tab }}'].criteria.units.enabled"
+                   @change="filters['{{ tab }}'].criteria.units.enabled = $event.target.checked">
+            <span class="fw-semibold">Units</span>
+          </label>
+          <template x-if="filters['{{ tab }}'].criteria.units.enabled">
+            <div class="ms-4 mt-1 d-flex flex-wrap gap-2">
+              <template x-for="unit in availableUnits" :key="unit">
+                <label class="d-flex align-items-center gap-1">
+                  <input type="checkbox" class="form-check-input"
+                         :checked="filters['{{ tab }}'].criteria.units.values.includes(unit)"
+                         @change="filters['{{ tab }}'].criteria.units.values.includes(unit)
+                           ? filters['{{ tab }}'].criteria.units.values.splice(filters['{{ tab }}'].criteria.units.values.indexOf(unit), 1)
+                           : filters['{{ tab }}'].criteria.units.values.push(unit)">
+                  <span x-text="unit"></span>
+                </label>
+              </template>
+              <span x-show="availableUnits.length === 0" class="text-muted small">None available</span>
+            </div>
+          </template>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Time window (full width) -->
+    <div class="row g-2 mt-1">
+      <div class="col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          <input type="checkbox" class="form-check-input flex-shrink-0"
+                 :checked="filters['{{ tab }}'].criteria.timeFrom.enabled"
+                 @change="filters['{{ tab }}'].criteria.timeFrom.enabled = $event.target.checked">
+          <span class="fw-semibold text-nowrap">Window from</span>
+          <input type="datetime-local" class="form-control form-control-sm"
+                 :disabled="!filters['{{ tab }}'].criteria.timeFrom.enabled"
+                 :value="filters['{{ tab }}'].criteria.timeFrom.value"
+                 @change="filters['{{ tab }}'].criteria.timeFrom.value = $event.target.value">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          <input type="checkbox" class="form-check-input flex-shrink-0"
+                 :checked="filters['{{ tab }}'].criteria.timeTo.enabled"
+                 @change="filters['{{ tab }}'].criteria.timeTo.enabled = $event.target.checked">
+          <span class="fw-semibold text-nowrap">to</span>
+          <input type="datetime-local" class="form-control form-control-sm"
+                 :disabled="!filters['{{ tab }}'].criteria.timeTo.enabled"
+                 :value="filters['{{ tab }}'].criteria.timeTo.value"
+                 @change="filters['{{ tab }}'].criteria.timeTo.value = $event.target.value">
+        </div>
+      </div>
+    </div>
+
+    <!-- Live counter + Clear -->
+    <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
+      <span class="text-muted small">
+        Showing <strong x-text="filteredPlans('{{ tab }}').length"></strong>
+        of <strong x-text="{{ tab }}.length"></strong>
+      </span>
+      <button class="btn btn-sm btn-outline-secondary" @click="clearFilter('{{ tab }}')">Clear filter</button>
+    </div>
+  </div>
+
+  <!-- Sticky header row -->
+  <div class="d-flex align-items-center fw-bold mb-2 py-2"
+       style="background-color: #f8f9fa; position: sticky; top: 0; z-index: 10; padding-left: 1.25rem; padding-right: 1rem;">
+    <!-- Master checkbox -->
+    <span style="min-width: 28px; margin-right: 0.75rem; flex-shrink: 0; display:flex; align-items:center;" @click.stop>
+      <input type="checkbox" class="form-check-input" style="width:1rem;height:1rem;border-radius:0.25rem;margin-top:0;"
+             x-effect="$el.indeterminate = masterCheckState('{{ tab }}') === null"
+             :checked="masterCheckState('{{ tab }}') === true"
+             @change="toggleMaster('{{ tab }}')">
+    </span>
     <span style="min-width: 30px; margin-right: 1rem;">#</span>
     <span style="width: 20px; margin-right: 0.5rem; display:flex; align-items:center; justify-content:center;">
       <i class="bi bi-check-circle-fill" style="font-size:0.9rem; opacity:0.4;"></i>
     </span>
-    <span style="width: 20px; margin-right: 0.5rem;">ID</span>
+    <span style="margin-right: 0.5rem; min-width: 1em;">Id</span>
     <span style="flex-grow: 1;">Owner</span>
+    <!-- Bulk Actions dropdown -->
+    <div class="d-flex align-items-center ms-2 gap-1" @click.stop>
+      <span class="text-muted small" style="white-space:nowrap; display:none;"
+            x-show="anySelected('{{ tab }}')"
+            x-text="selectedCount('{{ tab }}') > 0
+                ? selectedCount('{{ tab }}') + ' selected'
+                : filteredPlans('{{ tab }}').length + ' filtered'"></span>
+      <div class="dropdown">
+      <button class="btn btn-sm btn-primary dropdown-toggle" type="button"
+              :id="'bulk-actions-{{ tab }}'"
+              :disabled="!anySelected('{{ tab }}')"
+              data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
+      <ul class="dropdown-menu dropdown-menu-end" :aria-labelledby="'bulk-actions-{{ tab }}'">
+        {% if tab == "submitted" %}
+          <li><button class="dropdown-item" type="button" @click="bulkApprove('{{ tab }}')"
+              :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Approve selected</button></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><button class="dropdown-item text-danger" type="button" @click="bulkDelete('{{ tab }}')"
+              :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete selected</button></li>
+        {% elif tab == "pending" %}
+          <li><button class="dropdown-item" type="button" @click="bulkPostpone('{{ tab }}')"
+              :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Postpone selected</button></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><button class="dropdown-item text-danger" type="button" @click="bulkDelete('{{ tab }}')"
+              :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete selected</button></li>
+        {% elif tab == "completed" or tab == "postponed" or tab == "expired" or tab == "failed" %}
+          <li><button class="dropdown-item" type="button" @click="bulkRevive('{{ tab }}')"
+              :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Revive selected</button></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><button class="dropdown-item text-danger" type="button" @click="bulkDelete('{{ tab }}')"
+              :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete selected</button></li>
+        {% elif tab == "canceled" or tab == "deleted" %}
+          <li><button class="dropdown-item" type="button" @click="bulkRevive('{{ tab }}')"
+              :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Revive selected</button></li>
+        {% endif %}
+      </ul>
+      </div>
+    </div>
   </div>
 
+  <!-- Plan accordion -->
   <div class="accordion" id="accordion-{{ tab }}">
-    <template x-for="(p, index) in {{ tab }}" :key="p.ulid">
+    <template x-for="(p, index) in filteredPlans('{{ tab }}')" :key="p.ulid">
       <div class="accordion-item" :data-plan-ulid="p.ulid" :data-plan-tab="'{{ tab }}'">
-        <h2 class="accordion-header d-flex align-items-center justify-content-between">
+        <h2 class="accordion-header d-flex align-items-center justify-content-between"
+            style="padding-left: 1.25rem;">
+          <!-- Row checkbox (stops accordion toggle) -->
+          <span style="min-width: 28px; margin-right: 0.75rem; flex-shrink: 0; display:flex; align-items:center;" @click.stop>
+            <input type="checkbox" class="form-check-input" style="width:1rem;height:1rem;border-radius:0.25rem;margin-top:0;"
+                   :checked="isSelected('{{ tab }}', p.ulid)"
+                   @change="toggleSelect('{{ tab }}', p.ulid)">
+          </span>
           <button class="accordion-button collapsed flex-grow-1 text-start me-2"
               type="button"
               data-bs-toggle="collapse"
-              :data-bs-target="'#{{ tab }}-'+p.ulid">
-            <span class="text-muted me-3" style="min-width: 30px;" x-text="(index + 1) + '.'"></span>
+              :data-bs-target="'#{{ tab }}-'+p.ulid"
+              style="padding-left: 0;">
+            <span class="text-muted me-3" style="min-width: 30px;" x-text="(index + 1) + '.'" x-tooltip="p.ulid"></span>
             <span style="width: 20px; margin-right: 0.5rem; display:flex; align-items:center; justify-content:center;"
                   x-tooltip="planValidTooltip(p)">
               <i :class="planValid(p) ? 'bi bi-check-circle-fill text-success' : 'bi bi-x-circle-fill text-danger'"
                  style="font-size: 0.9rem;"></i>
             </span>
             <i class="bi bi-person-badge me-2" x-tooltip="p.ulid"></i>
-            <a :href="ownerUrl(p.owner)" x-text="ownerName(p.owner)" @click.stop class="text-reset"></a>
+            <strong x-text="ownerName(p.owner)"></strong>
           </button>
           <div class="dropdown me-2" @click.stop>
             <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
@@ -31,24 +304,33 @@
                 data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
             <ul class="dropdown-menu dropdown-menu-end" :aria-labelledby="'actions-{{ tab }}-' + p.ulid">
               {% if tab != "canceled" and tab != "deleted" %}
-                <li><button class="dropdown-item" type="button" @click="editPlan(p.ulid)" :disabled="!isOwner(p) && !canManagePlans" :class="{'disabled': !isOwner(p) && !canManagePlans}">Edit</button></li>
+                <li><button class="dropdown-item" type="button" @click="editPlan(p.ulid)"
+                    :disabled="!isOwner(p) && !canManagePlans" :class="{'disabled': !isOwner(p) && !canManagePlans}">Edit</button></li>
                 <li><hr class="dropdown-divider"></li>
               {% endif %}
               {% if tab == "submitted" %}
-                <li><button class="dropdown-item" type="button" @click="approvePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Approve</button></li>
+                <li><button class="dropdown-item" type="button" @click="approvePlan(p.ulid)"
+                    :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Approve</button></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><button class="dropdown-item text-danger" type="button" @click="deletePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete</button></li>
+                <li><button class="dropdown-item text-danger" type="button" @click="deletePlan(p.ulid)"
+                    :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete</button></li>
               {% elif tab == "pending" %}
-                <li><button class="dropdown-item" type="button" @click="executePlan(p.ulid)" :disabled="!canExecutePlans" :class="{'disabled': !canExecutePlans}">Execute</button></li>
-                <li><button class="dropdown-item" type="button" @click="postponePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Postpone</button></li>
+                <li><button class="dropdown-item" type="button" @click="executePlan(p.ulid)"
+                    :disabled="!canExecutePlans" :class="{'disabled': !canExecutePlans}">Execute</button></li>
+                <li><button class="dropdown-item" type="button" @click="postponePlan(p.ulid)"
+                    :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Postpone</button></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><button class="dropdown-item text-danger" type="button" @click="deletePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete</button></li>
+                <li><button class="dropdown-item text-danger" type="button" @click="deletePlan(p.ulid)"
+                    :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete</button></li>
               {% elif tab == "completed" or tab == "postponed" or tab == "expired" or tab == "failed" %}
-                <li><button class="dropdown-item" type="button" @click="revivePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Revive</button></li>
+                <li><button class="dropdown-item" type="button" @click="revivePlan(p.ulid)"
+                    :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Revive</button></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><button class="dropdown-item text-danger" type="button" @click="deletePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete</button></li>
+                <li><button class="dropdown-item text-danger" type="button" @click="deletePlan(p.ulid)"
+                    :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Delete</button></li>
               {% elif tab == "canceled" or tab == "deleted" %}
-                <li><button class="dropdown-item" type="button" @click="revivePlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Revive</button></li>
+                <li><button class="dropdown-item" type="button" @click="revivePlan(p.ulid)"
+                    :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Revive</button></li>
               {% endif %}
             </ul>
           </div>
@@ -61,7 +343,7 @@
         </div>
       </div>
     </template>
-    <template x-if="{{ tab }}.length === 0">
+    <template x-if="filteredPlans('{{ tab }}').length === 0">
       <div class="text-muted p-3">No {{ tab }} plans.</div>
     </template>
   </div>

@@ -144,6 +144,17 @@ def plans_index(request):
 		for u in MASTUser.objects.filter(is_active=True)
 	}
 
+	tab_defs = [
+		('submitted', 'Submitted', False),
+		('pending',   'Pending',   True),
+		('completed', 'Completed', False),
+		('postponed', 'Postponed', False),
+		('expired',   'Expired',   False),
+		('failed',    'Failed',    False),
+		('canceled',  'Canceled',  False),
+		('deleted',   'Deleted',   False),
+	]
+
 	return render(
 		request,
 		"plans/index.html",
@@ -151,6 +162,7 @@ def plans_index(request):
 			"canManagePlans":  can_manage,
 			"canSubmitPlans":  can_submit,
 			"canExecutePlans": can_execute,
+			"tab_defs":        tab_defs,
 			"SCRIPT_PREFIX": script_prefix,
 			"field_meta_json": field_meta_json,
 			"owners_json": json.dumps(owners),

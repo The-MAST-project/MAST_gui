@@ -17,6 +17,38 @@
             canSubmitPlans:  false,
             canExecutePlans: false,
             currentUserUid:  null,
+            activeTab:       'pending',
+
+            // ── scraping data (populated from PlansResponse.scraping_results) ─
+            availableOwners:          [],   // [{name, uuid}]
+            availableClassifications: [],   // list[str]
+            availableUnits:           [],   // list[str]
+
+            // ── per-tab filter state ─────────────────────────────────────────
+            // Each entry: { open, active, criteria: { approved, autofocus, too,
+            //   owners, classifications, units, meritOp, meritVal,
+            //   timeFrom, timeTo } }
+            _mkFilter() {
+                return {
+                    open: false,
+                    criteria: {
+                        approved:        { enabled: false, value: true },
+                        autofocus:       { enabled: false, value: true },
+                        too:             { enabled: false, value: true },
+                        notValid:        { enabled: false },
+                        owners:          { enabled: false, values: [] },
+                        classifications: { enabled: false, values: [] },
+                        units:           { enabled: false, values: [] },
+                        merit:           { enabled: false, op: '>=', val: 1 },
+                        timeFrom:        { enabled: false, value: '' },
+                        timeTo:          { enabled: false, value: '' },
+                    },
+                };
+            },
+            filters: {},    // keyed by tab name, populated in init()
+
+            // ── per-tab selection state ──────────────────────────────────────
+            selected: {},   // keyed by tab name → Array of ulids
 
             ownerName(uid) {
                 if (!uid) return 'n/a';
@@ -40,6 +72,16 @@
                     this.canManagePlans = false;
                     this.canSubmitPlans = false;
                 }
+                const TABS = ['submitted','pending','completed','postponed','expired','failed','canceled','deleted'];
+                TABS.forEach(t => {
+                    this.filters[t]  = this._mkFilter();
+                    this.selected[t] = [];
+                });
+                // track active tab for funnel visibility
+                document.getElementById('plansTabs')?.addEventListener('shown.bs.tab', (e) => {
+                    const target = e.target.getAttribute('data-bs-target') || '';
+                    this.activeTab = target.replace('#pane-', '');
+                });
                 this.fetchPlans();
             },
 
@@ -59,8 +101,16 @@
                     this.postponed = data.postponed || [];
                     this.canceled = data.canceled || [];
                     this.deleted = data.deleted || [];
-                    // attach a helper _tab for inProgress entries if needed
                     this.inProgress.forEach(p => p._tab = this.findTabForUlid(p.ulid));
+
+                    // populate scraping data
+                    const sr = data.scraping_results || {};
+                    this.availableOwners          = sr.owners          || [];
+                    this.availableClassifications = sr.classifications  || [];
+                    this.availableUnits           = sr.requested_units || [];
+
+                    // reset selection on every load
+                    Object.keys(this.selected).forEach(t => this.selected[t] = []);
                 } catch (err) {
                     console.error('Failed to fetch plans:', err);
                     this.submitted = this.inProgress = this.pending = this.completed = this.failed = this.expired = this.postponed = this.canceled = this.deleted = [];
@@ -325,7 +375,180 @@
             // helper used when building in-progress links if tab unknown
             getTabForPlan(p) {
                 return this.findTabForUlid(p.ulid);
-            }
+            },
+
+            // ── filtering ────────────────────────────────────────────────────
+
+            filteredPlans(tab) {
+                const list = this[tab] || [];
+                const f = (this.filters[tab] || {}).criteria;
+                if (!f) return list;
+                return list.filter(p => this._matchesCriteria(p, f));
+            },
+
+            isFiltered(tab) {
+                const f = (this.filters[tab] || {}).criteria;
+                if (!f) return false;
+                return Object.values(f).some(c => c.enabled);
+            },
+
+            clearFilter(tab) {
+                this.filters[tab] = this._mkFilter();
+                this.selected[tab] = [];
+            },
+
+            _matchesCriteria(p, f) {
+                // Boolean: approved / autofocus / too
+                for (const key of ['approved', 'autofocus', 'too']) {
+                    const c = f[key];
+                    if (!c.enabled) continue;
+                    if (!!p[key] !== c.value) return false;
+                }
+                // Not valid
+                if (f.notValid?.enabled) {
+                    if (this.planValid(p)) return false;
+                }
+                // Owner
+                if (f.owners.enabled && f.owners.values.length) {
+                    if (!f.owners.values.includes(p.owner)) return false;
+                }
+                // Classification
+                if (f.classifications.enabled && f.classifications.values.length) {
+                    const cls = p.target?.science?.classification || null;
+                    if (!f.classifications.values.includes(cls)) return false;
+                }
+                // Requested units (any match)
+                if (f.units.enabled && f.units.values.length) {
+                    const ru = p.requested_units || [];
+                    if (!f.units.values.some(u => ru.includes(u))) return false;
+                }
+                // Merit
+                if (f.merit.enabled) {
+                    const m = p.merit ?? null;
+                    if (m === null) return false;
+                    const v = Number(f.merit.val);
+                    if (f.merit.op === '>=' && !(m >= v)) return false;
+                    if (f.merit.op === '<=' && !(m <= v)) return false;
+                    if (f.merit.op === '='  && !(m === v)) return false;
+                }
+                // Time window overlap
+                const tw = p.constraints?.time_window;
+                if (f.timeFrom.enabled && f.timeFrom.value) {
+                    const filterFrom = new Date(f.timeFrom.value);
+                    const planEnd    = tw?.end   ? new Date(tw.end)   : null;
+                    // plan ends before filter starts → no overlap
+                    if (planEnd && planEnd < filterFrom) return false;
+                    // plan has no end and no start (open-ended) → include
+                }
+                if (f.timeTo.enabled && f.timeTo.value) {
+                    const filterTo   = new Date(f.timeTo.value);
+                    const planStart  = tw?.start ? new Date(tw.start) : null;
+                    // plan starts after filter ends → no overlap
+                    if (planStart && planStart > filterTo) return false;
+                }
+                return true;
+            },
+
+            // ── selection ────────────────────────────────────────────────────
+
+            isSelected(tab, ulid)    { return (this.selected[tab] || []).includes(ulid); },
+            selectedCount(tab)       { return (this.selected[tab] || []).length; },
+            anySelected(tab)         {
+                return this.selectedCount(tab) > 0 ||
+                       (this.isFiltered(tab) && this.filteredPlans(tab).length > 0);
+            },
+            // Returns ulids to act on: explicit selection, or all filtered plans as fallback
+            _targetUlids(tab) {
+                const manual = this.selected[tab] || [];
+                if (manual.length > 0) return manual;
+                if (this.isFiltered(tab)) return this.filteredPlans(tab).map(p => p.ulid);
+                return [];
+            },
+
+            toggleSelect(tab, ulid) {
+                const arr = this.selected[tab] || [];
+                const idx = arr.indexOf(ulid);
+                if (idx >= 0) arr.splice(idx, 1); else arr.push(ulid);
+                this.selected[tab] = [...arr]; // new array reference triggers Alpine reactivity
+            },
+
+            // master checkbox: null=indeterminate, true=all, false=none
+            masterCheckState(tab) {
+                const filtered = this.filteredPlans(tab);
+                const n = filtered.filter(p => this.isSelected(tab, p.ulid)).length;
+                if (n === 0) return false;
+                if (n === filtered.length) return true;
+                return null; // indeterminate
+            },
+
+            toggleMaster(tab) {
+                const filtered = this.filteredPlans(tab);
+                const state    = this.masterCheckState(tab);
+                const cur      = new Set(this.selected[tab] || []);
+                if (state === true) {
+                    filtered.forEach(p => cur.delete(p.ulid));
+                } else {
+                    filtered.forEach(p => cur.add(p.ulid));
+                }
+                this.selected[tab] = [...cur];
+            },
+
+            // ── bulk actions ─────────────────────────────────────────────────
+
+            async bulkApprove(tab) {
+                const ulids = this._targetUlids(tab);
+                if (!ulids.length) return;
+                if (!confirm(`Approve ${ulids.length} plan(s)?`)) return;
+                for (const ulid of ulids) {
+                    try { await ControlApi(`/plans/revive?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' }); }
+                    catch (e) { console.warn(e); }
+                }
+                await this.fetchPlans();
+            },
+
+            async bulkPostpone(tab) {
+                const ulids = this._targetUlids(tab);
+                if (!ulids.length) return;
+                if (!confirm(`Postpone ${ulids.length} plan(s)?`)) return;
+                for (const ulid of ulids) {
+                    try { await ControlApi(`/plans/postpone?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' }); }
+                    catch (e) { console.warn(e); }
+                }
+                await this.fetchPlans();
+            },
+
+            async bulkRevive(tab) {
+                const ulids = this._targetUlids(tab);
+                if (!ulids.length) return;
+                if (!confirm(`Revive ${ulids.length} plan(s)?`)) return;
+                for (const ulid of ulids) {
+                    try { await ControlApi(`/plans/revive?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' }); }
+                    catch (e) { console.warn(e); }
+                }
+                await this.fetchPlans();
+            },
+
+            async bulkDelete(tab) {
+                const ulids = this._targetUlids(tab);
+                if (!ulids.length) return;
+                if (!confirm(`Delete ${ulids.length} plan(s)? This cannot be undone.`)) return;
+                for (const ulid of ulids) {
+                    try { await ControlApi(`/plans/delete?ulid=${encodeURIComponent(ulid)}`, { method: 'DELETE' }); }
+                    catch (e) { console.warn(e); }
+                }
+                await this.fetchPlans();
+            },
+
+            async bulkCancel(tab) {
+                const ulids = this._targetUlids(tab);
+                if (!ulids.length) return;
+                if (!confirm(`Cancel ${ulids.length} plan(s)?`)) return;
+                for (const ulid of ulids) {
+                    try { await ControlApi(`/plans/cancel?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' }); }
+                    catch (e) { console.warn(e); }
+                }
+                await this.fetchPlans();
+            },
         };
     };
     // If Alpine is not used, expose a global helper for manual calls

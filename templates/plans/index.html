@@ -9,117 +9,35 @@
 		<a class="btn btn-primary" href="{% url 'plans_new' %}" x-show="canSubmitPlans" style="display:none;">New Plan</a>
 	</div>
 
-	<!-- In-progress block -->
-	<div id="plans-in-progress" class="mb-3">
-		<h5>In Progress</h5>
-		<template x-if="inProgress.length === 0">
-			<p class="text-muted ms-4">No plan(s) in progress.</p>
-		</template>
-		
-		<div x-show="inProgress.length > 0">
-			<!-- Fixed Column Headers -->
-			
-			<div class="accordion" id="accordion-in-progress">
-				<template x-for="(p, index) in inProgress" :key="p.ulid">
-					<div class="accordion-item" :data-plan-ulid="p.ulid" :data-plan-tab="'in-progress'">
-						<h2 class="accordion-header d-flex align-items-center justify-content-between">
-							<!-- Accordion toggle (left) -->
-							<button class="accordion-button collapsed flex-grow-1 text-start me-2"
-									type="button"
-									data-bs-toggle="collapse"
-									:data-bs-target="'#in-progress-'+p.ulid">
-								<span style="min-width: 30px; margin-right: 0.75rem;"></span>
-								<span style="width: 20px; margin-right: 0.5rem; display:flex; align-items:center; justify-content:center;"
-								      x-tooltip="planValidTooltip(p)">
-								  <i :class="planValid(p) ? 'bi bi-check-circle-fill text-success' : 'bi bi-x-circle-fill text-danger'"
-								     style="font-size: 0.9rem;"></i>
-								</span>
-								<i class="bi bi-person-badge me-2" x-tooltip="p.ulid"></i>
-								<a :href="ownerUrl(p.owner)" x-text="ownerName(p.owner)" @click.stop class="text-reset"></a>
-							</button>
-              <!-- Action button (right, not part of toggle) -->
-              <div class="dropdown me-2" @click.stop>
-                <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
-                    :id="'actions-in-progress-' + p.ulid"
-                    data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
-                <ul class="dropdown-menu dropdown-menu-end" :aria-labelledby="'actions-in-progress-' + p.ulid">
-                  <li><button class="dropdown-item text-danger" type="button" @click="cancelPlan(p.ulid)" :disabled="!canManagePlans" :class="{'disabled': !canManagePlans}">Cancel</button></li>
-                </ul>
-              </div>
-						</h2>
-						<div :id="'in-progress-'+p.ulid" class="accordion-collapse collapse">
-							<div class="accordion-body" style="padding: 0.75cm;"
-							     x-data="planViewCards(p, (window.__PLANS_INIT || {}).fieldMeta || {})">
-								{% include "plans/_plan_cards.html" %}
-							</div>
-						</div>
-					</div>
-				</template>
-			</div>
-		</div>
-	</div>
-
 	<!-- Tabs -->
 	<ul class="nav nav-tabs" id="plansTabs" role="tablist">
+		{% for tab_name, tab_label, tab_active in tab_defs %}
 		<li class="nav-item" role="presentation">
-			<button class="nav-link" id="tab-submitted" data-bs-toggle="tab" data-bs-target="#pane-submitted" type="button" role="tab">
-				Submitted
-				<span class="badge rounded-pill ms-1" x-show="submitted.length > 0" x-text="submitted.length"></span>
+			<button class="nav-link{% if tab_active %} active{% endif %} d-flex align-items-center"
+			        id="tab-{{ tab_name }}" data-bs-toggle="tab"
+			        data-bs-target="#pane-{{ tab_name }}" type="button" role="tab"
+			        style="white-space: nowrap;">
+				<span>{{ tab_label }}</span>
+				<span class="badge rounded-pill ms-1"
+				      x-show="{{ tab_name }}.length > 0"
+				      x-text="{{ tab_name }}.length"></span>
+				<span class="ms-1 p-0 tab-funnel"
+				      x-show="{{ tab_name }}.length > 0 && activeTab === '{{ tab_name }}'"
+				      :class="isFiltered('{{ tab_name }}') ? 'text-warning' : 'text-secondary'"
+				      :title="isFiltered('{{ tab_name }}') ? 'Filter active' : 'Filter'"
+				      @click.stop="filters['{{ tab_name }}'].open = !filters['{{ tab_name }}'].open"
+				      style="font-size:0.75rem; line-height:1; cursor:pointer; display:none;">
+					<i class="bi bi-funnel-fill"></i>
+				</span>
 			</button>
 		</li>
-		<li class="nav-item" role="presentation">
-			<button class="nav-link active" id="tab-pending" data-bs-toggle="tab" data-bs-target="#pane-pending" type="button" role="tab">
-				Pending
-				<span class="badge rounded-pill ms-1" x-show="pending.length > 0" x-text="pending.length"></span>
-			</button>
-		</li>
-		<li class="nav-item" role="presentation">
-			<button class="nav-link" id="tab-completed" data-bs-toggle="tab" data-bs-target="#pane-completed" type="button" role="tab">
-				Completed
-				<span class="badge rounded-pill ms-1" x-show="completed.length > 0" x-text="completed.length"></span>
-			</button>
-		</li>
-		<li class="nav-item" role="presentation">
-			<button class="nav-link" id="tab-postponed" data-bs-toggle="tab" data-bs-target="#pane-postponed" type="button" role="tab">
-				Postponed
-				<span class="badge rounded-pill ms-1" x-show="postponed.length > 0" x-text="postponed.length"></span>
-			</button>
-		</li>
-		<li class="nav-item" role="presentation">
-			<button class="nav-link" id="tab-expired" data-bs-toggle="tab" data-bs-target="#pane-expired" type="button" role="tab">
-				Expired
-				<span class="badge rounded-pill ms-1" x-show="expired.length > 0" x-text="expired.length"></span>
-			</button>
-		</li>
-		<li class="nav-item" role="presentation">
-			<button class="nav-link" id="tab-failed" data-bs-toggle="tab" data-bs-target="#pane-failed" type="button" role="tab">
-				Failed
-				<span class="badge rounded-pill ms-1" x-show="failed.length > 0" x-text="failed.length"></span>
-			</button>
-		</li>
-		<li class="nav-item" role="presentation">
-			<button class="nav-link" id="tab-canceled" data-bs-toggle="tab" data-bs-target="#pane-canceled" type="button" role="tab">
-				Canceled
-				<span class="badge rounded-pill ms-1" x-show="canceled.length > 0" x-text="canceled.length"></span>
-			</button>
-		</li>
-		<li class="nav-item" role="presentation">
-			<button class="nav-link" id="tab-deleted" data-bs-toggle="tab" data-bs-target="#pane-deleted" type="button" role="tab">
-				Deleted
-				<span class="badge rounded-pill ms-1" x-show="deleted.length > 0" x-text="deleted.length"></span>
-			</button>
-		</li>
+		{% endfor %}
 	</ul>
 
 	<div class="tab-content mt-3">
-		{% include "plans/_plan_tab_pane.html" with tab="submitted" active=False %}
-		{% include "plans/_plan_tab_pane.html" with tab="pending" active=True %}
-		{% include "plans/_plan_tab_pane.html" with tab="completed" active=False %}
-		{% include "plans/_plan_tab_pane.html" with tab="postponed" active=False %}
-		{% include "plans/_plan_tab_pane.html" with tab="expired" active=False %}
-		{% include "plans/_plan_tab_pane.html" with tab="failed" active=False %}
-		{% include "plans/_plan_tab_pane.html" with tab="canceled" active=False %}
-		{% include "plans/_plan_tab_pane.html" with tab="deleted" active=False %}
+		{% for tab_name, tab_label, tab_active in tab_defs %}
+			{% include "plans/_plan_tab_pane.html" with tab=tab_name active=tab_active %}
+		{% endfor %}
 	</div>
 </div>
 
