@@ -90,7 +90,7 @@
         <input class="form-check-input" type="checkbox" role="switch"
                id="mode-toggle" checked onchange="onModeToggle(this.checked)">
         <label class="form-check-label" for="mode-toggle" id="mode-label">
-          <span class="text-success fw-semibold">Realtime</span>
+          <span class="text-success fw-semibold" style="display:inline-block;width:4rem">Live</span>
         </label>
       </div>
       <button class="btn btn-sm btn-outline-secondary"
@@ -365,8 +365,8 @@ class ModelUpdater {
 
     const label = document.getElementById('mode-label');
     const cls  = mode === 'realtime' ? 'text-success' : 'text-danger';
-    const text = mode === 'realtime' ? 'Realtime' : 'Simulated';
-    label.innerHTML = `<span class="${cls} fw-semibold">${text}</span>`;
+    const text = mode === 'realtime' ? 'Live' : 'Simulated';
+    label.innerHTML = `<span class="${cls} fw-semibold" style="display:inline-block;width:4rem">${text}</span>`;
 
     const isRealtime = mode === 'realtime';
     const panelIcon  = isRealtime ? 'bi-activity' : 'bi-sliders';
@@ -435,15 +435,50 @@ class ModelUpdater {
     if (this.mode !== 'realtime') return;
 
     // --- Card-based fiber tween animation ---
+    // component is always 'stage' (from StageActivities); distinguish fiber
+    // from disperser/focus by checking whether the preset name is a fiber preset.
     for (const card of (update.cards || [])) {
-      if (!card.component?.toLowerCase().includes('fiber')) continue;
-      if (card.type === 'start' && card.data?.target?.value != null) {
-        const raw = String(card.data.target.value);
-        const key = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-        if (FIBER_PRESETS_NATIVE[key] != null) this._startFiberTween(key);
-      } else if (card.type === 'end') {
+      if (card.component !== 'stage') continue;
+      const raw = card.data?.target?.value != null ? String(card.data.target.value) : null;
+      const key = raw ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : null;
+      const isFiberPreset = key != null && FIBER_PRESETS_NATIVE[key] != null;
+      if (card.type === 'start' && isFiberPreset) {
+        this._startFiberTween(key);
+      } else if (card.type === 'end' && isFiberPreset) {
         delete this.tweens['fiber'];
         this._debouncedFetch(); // snap to final position from status
+      }
+    }
+
+    // --- DeepSpec acquiring → deepspec light path on/off ---
+    for (const card of (update.cards || [])) {
+      if (card.component !== 'deepspec') continue;
+      if (card.type === 'start') {
+        this.lightPathVisible.deepspec = true;
+        this._applyLightPaths();
+      } else if (card.type === 'end') {
+        this.lightPathVisible.deepspec = false;
+        this._applyLightPaths();
+      }
+    }
+
+    // --- HighSpec acquiring → highspec light path on/off ---
+    for (const card of (update.cards || [])) {
+      if (card.component !== 'highspec') continue;
+      if (card.type === 'start') {
+        this.lightPathVisible.highspec = true;
+        this._applyLightPaths();
+      } else if (card.type === 'end') {
+        this.lightPathVisible.highspec = false;
+        this._applyLightPaths();
+      }
+    }
+
+    // --- ThAr filter wheel position ---
+    for (const card of (update.cards || [])) {
+      if (card.component !== 'wheel') continue;
+      if (card.type === 'start' && card.data?.target?.value != null) {
+        this._setFilterByIndex(Number(card.data.target.value));
       }
     }
 
