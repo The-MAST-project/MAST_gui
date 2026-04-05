@@ -186,7 +186,7 @@
                  :checked="filters['{{ tab }}'].criteria.timeFrom.enabled"
                  @change="filters['{{ tab }}'].criteria.timeFrom.enabled = $event.target.checked">
           <span class="fw-semibold text-nowrap">Time window from</span>
-          <input type="datetime-local" class="form-control form-control-sm"
+          <input type="datetime-local" class="form-control form-control-sm w-auto"
                  :disabled="!filters['{{ tab }}'].criteria.timeFrom.enabled"
                  :value="filters['{{ tab }}'].criteria.timeFrom.value"
                  @change="filters['{{ tab }}'].criteria.timeFrom.value = $event.target.value">
@@ -198,7 +198,7 @@
                  :checked="filters['{{ tab }}'].criteria.timeTo.enabled"
                  @change="filters['{{ tab }}'].criteria.timeTo.enabled = $event.target.checked">
           <span class="fw-semibold text-nowrap">to</span>
-          <input type="datetime-local" class="form-control form-control-sm"
+          <input type="datetime-local" class="form-control form-control-sm w-auto"
                  :disabled="!filters['{{ tab }}'].criteria.timeTo.enabled"
                  :value="filters['{{ tab }}'].criteria.timeTo.value"
                  @change="filters['{{ tab }}'].criteria.timeTo.value = $event.target.value">

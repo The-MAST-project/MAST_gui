@@ -19,7 +19,8 @@
                 <div class="row justify-content-center">
                     {# Spec #}
                     {% if instrument_room.spec %}
-                        {% include 'units/components/status_card.html' with full_name=instrument_room.spec.display_name planned=False maintenance=False detected=instrument_room.spec.detected operational=instrument_room.spec.operational why_not_operational=instrument_room.spec.why_not_operational activities=instrument_room.spec.activities_verbal component_id="spec" host=site.spec_host severity=instrument_room.spec.severity|default:"success" limit_width=True onclick_action="showInstrumentModal('"|add:instrument_room.spec.display_name|escapejs|add:"')" %}
+                        {% url 'specs:model' as spec_model_url %}
+                        {% include 'units/components/status_card.html' with full_name=instrument_room.spec.display_name planned=False maintenance=False detected=instrument_room.spec.detected operational=instrument_room.spec.operational why_not_operational=instrument_room.spec.why_not_operational activities=instrument_room.spec.activities_verbal component_id="spec" host=site.spec_host severity=instrument_room.spec.severity|default:"success" limit_width=True card_url=spec_model_url %}
                     {% endif %}
                     
                     {# Controller #}
