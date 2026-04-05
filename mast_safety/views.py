@@ -24,10 +24,40 @@ def graphs(request):
 @login_required
 @capability_required('can_view')
 def data(request):
-    """Show safety data (stations and sensors)."""
-    # TODO: Fetch from safety service
+    """Show safety data — MAST project sensor summary."""
+    import httpx
+    import traceback
+
+    def _fetch_is_safe(client, url):
+        try:
+            r = client.get(url, timeout=5)
+            r.raise_for_status()
+            return r.json().get('value', {}).get('value', {})
+        except Exception as e:
+            logger.warning(f"safety data: could not fetch {url}: {e}")
+            return None
+
+    sensors = []
+    fetch_error = None
+    global_safety = None
+    mast_safety = None
+
+    try:
+        with httpx.Client(trust_env=False) as client:
+            global_safety = _fetch_is_safe(client, "http://10.23.1.25:8001/is_safe")
+            mast_safety   = _fetch_is_safe(client, "http://10.23.1.25:8001/mast/is_safe")
+            r = client.get("http://10.23.1.25:8001/mast/sensors", timeout=5)
+            r.raise_for_status()
+            sensors = r.json().get('value', {}).get('sensors', [])
+    except Exception as e:
+        logger.warning(f"safety data: {e}\n{traceback.format_exc()}")
+        fetch_error = str(e)
+
     context = {
         'page_title': 'Safety - Data',
+        'sensors': sensors,
+        'fetch_error': fetch_error,
+        'global_safety': global_safety,
+        'mast_safety': mast_safety,
     }
-    
     return render(request, 'safety/data.html', context)
