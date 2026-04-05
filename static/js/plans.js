@@ -272,52 +272,56 @@
                 window.location.href = base;
             },
 
+            // ── low-level plan API call (all transition endpoints accept a JSON array of ulids) ──
+            _planPost(endpoint, ulids) {
+                return ControlApi(`/plans/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ulids),
+                });
+            },
+            _planDelete(endpoint, ulids) {
+                return ControlApi(`/plans/${endpoint}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ulids),
+                });
+            },
+
             // Helpers to perform actions, then refresh
             async executePlan(ulid) {
                 if (!confirm('Execute plan ' + ulid + '?')) return;
-                try {
-                    await ControlApi(`/plans/execute?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
-                } catch (e) { console.warn(e); }
+                try { await this._planPost('execute', [ulid]); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
             async approvePlan(ulid) {
                 if (!confirm('Approve plan ' + ulid + '?')) return;
-                try {
-                    await ControlApi(`/plans/revive?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
-                } catch (e) { console.warn(e); }
+                try { await this._planPost('revive', [ulid]); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
             async revivePlan(ulid) {
                 if (!confirm('Revive plan ' + ulid + '?')) return;
-                try {
-                    await ControlApi(`/plans/revive?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
-                } catch (e) { console.warn(e); }
+                try { await this._planPost('revive', [ulid]); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
             async postponePlan(ulid) {
                 if (!confirm('Postpone plan ' + ulid + '?')) return;
-                try {
-                    await ControlApi(`/plans/postpone?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
-                } catch (e) { console.warn(e); }
+                try { await this._planPost('postpone', [ulid]); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
             async cancelPlan(ulid) {
                 if (!confirm('Cancel plan ' + ulid + '?')) return;
-                try {
-                    await ControlApi(`/plans/cancel?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' });
-                } catch (e) { console.warn(e); }
+                try { await this._planPost('cancel', [ulid]); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
             async deletePlan(ulid) {
                 if (!confirm('Delete plan ' + ulid + '? This cannot be undone.')) return;
-                try {
-                    await ControlApi(`/plans/delete?ulid=${encodeURIComponent(ulid)}`, { method: 'DELETE' });
-                } catch (e) { console.warn(e); }
+                try { await this._planDelete('delete', [ulid]); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
@@ -505,10 +509,7 @@
                 const ulids = this._targetUlids(tab);
                 if (!ulids.length) return;
                 if (!confirm(`Approve ${ulids.length} plan(s)?`)) return;
-                for (const ulid of ulids) {
-                    try { await ControlApi(`/plans/revive?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' }); }
-                    catch (e) { console.warn(e); }
-                }
+                try { await this._planPost('revive', ulids); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
@@ -516,10 +517,7 @@
                 const ulids = this._targetUlids(tab);
                 if (!ulids.length) return;
                 if (!confirm(`Postpone ${ulids.length} plan(s)?`)) return;
-                for (const ulid of ulids) {
-                    try { await ControlApi(`/plans/postpone?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' }); }
-                    catch (e) { console.warn(e); }
-                }
+                try { await this._planPost('postpone', ulids); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
@@ -527,10 +525,7 @@
                 const ulids = this._targetUlids(tab);
                 if (!ulids.length) return;
                 if (!confirm(`Revive ${ulids.length} plan(s)?`)) return;
-                for (const ulid of ulids) {
-                    try { await ControlApi(`/plans/revive?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' }); }
-                    catch (e) { console.warn(e); }
-                }
+                try { await this._planPost('revive', ulids); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
@@ -538,10 +533,7 @@
                 const ulids = this._targetUlids(tab);
                 if (!ulids.length) return;
                 if (!confirm(`Delete ${ulids.length} plan(s)? This cannot be undone.`)) return;
-                for (const ulid of ulids) {
-                    try { await ControlApi(`/plans/delete?ulid=${encodeURIComponent(ulid)}`, { method: 'DELETE' }); }
-                    catch (e) { console.warn(e); }
-                }
+                try { await this._planDelete('delete', ulids); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
@@ -549,10 +541,7 @@
                 const ulids = this._targetUlids(tab);
                 if (!ulids.length) return;
                 if (!confirm(`Cancel ${ulids.length} plan(s)?`)) return;
-                for (const ulid of ulids) {
-                    try { await ControlApi(`/plans/cancel?ulid=${encodeURIComponent(ulid)}`, { method: 'POST' }); }
-                    catch (e) { console.warn(e); }
-                }
+                try { await this._planPost('cancel', ulids); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
         };

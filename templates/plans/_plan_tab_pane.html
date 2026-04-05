@@ -185,7 +185,7 @@
           <input type="checkbox" class="form-check-input flex-shrink-0"
                  :checked="filters['{{ tab }}'].criteria.timeFrom.enabled"
                  @change="filters['{{ tab }}'].criteria.timeFrom.enabled = $event.target.checked">
-          <span class="fw-semibold text-nowrap">Window from</span>
+          <span class="fw-semibold text-nowrap">Time window from</span>
           <input type="datetime-local" class="form-control form-control-sm"
                  :disabled="!filters['{{ tab }}'].criteria.timeFrom.enabled"
                  :value="filters['{{ tab }}'].criteria.timeFrom.value"
