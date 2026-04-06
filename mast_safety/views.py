@@ -32,7 +32,7 @@ def data(request):
         try:
             r = client.get(url, timeout=5)
             r.raise_for_status()
-            return r.json().get('value', {}).get('value', {})
+            return r.json().get('value', {})
         except Exception as e:
             logger.warning(f"safety data: could not fetch {url}: {e}")
             return None
