@@ -1,0 +1,42 @@
+<!-- Units row -->
+<tr>
+  <th scope="row" class="text-nowrap pe-4" style="width: 1%;">Units</th>
+  <td>
+    <span class="text-muted small me-1">Allocatable:</span>
+    {% for u in allocatable_units %}
+      <span class="badge bg-secondary me-1">{{ u }}</span>
+    {% empty %}
+      <span class="text-muted small">none</span>
+    {% endfor %}
+    <span class="text-muted small ms-3 me-1">Operational:</span>
+    {% for u in operational_units %}
+      <span class="badge bg-success me-1">{{ u }}</span>
+    {% empty %}
+      <span class="text-muted small">none</span>
+    {% endfor %}
+  </td>
+</tr>
+
+<!-- Spectrograph row -->
+{% if spec %}
+<tr>
+  <th scope="row" class="text-nowrap pe-4">Spectrograph</th>
+  <td>
+    {% if spec.operational %}
+      <span class="badge bg-success">Operational</span>
+    {% else %}
+      <span class="d-inline-flex align-items-center gap-1">
+        <span class="badge bg-{{ spec.severity }}{% if spec.severity == 'warning' %} text-dark{% endif %}">Not Operational</span>
+        {% if spec.why_not_operational %}
+        <i class="bi bi-info-circle"
+           data-bs-toggle="tooltip"
+           data-bs-placement="auto"
+           data-bs-html="true"
+           data-bs-title="{% for r in spec.why_not_operational %}{{ r|escape }}{% if not forloop.last %}<br>{% endif %}{% endfor %}"
+           style="cursor: help;"></i>
+        {% endif %}
+      </span>
+    {% endif %}
+  </td>
+</tr>
+{% endif %}

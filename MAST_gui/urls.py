@@ -31,6 +31,7 @@ urlpatterns = [
     # Plans pages
     path('scheduling/', views.scheduling_single, name='scheduling'),
     path('scheduling/single/', views.scheduling_single, name='scheduling_single'),
+    path('scheduling/single/resources/', views.scheduling_single_resources, name='scheduling_single_resources'),
     path('scheduling/multi/', views.scheduling_multi, name='scheduling_multi'),
     path('plans/', plans_views.plans_index, name='plans_index'),
     path('plans/new/', plans_views.plans_new, name='plans_new'),

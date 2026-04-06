@@ -346,11 +346,45 @@ _GRAFANA_DASHBOARD_URLS = {
     'windows': '/grafana/d/IV0hu1m7z/windows-exporter-dashboard',
 }
 
+def _scheduling_resources(scheduling_site, site_config):
+    """Return (allocatable_units, operational_units, spec, error) for a site."""
+    from common.models.statuses import SitesStatus, UnitStatus
+
+    sites_status: SitesStatus = MastCache().sites_status
+    if sites_status is None:
+        return [], [], None, 'No current sites status (yet?)'
+    if not hasattr(sites_status, 'sites') or scheduling_site not in sites_status.sites:
+        return [], [], None, f"No status for site '{scheduling_site}'"
+
+    site_status = sites_status.sites[scheduling_site]
+    allocatable_units = []
+    operational_units = []
+
+    for unit_id in sorted(site_config.deployed_units):
+        if unit_id in site_config.units_in_maintenance:
+            continue
+        allocatable_units.append(unit_id)
+        if unit_id in site_status.units:
+            unit_status: UnitStatus = site_status.units[unit_id]
+            if unit_status.type == 'full' and unit_status.operational:
+                operational_units.append(unit_id)
+
+    comp_status = getattr(site_status, 'spec', None)
+    if comp_status is None:
+        spec = {'operational': False, 'severity': 'danger', 'why_not_operational': ['No spec status']}
+    else:
+        spec = {
+            'operational': comp_status.operational,
+            'severity': 'success' if comp_status.operational else 'warning',
+            'why_not_operational': comp_status.why_not_operational or [],
+        }
+
+    return allocatable_units, operational_units, spec, None
+
+
 @login_required
 def scheduling_single(request):
     """Single-site scheduling resources — read-only view of deployed units and spec."""
-    from common.models.statuses import SitesStatus, UnitStatus
-
     cache = MastCache()
     all_sites = cache.sites_config or []
 
@@ -369,44 +403,35 @@ def scheduling_single(request):
             'spec': None,
         })
 
-    sites_status: SitesStatus = cache.sites_status
-    error = None
-    if sites_status is None:
-        error = 'No current sites status (yet?)'
-    elif not hasattr(sites_status, 'sites') or scheduling_site not in sites_status.sites:
-        error = f"No status for site '{scheduling_site}'"
-
-    allocatable_units = []
-    operational_units = []
-    spec = None
-
-    if not error:
-        site_status = sites_status.sites[scheduling_site]
-
-        for unit_id in sorted(site_config.deployed_units):
-            if unit_id in site_config.units_in_maintenance:
-                continue
-            allocatable_units.append(unit_id)
-            if unit_id in site_status.units:
-                unit_status: UnitStatus = site_status.units[unit_id]
-                if unit_status.type == 'full' and unit_status.operational:
-                    operational_units.append(unit_id)
-
-        comp_status = getattr(site_status, 'spec', None)
-        if comp_status is None:
-            spec = {'operational': False, 'severity': 'danger', 'why_not_operational': ['No spec status']}
-        else:
-            spec = {
-                'operational': comp_status.operational,
-                'severity': 'success' if comp_status.operational else 'warning',
-                'why_not_operational': comp_status.why_not_operational or [],
-            }
+    allocatable_units, operational_units, spec, error = _scheduling_resources(scheduling_site, site_config)
 
     return render(request, 'scheduling_single.html', {
         'error': error,
         'all_sites': all_sites,
         'scheduling_site': scheduling_site,
         'site': site_config,
+        'allocatable_units': allocatable_units,
+        'operational_units': operational_units,
+        'spec': spec,
+    })
+
+
+@login_required
+def scheduling_single_resources(request):
+    """HTMX partial: refreshed resources rows for the scheduling/single page."""
+    cache = MastCache()
+    all_sites = cache.sites_config or []
+
+    default_site = request.session.get('selected_site', 'wis')
+    scheduling_site = request.GET.get('site') or default_site
+
+    site_config = next((s for s in all_sites if s.name == scheduling_site), None)
+    if site_config is None:
+        allocatable_units, operational_units, spec = [], [], None
+    else:
+        allocatable_units, operational_units, spec, _ = _scheduling_resources(scheduling_site, site_config)
+
+    return render(request, 'scheduling/_resources.html', {
         'allocatable_units': allocatable_units,
         'operational_units': operational_units,
         'spec': spec,

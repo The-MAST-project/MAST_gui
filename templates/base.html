@@ -66,7 +66,9 @@
                 <!-- Weizmann Logo -->
                 <img src="{% get_dynamic_static_url 'img/weizmann-logo.png' %}" alt="Weizmann Institute" height="60">
 
-                <!-- Site Selector -->
+                <!-- Site Selector (hidden on scheduling/single page which has its own site selector) -->
+                {% with url_name=request.resolver_match.url_name %}
+                {% if url_name != 'scheduling_single' and url_name != 'scheduling' %}
                 <form method="post" action="{% get_dynamic_url 'select_site' %}" class="d-flex align-items-center">
                     {% csrf_token %}
                     <label for="site-select" class="me-2 mb-0 text-dark">Site:</label>
@@ -78,6 +80,8 @@
                         {% endfor %}
                     </select>
                 </form>
+                {% endif %}
+                {% endwith %}
 
                 <!-- User Menu -->
                 {% if user.is_authenticated %}
