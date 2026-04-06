@@ -1,26 +1,20 @@
-<!-- Units row -->
+<!-- Next observing session row -->
+{% if next_session %}
 <tr>
-  <th scope="row" class="text-nowrap pe-4" style="width: 1%;">Units</th>
+  <th scope="row" class="text-nowrap pe-4" style="width: 1%;">Next session</th>
   <td>
-    <span class="text-muted small me-1">Allocatable:</span>
-    {% for u in allocatable_units %}
-      <span class="badge bg-secondary me-1">{{ u }}</span>
-    {% empty %}
-      <span class="text-muted small">none</span>
-    {% endfor %}
-    <span class="text-muted small ms-3 me-1">Operational:</span>
-    {% for u in operational_units %}
-      <span class="badge bg-success me-1">{{ u }}</span>
-    {% empty %}
-      <span class="text-muted small">none</span>
-    {% endfor %}
+    <span {% if next_session.active %}class="text-success fw-semibold"{% endif %}>
+      {{ next_session.start }}
+    </span>
+    <span class="text-muted small ms-2">{{ next_session.duration_str }}</span>
   </td>
 </tr>
+{% endif %}
 
 <!-- Spectrograph row -->
 {% if spec %}
 <tr>
-  <th scope="row" class="text-nowrap pe-4">Spectrograph</th>
+  <th scope="row" class="text-nowrap pe-4" style="width: 1%;">Spectrograph</th>
   <td>
     {% if spec.operational %}
       <span class="badge bg-success">Operational</span>
@@ -40,3 +34,42 @@
   </td>
 </tr>
 {% endif %}
+
+<!-- Units heading row -->
+<tr>
+  <th scope="row" class="text-nowrap pe-4">Units</th>
+  <td></td>
+</tr>
+
+<!-- Allocatable units row -->
+<tr>
+  <td class="text-nowrap pe-4 ps-3">
+    <small class="text-muted fw-semibold">Allocatable</small>
+    <i class="bi bi-info-circle ms-1 text-muted"
+       data-bs-toggle="tooltip"
+       data-bs-placement="auto"
+       data-bs-title="Deployed and not in maintenance"
+       style="cursor: help; font-size: 0.8em;"></i>
+  </td>
+  <td>
+    {% for u in allocatable_units %}
+      <span class="badge bg-secondary me-1">{{ u }}</span>
+    {% empty %}
+      <span class="text-muted small">none</span>
+    {% endfor %}
+  </td>
+</tr>
+
+<!-- Operational units row -->
+<tr>
+  <td class="text-nowrap pe-4 ps-3">
+    <small class="text-muted fw-semibold">Operational</small>
+  </td>
+  <td>
+    {% for u in operational_units %}
+      <span class="badge bg-success me-1">{{ u }}</span>
+    {% empty %}
+      <span class="text-muted small">none</span>
+    {% endfor %}
+  </td>
+</tr>

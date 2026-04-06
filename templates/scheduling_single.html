@@ -1,37 +1,142 @@
 {% extends 'base.html' %}
+{% load static %}
+{% load dynamic_urls %}
 
 {% block title %}Scheduling — Single Site{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-3">
-  <div class="d-flex align-items-center gap-3 mb-4">
-    <h2 class="mb-0">Single site scheduling</h2>
-    <form method="get" class="mb-0">
-      <select id="siteSelect" name="site" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
-        {% for s in all_sites %}
-        <option value="{{ s.name }}" {% if s.name == scheduling_site %}selected{% endif %}>
-          {{ s.location.name|default:s.name }}
-        </option>
-        {% endfor %}
-      </select>
-    </form>
+  <div class="d-flex align-items-start gap-4 flex-wrap">
+
+    <!-- Left column: heading + resources -->
+    <div style="flex: 0 0 auto;">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <h2 class="mb-0">Single site scheduling</h2>
+        <form method="get" class="mb-0">
+          <select id="siteSelect" name="site" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+            {% for s in all_sites %}
+            <option value="{{ s.name }}" {% if s.name == scheduling_site %}selected{% endif %}>
+              {{ s.location.name|default:s.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+
+      {% if error %}
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+      </div>
+      {% else %}
+      <table class="table table-sm table-borderless align-middle mb-0" style="max-width: 600px;">
+        <tbody id="scheduling-resources"
+               hx-get="{% url 'scheduling_single_resources' %}?site={{ scheduling_site }}"
+               hx-trigger="every 15s"
+               hx-swap="innerHTML">
+          {% include "scheduling/_resources.html" %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+
+    <!-- Right column: day/night map flush with heading -->
+    {% if not error %}
+    <div style="flex: 0 0 auto;">
+      <canvas id="nightMap" width="420" height="210"
+              style="display:block; border-radius: 4px; border: 1px solid #dee2e6;"
+              data-sun-pos-url="{% url 'scheduling_sun_position' %}"
+              data-map-url="{% get_dynamic_static_url 'img/world-map.jpg' %}"
+              data-site-lat="{{ site.location.latitude|default:'' }}"
+              data-site-lon="{{ site.location.longitude|default:'' }}"></canvas>
+    </div>
+    {% endif %}
+
   </div>
-
-  {% if error %}
-  <div class="alert alert-danger">
-    <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
-  </div>
-  {% else %}
-
-  <table class="table table-sm table-borderless align-middle mb-0" style="max-width: 700px;">
-    <tbody id="scheduling-resources"
-           hx-get="{% url 'scheduling_single_resources' %}?site={{ scheduling_site }}"
-           hx-trigger="every 15s"
-           hx-swap="innerHTML">
-      {% include "scheduling/_resources.html" %}
-    </tbody>
-  </table>
-
-  {% endif %}
 </div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('nightMap');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const sunPosUrl = canvas.dataset.sunPosUrl;
+  const siteLat = canvas.dataset.siteLat ? parseFloat(canvas.dataset.siteLat) : null;
+  const siteLon = canvas.dataset.siteLon ? parseFloat(canvas.dataset.siteLon) : null;
+
+  const mapImg = new Image();
+  mapImg.src = canvas.dataset.mapUrl;
+
+  function lonToX(lon) { return (lon + 180) / 360 * W; }
+  function latToY(lat) { return (90 - lat) / 180 * H; }
+
+  function drawMap(subsolarLat, subsolarLon) {
+    ctx.clearRect(0, 0, W, H);
+
+    // Draw map: screen-blend over a light blue base lifts dark oceans more than bright land
+    ctx.fillStyle = '#5588bb';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'screen';
+    ctx.drawImage(mapImg, 0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // Build terminator path and fill night side with dark overlay
+    const slat = subsolarLat * Math.PI / 180;
+    const slon = subsolarLon * Math.PI / 180;
+
+    // For each column, find the y where sin(alt) = 0  →  lat = atan2(cos(lon-slon)*cos(slat), -sin(slat)) ... simpler: scan rows
+    // Use scanline: for each pixel column find terminator y, then fill above or below
+    ctx.beginPath();
+    // Build night polygon by scanning each column
+    const nightPoints = [];
+    for (let px = 0; px <= W; px++) {
+      const lon = (px / W * 360 - 180) * Math.PI / 180;
+      // terminator lat at this lon: sin(lat)*sin(slat) + cos(lat)*cos(slat)*cos(lon-slon) = 0
+      // => tan(lat) = -cos(slat)*cos(lon-slon) / sin(slat)
+      const terminatorLat = Math.atan2(-Math.cos(slat) * Math.cos(lon - slon), Math.sin(slat));
+      const py = (90 - terminatorLat * 180 / Math.PI) / 180 * H;
+      nightPoints.push({px, py});
+    }
+
+    // Determine which pole is in night: check north pole
+    const northInNight = (Math.sin(Math.PI/2) * Math.sin(slat) + Math.cos(Math.PI/2) * Math.cos(slat)) < 0;
+
+    ctx.moveTo(0, northInNight ? 0 : H);
+    nightPoints.forEach(p => ctx.lineTo(p.px, p.py));
+    ctx.lineTo(W, northInNight ? 0 : H);
+    ctx.closePath();
+
+    ctx.fillStyle = 'rgba(0, 20, 60, 0.52)';
+    ctx.fill();
+
+    // Site marker
+    if (siteLat !== null && siteLon !== null) {
+      const sx = lonToX(siteLon), sy = latToY(siteLat);
+      ctx.beginPath();
+      ctx.arc(sx, sy, 4, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(255,80,80,0.95)';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  function load() {
+    fetch(sunPosUrl)
+      .then(r => r.json())
+      .then(data => {
+        if (mapImg.complete && mapImg.naturalWidth > 0) {
+          drawMap(data.lat, data.lon);
+        } else {
+          mapImg.onload = () => drawMap(data.lat, data.lon);
+        }
+      })
+      .catch(() => {});
+  }
+
+  document.addEventListener('DOMContentLoaded', load);
+  setInterval(load, 60000);
+})();
+</script>
 {% endblock %}

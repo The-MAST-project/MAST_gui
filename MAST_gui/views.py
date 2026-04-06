@@ -347,14 +347,15 @@ _GRAFANA_DASHBOARD_URLS = {
 }
 
 def _scheduling_resources(scheduling_site, site_config):
-    """Return (allocatable_units, operational_units, spec, error) for a site."""
+    """Return (allocatable_units, operational_units, spec, next_session, error) for a site."""
+    from datetime import datetime, timezone, timedelta
     from common.models.statuses import SitesStatus, UnitStatus
 
     sites_status: SitesStatus = MastCache().sites_status
     if sites_status is None:
-        return [], [], None, 'No current sites status (yet?)'
+        return [], [], None, None, 'No current sites status (yet?)'
     if not hasattr(sites_status, 'sites') or scheduling_site not in sites_status.sites:
-        return [], [], None, f"No status for site '{scheduling_site}'"
+        return [], [], None, None, f"No status for site '{scheduling_site}'"
 
     site_status = sites_status.sites[scheduling_site]
     allocatable_units = []
@@ -379,7 +380,47 @@ def _scheduling_resources(scheduling_site, site_config):
             'why_not_operational': comp_status.why_not_operational or [],
         }
 
-    return allocatable_units, operational_units, spec, None
+    # Next observing session
+    next_session = None
+    try:
+        now = datetime.now(tz=timezone.utc)
+        window = site_config.observing_window()
+        if window:
+            if now < window.start:
+                # Session hasn't started yet
+                delta = window.start - now
+                hours, rem = divmod(int(delta.total_seconds()), 3600)
+                mins = rem // 60
+                next_session = {
+                    'start': window.start.strftime('%Y-%m-%d %H:%M UTC'),
+                    'duration_str': f'in {hours}h {mins:02d}m',
+                    'active': False,
+                }
+            elif window.start <= now <= window.end:
+                # Currently in session
+                next_session = {
+                    'start': window.start.strftime('%Y-%m-%d %H:%M UTC'),
+                    'duration_str': 'now (ongoing)',
+                    'active': True,
+                }
+            else:
+                # Tonight's session is over; get tomorrow's
+                from datetime import date
+                tomorrow = (now + timedelta(days=1)).date()
+                window2 = site_config.observing_window(day=tomorrow)
+                if window2:
+                    delta = window2.start - now
+                    hours, rem = divmod(int(delta.total_seconds()), 3600)
+                    mins = rem // 60
+                    next_session = {
+                        'start': window2.start.strftime('%Y-%m-%d %H:%M UTC'),
+                        'duration_str': f'in {hours}h {mins:02d}m',
+                        'active': False,
+                    }
+    except Exception:
+        pass
+
+    return allocatable_units, operational_units, spec, next_session, None
 
 
 @login_required
@@ -403,7 +444,7 @@ def scheduling_single(request):
             'spec': None,
         })
 
-    allocatable_units, operational_units, spec, error = _scheduling_resources(scheduling_site, site_config)
+    allocatable_units, operational_units, spec, next_session, error = _scheduling_resources(scheduling_site, site_config)
 
     return render(request, 'scheduling_single.html', {
         'error': error,
@@ -413,6 +454,7 @@ def scheduling_single(request):
         'allocatable_units': allocatable_units,
         'operational_units': operational_units,
         'spec': spec,
+        'next_session': next_session,
     })
 
 
@@ -427,14 +469,97 @@ def scheduling_single_resources(request):
 
     site_config = next((s for s in all_sites if s.name == scheduling_site), None)
     if site_config is None:
-        allocatable_units, operational_units, spec = [], [], None
+        allocatable_units, operational_units, spec, next_session = [], [], None, None
     else:
-        allocatable_units, operational_units, spec, _ = _scheduling_resources(scheduling_site, site_config)
+        allocatable_units, operational_units, spec, next_session, _ = _scheduling_resources(scheduling_site, site_config)
 
     return render(request, 'scheduling/_resources.html', {
         'allocatable_units': allocatable_units,
         'operational_units': operational_units,
         'spec': spec,
+        'next_session': next_session,
+    })
+
+
+@login_required
+def scheduling_sun_position(request):
+    """Return current subsolar point (lat, lon) for the day/night terminator map."""
+    from datetime import datetime, timezone
+    from astropy.coordinates import get_body, AltAz, EarthLocation, ICRS
+    from astropy.time import Time
+    import astropy.units as u
+    from django.http import JsonResponse
+
+    now = Time(datetime.now(tz=timezone.utc))
+    # Subsolar point: convert sun's ICRS coords to geographic (geocentric)
+    sun = get_body('sun', now)
+    # Sun's geocentric RA/Dec → subsolar lat = dec, subsolar lon = RA - GMST
+    from astropy.coordinates import GCRS, ITRS
+    sun_gcrs = sun.transform_to(GCRS(obstime=now))
+    sun_itrs = sun_gcrs.transform_to(ITRS(obstime=now))
+    subsolar_lat = float(sun_itrs.earth_location.lat.deg)
+    subsolar_lon = float(sun_itrs.earth_location.lon.deg)
+
+    return JsonResponse({'lat': round(subsolar_lat, 4), 'lon': round(subsolar_lon, 4)})
+
+
+@login_required
+def scheduling_sun_curve(request):
+    """Return JSON sun-altitude curve for the current night at the given site."""
+    import json
+    import numpy as np
+    from datetime import datetime, timezone, date
+    from astroplan import Observer
+    from astropy.coordinates import EarthLocation, get_body
+    from astropy.time import Time
+    import astropy.units as u
+
+    cache = MastCache()
+    all_sites = cache.sites_config or []
+    default_site = request.session.get('selected_site', 'wis')
+    scheduling_site = request.GET.get('site') or default_site
+    site_config = next((s for s in all_sites if s.name == scheduling_site), None)
+
+    if site_config is None or site_config.location.latitude is None:
+        from django.http import JsonResponse
+        return JsonResponse({'error': 'No location data for site'}, status=404)
+
+    loc = site_config.location
+    observer = Observer(
+        location=EarthLocation(
+            lat=loc.latitude * u.deg,
+            lon=loc.longitude * u.deg,
+            height=(loc.elevation or 0) * u.m,
+        )
+    )
+
+    noon = Time(datetime(date.today().year, date.today().month, date.today().day, 12, 0, 0, tzinfo=timezone.utc))
+    dusk_horizon = (loc.sun_limits.dusk - 3) * u.deg  # 3° buffer for curve start
+    dawn_horizon = (loc.sun_limits.dawn - 3) * u.deg
+
+    try:
+        t_start = observer.sun_set_time(noon, which='next', horizon=dusk_horizon)
+        t_end = observer.sun_rise_time(t_start, which='next', horizon=dawn_horizon)
+    except Exception:
+        from django.http import JsonResponse
+        return JsonResponse({'error': 'Could not compute night window'}, status=500)
+
+    # 5-minute steps
+    n_steps = int((t_end - t_start).to(u.minute).value / 5) + 1
+    times = t_start + np.linspace(0, (t_end - t_start).to(u.hour).value, n_steps) * u.hour
+
+    sun_alts = observer.altaz(times, get_body('sun', times)).alt.deg.tolist()
+    time_strs = [t.to_datetime(timezone=timezone.utc).strftime('%H:%M') for t in times]
+
+    from django.http import JsonResponse
+    return JsonResponse({
+        'times': time_strs,
+        'sun_alt': [round(a, 2) for a in sun_alts],
+        'twilight_astro': loc.sun_limits.dusk,   # e.g. -18
+        'twilight_nautical': -12,
+        'twilight_civil': -6,
+        't_start': t_start.to_datetime(timezone=timezone.utc).strftime('%H:%M'),
+        't_end': t_end.to_datetime(timezone=timezone.utc).strftime('%H:%M'),
     })
 
 
