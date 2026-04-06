@@ -231,7 +231,8 @@
       <i class="bi bi-check-circle-fill" style="font-size:0.9rem; opacity:0.4;"></i>
     </span>
     <span style="margin-right: 0.5rem; min-width: 1em;">Id</span>
-    <span style="flex-grow: 1;">Owner</span>
+    <span style="min-width: 10rem; margin-right: 1rem;">Owner</span>
+    <span style="flex-grow: 1;">Target</span>
     <!-- Bulk Actions dropdown -->
     <div class="d-flex align-items-center ms-2 gap-2" @click.stop>
       <span class="text-muted small" style="white-space:nowrap; display:none;"
@@ -296,7 +297,11 @@
                  style="font-size: 0.9rem;"></i>
             </span>
             <i class="bi bi-person-badge me-2" x-tooltip="p.ulid"></i>
-            <strong x-text="ownerName(p.owner)"></strong>
+            <strong style="min-width: 10rem; margin-right: 1rem;" x-text="ownerName(p.owner)"></strong>
+            <span style="flex-grow: 1; text-align: left;"
+                  x-html="p.target && p.target.name
+                    ? p.target.name
+                    : '<b>RA:</b> ' + (p.target ? Number(p.target.ra_hours).toFixed(4) : '?') + ', <b>Dec:</b> ' + (p.target ? Number(p.target.dec_degrees).toFixed(4) : '?')"></span>
           </button>
           <div class="dropdown me-2" @click.stop>
             <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"

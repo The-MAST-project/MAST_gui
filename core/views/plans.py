@@ -151,6 +151,9 @@ def plans_index(request):
 		if os.path.exists(sr_path):
 			with open(sr_path) as f:
 				scraping_results_json = f.read()
+			logger.info(f"plans_index: loaded scraping_results from {sr_path} ({len(scraping_results_json)} bytes)")
+		else:
+			logger.warning(f"plans_index: scraping_results not found at {sr_path}")
 	except Exception as e:
 		logger.warning(f"plans_index: could not load scraping_results: {e}")
 

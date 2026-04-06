@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Scheduling — Single Site{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <h2 class="mb-3">Scheduling — Single Site</h2>
+
+  <!-- Site selector -->
+  <form method="get" class="d-flex align-items-center gap-2 mb-4">
+    <label for="siteSelect" class="form-label mb-0 fw-semibold">Site</label>
+    <select id="siteSelect" name="site" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+      {% for s in all_sites %}
+      <option value="{{ s.name }}" {% if s.name == scheduling_site %}selected{% endif %}>
+        {{ s.location.name|default:s.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </form>
+
+  {% if error %}
+  <div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+  {% else %}
+
+  <table class="table table-sm table-borderless align-middle mb-0" style="max-width: 700px;">
+    <tbody>
+
+      <!-- Units row -->
+      <tr>
+        <th scope="row" class="text-nowrap pe-4" style="width: 1%;">Units</th>
+        <td>
+          <span class="text-muted small me-1">Allocatable:</span>
+          {% for u in allocatable_units %}
+            <span class="badge bg-secondary me-1">{{ u }}</span>
+          {% empty %}
+            <span class="text-muted small">none</span>
+          {% endfor %}
+          <span class="text-muted small ms-3 me-1">Operational:</span>
+          {% for u in operational_units %}
+            <span class="badge bg-success me-1">{{ u }}</span>
+          {% empty %}
+            <span class="text-muted small">none</span>
+          {% endfor %}
+        </td>
+      </tr>
+
+      <!-- Spectrograph row -->
+      {% if spec %}
+      <tr>
+        <th scope="row" class="text-nowrap pe-4">Spectrograph</th>
+        <td>
+          {% if spec.operational %}
+            <span class="badge bg-success">Operational</span>
+          {% else %}
+            <span class="d-inline-flex align-items-center gap-1">
+              <span class="badge bg-{{ spec.severity }}{% if spec.severity == 'warning' %} text-dark{% endif %}">Not Operational</span>
+              {% if spec.why_not_operational %}
+              <i class="bi bi-info-circle"
+                 data-bs-toggle="tooltip"
+                 data-bs-placement="auto"
+                 data-bs-html="true"
+                 data-bs-title="{% for r in spec.why_not_operational %}{{ r|escape }}{% if not forloop.last %}<br>{% endif %}{% endfor %}"
+                 style="cursor: help;"></i>
+              {% endif %}
+            </span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
+
+    </tbody>
+  </table>
+
+  {% endif %}
+</div>
+{% endblock %}

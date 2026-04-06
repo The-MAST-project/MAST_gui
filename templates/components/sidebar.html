@@ -114,11 +114,20 @@
             </a>
         </div>
         
-        <!-- Scheduling -->
-        <a href="{% url 'scheduling' %}" class="sidebar-item {% if request.resolver_match.url_name == 'scheduling' %}active{% endif %}">
+        <!-- Scheduling (with submenu) -->
+        <div class="sidebar-item" data-bs-toggle="collapse" data-bs-target="#scheduling-submenu" aria-expanded="false">
             <i class="bi bi-clipboard-check"></i>
             <span class="sidebar-item-text">Scheduling</span>
-        </a>
+            <i class="bi bi-chevron-right sidebar-item-arrow"></i>
+        </div>
+        <div class="collapse sidebar-submenu" id="scheduling-submenu">
+            <a href="{% url 'scheduling_single' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'scheduling_single' or request.resolver_match.url_name == 'scheduling' %}active{% endif %}">
+                Single site
+            </a>
+            <a href="{% url 'scheduling_multi' %}" class="sidebar-subitem {% if request.resolver_match.url_name == 'scheduling_multi' %}active{% endif %}">
+                Multi site
+            </a>
+        </div>
         
         <!-- Plans -->
         <a id="sidebar-link-plans" href="{% get_dynamic_url 'plans_index' %}" class="sidebar-item {% if request.resolver_match.url_name == 'plans_index' %}active{% endif %}">
