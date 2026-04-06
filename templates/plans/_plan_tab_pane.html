@@ -234,12 +234,7 @@
     <span style="min-width: 10rem; margin-right: 1rem;">Owner</span>
     <span style="flex-grow: 1;">Target</span>
     <!-- Bulk Actions dropdown -->
-    <div class="d-flex align-items-center ms-2 gap-2" @click.stop>
-      <span class="text-muted small" style="white-space:nowrap; display:none;"
-            x-show="anySelected('{{ tab }}')"
-            x-text="selectedCount('{{ tab }}') > 0
-                ? selectedCount('{{ tab }}') + ' selected'
-                : filteredPlans('{{ tab }}').length + ' filtered'"></span>
+    <div class="ms-2" @click.stop>
       <div class="dropdown">
       <button class="btn btn-sm btn-primary dropdown-toggle" type="button"
               :id="'bulk-actions-{{ tab }}'"
