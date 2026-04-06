@@ -1,0 +1,129 @@
+<div class="container-fluid py-3"
+     id="safety-data-content"
+     hx-get="{{ request.get_full_path }}"
+     hx-trigger="every 20s"
+     hx-target="#safety-data-content"
+     hx-swap="outerHTML">
+  <div class="d-flex align-items-baseline gap-3 mb-4">
+    <h2 class="mb-0">Safety Data</h2>
+    <span class="text-muted small">Updated {{ updated_at }} (every 20 seconds)</span>
+  </div>
+
+  <!-- Site-global and MAST safety status -->
+  <div class="d-flex flex-column gap-2 mb-4" style="width: fit-content;">
+    {% if global_safety %}
+    <div class="alert mb-0 {% if global_safety.safe %}alert-success{% else %}alert-danger{% endif %}">
+      <i class="bi {% if global_safety.safe %}bi-shield-check{% else %}bi-shield-x{% endif %} me-2"></i>
+      <strong>Neot Smadar:</strong>
+      {% if global_safety.safe %}Safe{% else %}Not Safe{% endif %}
+      {% if global_safety.reasons %}
+      <ul class="mb-0 mt-1 ps-3 small">
+        {% for r in global_safety.reasons %}<li>{{ r }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="alert alert-secondary mb-0">
+      <i class="bi bi-shield me-2"></i><strong>Neot Smadar:</strong> unavailable
+    </div>
+    {% endif %}
+    {% if mast_safety %}
+    <div class="alert mb-0 {% if mast_safety.safe %}alert-success{% else %}alert-danger{% endif %}">
+      <i class="bi {% if mast_safety.safe %}bi-shield-check{% else %}bi-shield-x{% endif %} me-2"></i>
+      <strong>MAST:</strong>
+      {% if mast_safety.safe %}Safe{% else %}Not Safe{% endif %}
+      {% if mast_safety.reasons %}
+      <ul class="mb-0 mt-1 ps-3 small">
+        {% for r in mast_safety.reasons %}<li>{{ r }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="alert alert-secondary mb-0">
+      <i class="bi bi-shield me-2"></i><strong>MAST:</strong> unavailable
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- MAST project sensors -->
+  <h5 class="mb-3">MAST Project — Sensors</h5>
+
+  {% if fetch_error %}
+  <div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    Could not fetch sensor data: <code>{{ fetch_error }}</code>
+  </div>
+  {% elif not sensors %}
+  <p class="text-muted">No sensor data available.</p>
+  {% else %}
+  <div class="d-flex flex-column gap-3">
+    {% for sensor in sensors %}
+    {% with safe=sensor.safe name=sensor.name settings=sensor.settings readings=sensor.readings reasons=sensor.reasons_for_not_safe %}
+    <div>
+      <div class="card {% if safe %}border-success{% else %}border-danger{% endif %}" style="width: fit-content; min-width: 280px;">
+        <div class="card-header d-flex align-items-center justify-content-between
+                    {% if safe %}bg-success bg-opacity-10{% else %}bg-danger bg-opacity-10{% endif %}">
+          <strong>{{ name|title }}</strong>
+          {% if safe %}
+          <span class="badge bg-success">Safe</span>
+          {% else %}
+          <span class="badge bg-danger">Not Safe</span>
+          {% endif %}
+        </div>
+        <div class="card-body small">
+
+          <!-- Source -->
+          <div class="text-muted mb-2">
+            <i class="bi bi-plug me-1"></i>{{ settings.source }}
+          </div>
+
+          <!-- Latest readings -->
+          {% if readings and "human-intervention" not in settings.source %}
+          <div class="mb-2">
+            {% if "internal:" not in settings.source %}
+            <div class="fw-semibold mb-1">Readings</div>
+            {% endif %}
+            {% for r in readings %}
+            <div class="d-flex align-items-baseline gap-3">
+              <span class="font-monospace text-end" style="min-width: 4rem;">
+                <span>{{ r.value_int }}</span><span class="text-muted">{{ r.value_dec }}</span>
+              </span>
+              <span class="text-muted small">{{ r.time|slice:":19" }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% if settings.min or settings.max %}
+          <div class="text-muted">
+            Range:
+            {% if settings.min %}≥ {{ settings.min }}{% endif %}
+            {% if settings.min and settings.max %} — {% endif %}
+            {% if settings.max %}≤ {{ settings.max }}{% endif %}
+          </div>
+          {% endif %}
+          {% endif %}
+
+          <!-- Reasons not safe -->
+          {% if reasons %}
+          <div class="mt-2">
+            <div class="fw-semibold text-danger mb-1">Reasons</div>
+            {% for r in reasons %}
+            <div class="text-danger">{{ r }}</div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- Settling -->
+          {% if sensor.started_settling %}
+          <div class="mt-2 text-warning">
+            <i class="bi bi-hourglass-split me-1"></i>Settling…
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>

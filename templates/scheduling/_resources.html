@@ -53,7 +53,21 @@
   </td>
   <td>
     {% for u in allocatable_units %}
-      <span class="badge bg-secondary me-1">{{ u }}</span>
+      {% if u.operational %}
+        <span class="badge bg-secondary me-1">{{ u.name }}</span>
+      {% else %}
+        <span class="d-inline-flex align-items-center me-1 gap-1">
+          <span class="badge bg-warning text-dark">{{ u.name }}</span>
+          {% if u.why_not_operational %}
+          <i class="bi bi-info-circle text-warning"
+             data-bs-toggle="tooltip"
+             data-bs-placement="auto"
+             data-bs-html="true"
+             data-bs-title="{% for r in u.why_not_operational %}{{ r|escape }}{% if not forloop.last %}<br>{% endif %}{% endfor %}"
+             style="cursor: help; font-size: 0.85em;"></i>
+          {% endif %}
+        </span>
+      {% endif %}
     {% empty %}
       <span class="text-muted small">none</span>
     {% endfor %}

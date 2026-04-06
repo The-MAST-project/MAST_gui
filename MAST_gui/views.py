@@ -364,11 +364,14 @@ def _scheduling_resources(scheduling_site, site_config):
     for unit_id in sorted(site_config.deployed_units):
         if unit_id in site_config.units_in_maintenance:
             continue
-        allocatable_units.append(unit_id)
+        unit_info = {'name': unit_id, 'operational': False, 'why_not_operational': []}
         if unit_id in site_status.units:
             unit_status: UnitStatus = site_status.units[unit_id]
+            unit_info['operational'] = bool(unit_status.operational)
+            unit_info['why_not_operational'] = unit_status.why_not_operational or []
             if unit_status.type == 'full' and unit_status.operational:
                 operational_units.append(unit_id)
+        allocatable_units.append(unit_info)
 
     comp_status = getattr(site_status, 'spec', None)
     if comp_status is None:

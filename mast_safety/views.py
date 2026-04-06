@@ -48,16 +48,36 @@ def data(request):
             mast_safety   = _fetch_is_safe(client, "http://10.23.1.25:8001/mast/is_safe")
             r = client.get("http://10.23.1.25:8001/mast/sensors", timeout=5)
             r.raise_for_status()
-            sensors = r.json().get('value', {}).get('sensors', [])
+            raw_sensors = r.json().get('value', {}).get('sensors', [])
+            for s in raw_sensors:
+                # Normalize readings to always be a list, with formatted values
+                raw = s.get('readings')
+                if raw is None:
+                    s['readings'] = []
+                elif isinstance(raw, dict):
+                    s['readings'] = [raw]
+                # Format float values to 3 decimal places
+                for reading in s['readings']:
+                    v = reading.get('value')
+                    if isinstance(v, float):
+                        reading['value_int'] = f'{int(v):>6}'
+                        reading['value_dec'] = f'{abs(v) % 1:.2f}'[1:]  # ".xx"
+                    else:
+                        reading['value_int'] = f'{v:>6}' if v is not None else ''
+                        reading['value_dec'] = ''
+            sensors = raw_sensors
     except Exception as e:
         logger.warning(f"safety data: {e}\n{traceback.format_exc()}")
         fetch_error = str(e)
 
+    from datetime import datetime, timezone
     context = {
         'page_title': 'Safety - Data',
         'sensors': sensors,
         'fetch_error': fetch_error,
         'global_safety': global_safety,
         'mast_safety': mast_safety,
+        'updated_at': datetime.now(tz=timezone.utc).strftime('%H:%M:%S UTC'),
     }
-    return render(request, 'safety/data.html', context)
+    template = 'safety/_data_content.html' if request.headers.get('HX-Request') else 'safety/data.html'
+    return render(request, template, context)
