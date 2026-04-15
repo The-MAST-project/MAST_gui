@@ -1,4 +1,7 @@
 (function () {
+    // Cache the card skeleton — fieldMeta is identical for every plan instance.
+    let _cardCache = null;
+
     /**
      * planViewCards(plan, fieldMeta)
      *
@@ -17,7 +20,8 @@
             cardErrors: {},
 
             init() {
-                this.cards = this._buildCards(fieldMeta || {});
+                if (!_cardCache) _cardCache = this._buildCards(fieldMeta || {});
+                this.cards = _cardCache;
 
                 // Events card — built from plan.events, not from field metadata
                 const rawEvents = (this.plan.events || []).slice();

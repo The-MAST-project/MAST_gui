@@ -3,7 +3,7 @@
 {% load dynamic_urls %}
 
 {% block content %}
-<div x-data="plansPage()" x-init="init()" class="container py-3">
+<div x-data="plansPage()" class="container py-3">
 	<div class="d-flex align-items-center justify-content-between mb-2">
 		<h1 class="mb-0">Plans</h1>
 		<a class="btn btn-primary" href="{% url 'plans_new' %}" x-show="canSubmitPlans" style="display:none;">New Plan</a>

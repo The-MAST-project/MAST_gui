@@ -301,7 +301,7 @@ def sse_stream(request):
             while True:
                 try:
                     # Wait for message with timeout (for keep-alive)
-                    message = client_queue.get(timeout=15)  # Changed from 30 to 15 seconds
+                    message = client_queue.get(timeout=8)
                     
                     # Format as SSE
                     event_type = message.get('event', 'message')

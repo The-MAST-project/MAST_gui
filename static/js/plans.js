@@ -49,6 +49,7 @@
 
             // ── per-tab selection state ──────────────────────────────────────
             selected: {},   // keyed by tab name → Array of ulids
+            expanded: {},   // keyed by ulid → true once accordion has been opened
 
             ownerName(uid) {
                 if (!uid) return 'n/a';

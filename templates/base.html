@@ -209,13 +209,6 @@
 
     <!-- SSE Toast Card Handler - Global -->
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('SSE Handler: DOM loaded, initializing...');
-        
-        // Initialize Bootstrap tooltips
-        initTooltips();
-    });
-
     function initTooltips(root) {
         (root || document).querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
             if (!bootstrap.Tooltip.getInstance(el)) {
@@ -236,8 +229,8 @@
     }).observe(document.body, {childList: true, subtree: true});
 
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('SSE Handler: DOM loaded, initializing...');
-        
+        initTooltips();
+
         // SSE Toast Card Listener
         const eventSource = new EventSource('/sse/stream/');
         window.__sseSource = eventSource;  // expose for page-specific listeners
