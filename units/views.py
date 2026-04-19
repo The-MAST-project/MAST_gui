@@ -8,11 +8,8 @@ from common.api import ControllerApi
 from common.dlipowerswitch import PowerSwitchStatus
 from common.models.statuses import UnitStatus, BasicStatus, FullUnitStatus, SitesStatus
 import asyncio
-from django.http import JsonResponse, FileResponse
+from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-import datetime
-from pathlib import Path
-import mimetypes
 import json
 import logging
 
