@@ -255,7 +255,7 @@ def handle_notification(request):
             return JsonResponse({'broadcasted': False, 'reason': 'no_clients'})
         
         sse_message = update_sse_message_from_update_request(ui_notifications)
-        data = sse_message.model_dump_json() if sse_message else None
+        data = sse_message.model_dump() if sse_message else None
         if data is not None:
             sse_manager.broadcast('notification', data)
             logger.info(f"Broadcast notification to {sse_manager.client_count} clients")
