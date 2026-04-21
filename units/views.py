@@ -408,7 +408,7 @@ def unit_detail(request, unit_name):
 
     controller = ControllerApi(site_name=current_site)
     config_response = asyncio.run(
-        controller.get(f"config/get_unit/{unit_name}")
+        controller.get(f"config/get_unit/{current_site}/{unit_name}")
     )
 
     if config_response.succeeded and config_response.value:
@@ -478,9 +478,9 @@ def toggle_outlet(request, unit_name, outlet_id):
     
     # Toggle the outlet using controller endpoint
     # Returns the new state directly
-    controller = ControllerApi(site_name=current_site)
+    controller_api = ControllerApi(site_name=current_site)
     response = asyncio.run(
-        controller.client.put(f"unit/{current_site}/{unit_name}/power_switch/set_outlet/{outlet_id}/toggle")
+        controller_api.put(f"unit/{current_site}/{unit_name}/power_switch/set_outlet/{outlet_id}/toggle")
     )
     
     if not response.succeeded:
@@ -493,7 +493,7 @@ def toggle_outlet(request, unit_name, outlet_id):
         new_state = 'on' if response.value else 'off'
     
     # Get power switch status to get outlet name
-    power_response = asyncio.run(controller.client.get(f"unit/{current_site}/{unit_name}/power_switch/status"))
+    power_response = asyncio.run(controller_api.get(f"unit/{current_site}/{unit_name}/power_switch/status"))
     
     if power_response.succeeded and power_response.value:
         power_switch_status = PowerSwitchStatus(**power_response.value)
@@ -547,9 +547,9 @@ def save_component_config(request, unit_name, component):
         config_data = json.loads(request.body)
         
         # Get current unit config
-        controller = ControllerApi(site_name=current_site)
+        controller_api = ControllerApi(site_name=current_site)
         get_response = asyncio.run(
-            controller.client.get(f"config/get_unit/{unit_name}")
+            controller_api.get(f"config/get_unit/{current_site}/{unit_name}")
         )
         
         if not get_response.succeeded:
@@ -568,7 +568,7 @@ def save_component_config(request, unit_name, component):
         
         # Save via ControllerApi
         save_response = asyncio.run(
-            controller.client.post(f"config/set_unit/{unit_name}", json=unit_config.model_dump())
+            controller_api.post(f"config/set_unit/{current_site}/{unit_name}", json=unit_config.model_dump())
         )
         
         if save_response.succeeded:

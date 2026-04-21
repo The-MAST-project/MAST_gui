@@ -19,7 +19,7 @@ import json
 from .sse_manager import sse_manager
 
 from accounts.models import User
-from .notification_handler import update_sse_message_from_update_request
+from .notification_handler import update_sse_message_from_update_request, update_cache_from_update_request
 from .context_processors import MastCache, refresh_cache
 
 # from .context_processors import refresh_cache, _MAST_CACHE
@@ -254,6 +254,7 @@ def handle_notification(request):
             logger.info("No SSE clients connected, skipping broadcast")
             return JsonResponse({'broadcasted': False, 'reason': 'no_clients'})
         
+        update_cache_from_update_request(ui_notifications)
         sse_message = update_sse_message_from_update_request(ui_notifications)
         data = sse_message.model_dump() if sse_message else None
         if data is not None:

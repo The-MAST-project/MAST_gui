@@ -32,21 +32,25 @@ def update_cache_from_update_request(update_notifications: UiUpdateNotifications
     match update_notifications.initiator.type:
         case 'unit':
             type_key = 'units'
-        case 'controller' | 'deepspec' | 'highspec':
+        case 'controller' | 'spec':
             type_key = update_notifications.initiator.type
         case _:
             logger.warning(f"Unknown initiator type: {update_notifications.initiator.type}")
             return False
-    if type_key not in site_status:
+
+    type_value = getattr(site_status, type_key, None)
+    if type_value is None:
         logger.warning(f"Type {type_key} not found in site status")
         return False
-    
+
     host_key = update_notifications.initiator.hostname
-    if host_key not in site_status[type_key]:
-        logger.warning(f"Host {host_key} not found in type {type_key}")
-        return False
-    
-    target = site_status[type_key][host_key] if type_key == 'units' else site_status[type_key]
+    if type_key == 'units':
+        if host_key not in type_value:
+            logger.warning(f"Host {host_key} not found in units")
+            return False
+        target = type_value[host_key]
+    else:
+        target = type_value
     if isinstance(target, BasicStatus):
         logger.warning(f"Target for {type_key} {host_key} is BasicStatus, cannot update attributes")
         return False
@@ -58,37 +62,38 @@ def update_cache_from_update_request(update_notifications: UiUpdateNotifications
             logger.warning("No cache info in update message")
             continue
     
-        try:
-            dict_path = update_message.cache.path
-            value = update_message.cache.value
-        
-            # Walk dict_path to leaf (all attributes in Pydantic models)
-            for key in dict_path[:-1]:
-                if not hasattr(target, key):
-                    logger.warning(f"Attribute {key} not found on {type(target).__name__}")
-                    return False
-                target = getattr(target, key)
-                if target is None:
-                    logger.warning(f"Path element {key} is None")
-                    return False
+        if update_message.cache.path is not None:
+            try:
+                dict_path = update_message.cache.path
+                value = update_message.cache.value
             
-            # Set final value (always attribute in Pydantic models)
-            final_key = dict_path[-1]
-            if not hasattr(target, final_key):
-                logger.warning(f"Final attribute {final_key} not found on {type(target).__name__}")
-                return False
-            
-            with MastCache._lock:
-                setattr(target, final_key, value)        
-                # Update cache timestamp
-                MastCache().last_refresh = time.time()
+                # Walk dict_path to leaf (all attributes in Pydantic models)
+                for key in dict_path[:-1]:
+                    if not hasattr(target, key):
+                        logger.warning(f"Attribute {key} not found on {type(target).__name__}")
+                        return False
+                    target = getattr(target, key)
+                    if target is None:
+                        logger.warning(f"Path element {key} is None")
+                        return False
                 
-            logger.info(f"Cache updated: {'.'.join(map(str, dict_path))} = {value}")
-            return True
-        
-        except Exception as e:
-            logger.error(f"Cache update error: {e}", exc_info=True)
-            return False
+                # Set final value (always attribute in Pydantic models)
+                final_key = dict_path[-1]
+                if not hasattr(target, final_key):
+                    logger.warning(f"Final attribute {final_key} not found on {type(target).__name__}")
+                    return False
+                
+                with MastCache._lock:
+                    setattr(target, final_key, value)        
+                    # Update cache timestamp
+                    MastCache().last_refresh = time.time()
+                    
+                logger.info(f"Cache updated: {'.'.join(map(str, dict_path))} = {value}")
+                return True
+            
+            except Exception as e:
+                logger.error(f"Cache update error: {e}", exc_info=True)
+                return False
 
 class CardSSEMessage(BaseModel):
     """
@@ -117,7 +122,7 @@ def card_sses_from_update_request(update_request: UiUpdateNotifications) -> list
             card_sse_message = CardSSEMessage(
                 type=notification.card.type,
                 message=notification.card.message,
-                details=notification.card.details,
+                details=notification.card.details or [],
                 duration=notification.card.duration,
                 component=notification.card.component,
                 data=notification.card.data,
@@ -158,7 +163,7 @@ def dom_sses_from_update_request(update_request: UiUpdateNotifications) -> list[
                     )
                 case 'badge':
                     html = ''
-                    if isinstance(notification.cache.value, list):
+                    if notification.cache is not None and isinstance(notification.cache.value, list):
                         values = notification.cache.value
                         for value in values:
                             html += f'<span class="badge bg-primary me-1">{str(value)}</span>'

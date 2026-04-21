@@ -27,8 +27,8 @@ CONFIG_ENDPOINTS = [
     GuiEndpoint('control', '/config/world', 'GET', 'canView', 'Get sites configuration'),
     GuiEndpoint('control', '/config/users', 'GET', 'canChangeUsers', 'Get all users'),
     GuiEndpoint('control', '/config/user', 'GET', 'canView', 'Get specific user'),
-    GuiEndpoint('control', '/config/get_unit/{unit_name}', 'GET', 'canView', 'Get unit config'),
-    GuiEndpoint('control', '/config/set_unit/{unit_name}', 'POST', 'canChangeConfiguration', 'Set unit config'),
+    GuiEndpoint('control', '/config/get_unit/{current_site}/{unit_name}', 'GET', 'canView', 'Get unit config'),
+    GuiEndpoint('control', '/config/set_unit/{current_site}/{unit_name}', 'POST', 'canChangeConfiguration', 'Set unit config'),
 ]
 
 # Unit Service Endpoints
