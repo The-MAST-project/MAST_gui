@@ -43,8 +43,7 @@ UNIT_ENDPOINTS = [
 TASK_ENDPOINTS = [
     GuiEndpoint('control', '/get_tasks', 'GET', 'canView', 'Get all tasks'),
     GuiEndpoint('control', '/execute_assigned_task', 'POST', 'canUseControls', 'Execute a task'),
-    GuiEndpoint('control', '/task_acquisition_path_notification', 'PUT', None, 'Internal: Task path notification'),
-    GuiEndpoint('control', '/activity_notification', 'PUT', None, 'Internal: Activity notification'),
+GuiEndpoint('control', '/activity_notification', 'PUT', None, 'Internal: Activity notification'),
 ]
 
 # All registered endpoints
