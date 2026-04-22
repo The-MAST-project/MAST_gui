@@ -77,7 +77,7 @@
                 const sr = (window.__PLANS_INIT || {}).scrapingResults || {};
                 this.availableOwners          = sr.owners               || [];
                 this.availableClassifications = sr.known_classifications || sr.classifications || [];
-                this.availableUnits           = sr.requested_units       || [];
+                this.availableUnits           = sr.allocated_units        || [];
 
                 const TABS = ['submitted','pending','completed','postponed','expired','failed','canceled','deleted'];
                 TABS.forEach(t => {
@@ -114,7 +114,7 @@
                     const sr = data.scraping_results || {};
                     if (sr.owners)                                        this.availableOwners          = sr.owners;
                     if (sr.known_classifications || sr.classifications)   this.availableClassifications = sr.known_classifications || sr.classifications;
-                    if (sr.requested_units)                               this.availableUnits           = sr.requested_units;
+                    if (sr.allocated_units)                               this.availableUnits           = sr.allocated_units;
 
                     // reset selection on every load
                     Object.keys(this.selected).forEach(t => this.selected[t] = []);
@@ -430,7 +430,7 @@
                 }
                 // Requested units (any match)
                 if (f.units.enabled && f.units.values.length) {
-                    const ru = p.requested_units || [];
+                    const ru = p.allocated_units || [];
                     if (!f.units.values.some(u => ru.includes(u))) return false;
                 }
                 // Merit

@@ -179,7 +179,7 @@
                     const autofocus = this.getFieldValue('_details', 'autofocus');
                     if (autofocus) items.push({ message: 'Autofocus', plain: true });
 
-                    const units = this.getFieldValue('_details', 'requested_units');
+                    const units = this.getFieldValue('_details', 'required_units');
                     const unitsList = Array.isArray(units) ? units.join(', ') : units;
                     if (unitsList) items.push({ message: unitsList, plain: true });
 
