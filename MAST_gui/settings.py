@@ -4,9 +4,15 @@ Django settings for MAST_gui project with HTMX.
 import os
 from pathlib import Path
 from decouple import config
+from dotenv import load_dotenv
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load .env into os.environ early so MAST_VIRTUAL_HOSTNAME and other vars are
+# visible to code that reads os.environ directly (e.g. MAST_common/hostname.py).
+load_dotenv(BASE_DIR / '.env', override=False)
+
 
 # Security
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')

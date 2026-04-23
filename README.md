@@ -35,7 +35,6 @@ pip install -r requirements.txt
 ### 3. Configure environment
 ```bash
 cp .env.example .env
-# Edit .env with your settings, especially MAST_COMMON_PATH
 ```
 
 ### 4. Create log directory
