@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, '/path/to/MAST_common')
 
-from common.notifications import Notifier
+from MAST_common.notifications import Notifier
 
 # Test focuser position update
 Notifier().ui_update(

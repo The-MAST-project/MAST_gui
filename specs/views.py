@@ -23,7 +23,7 @@ def spec_model(request):
     except Exception:
         thar_filters = []
 
-    from common.spec import GratingNames
+    from MAST_common.spec import GratingNames
     grating_names = list(GratingNames.__args__)
 
     return render(request, 'specs/model.html', {

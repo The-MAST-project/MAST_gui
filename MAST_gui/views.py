@@ -239,7 +239,7 @@ def handle_notification(request):
     """
     Receive notifications from backend controller
     """
-    from common.notifications import UiUpdateNotifications
+    from MAST_common.notifications import UiUpdateNotifications
     try:
         try:
             ui_notifications = UiUpdateNotifications.model_validate_json(request.body)
@@ -349,7 +349,7 @@ _GRAFANA_DASHBOARD_URLS = {
 def _scheduling_resources(scheduling_site, site_config):
     """Return (allocatable_units, operational_units, spec, next_session, error) for a site."""
     from datetime import datetime, timezone, timedelta
-    from common.models.statuses import SitesStatus, UnitStatus
+    from MAST_common.models.statuses import SitesStatus, UnitStatus
 
     sites_status: SitesStatus = MastCache().sites_status
     if sites_status is None:

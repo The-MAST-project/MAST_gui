@@ -3,8 +3,8 @@ Generate API documentation from @gui_endpoint decorated methods
 """
 
 import inspect
-from common.api import ControlApi
-from common.decorators import is_gui_endpoint, get_endpoint_capability, get_endpoint_description
+from MAST_common.api import ControlApi
+from MAST_common.decorators import is_gui_endpoint, get_endpoint_capability, get_endpoint_description
 
 def generate_api_docs():
     """Generate markdown documentation of all GUI-exposed endpoints"""

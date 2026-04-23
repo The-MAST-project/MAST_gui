@@ -6,8 +6,8 @@ Validates endpoint is GUI-accessible and user has required capability.
 from functools import wraps
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from common.decorators import is_gui_endpoint, get_endpoint_capability
-from common.api import ControlApi
+from MAST_common.decorators import is_gui_endpoint, get_endpoint_capability
+from MAST_common.api import ControlApi
 from .permissions import user_has_capability
 import inspect
 

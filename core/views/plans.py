@@ -28,7 +28,7 @@ def plans_new(request):
 		common_path = os.environ.get('MAST_COMMON_PATH', os.path.join(os.path.dirname(__file__), '../../common'))
 		if common_path not in sys.path:
 			sys.path.insert(0, common_path)
-		from common.models.plans import Plan
+		from MAST_common.models.plans import Plan
 		from units.config_utils import extract_field_metadata_recursive
 		field_meta = extract_field_metadata_recursive(Plan)
 		field_meta_json = json.dumps(field_meta)
@@ -37,7 +37,7 @@ def plans_new(request):
 		field_meta_json = '{}'
 
 	try:
-		from common.config import Config
+		from MAST_common.config import Config
 		filter_options = Config().get_thar_filters()
 	except Exception as e:
 		logger.warning(f"plans_new: could not fetch ThAr filter options: {e}")
@@ -74,7 +74,7 @@ def plans_edit(request, ulid):
 		common_path = os.environ.get('MAST_COMMON_PATH', os.path.join(os.path.dirname(__file__), '../../common'))
 		if common_path not in sys.path:
 			sys.path.insert(0, common_path)
-		from common.models.plans import Plan
+		from MAST_common.models.plans import Plan
 		from units.config_utils import extract_field_metadata_recursive
 		field_meta_json = json.dumps(extract_field_metadata_recursive(Plan))
 	except Exception as e:
@@ -82,7 +82,7 @@ def plans_edit(request, ulid):
 		field_meta_json = '{}'
 
 	try:
-		from common.config import Config
+		from MAST_common.config import Config
 		filter_options = Config().get_thar_filters()
 	except Exception as e:
 		logger.warning(f"plans_edit: could not fetch ThAr filter options: {e}")
@@ -129,7 +129,7 @@ def plans_index(request):
 		common_path = os.environ.get('MAST_COMMON_PATH', os.path.join(os.path.dirname(__file__), '../../common'))
 		if common_path not in sys.path:
 			sys.path.insert(0, common_path)
-		from common.models.plans import Plan
+		from MAST_common.models.plans import Plan
 		from units.config_utils import extract_field_metadata_recursive
 		field_meta_json = json.dumps(extract_field_metadata_recursive(Plan))
 	except Exception as e:

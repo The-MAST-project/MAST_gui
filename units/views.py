@@ -3,10 +3,10 @@ Views for unit management and monitoring
 """
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from common.config import Config
-from common.api import ControllerApi
-from common.dlipowerswitch import PowerSwitchStatus
-from common.models.statuses import UnitStatus, BasicStatus, FullUnitStatus, SitesStatus
+from MAST_common.config import Config
+from MAST_common.api import ControllerApi
+from MAST_common.dlipowerswitch import PowerSwitchStatus
+from MAST_common.models.statuses import UnitStatus, BasicStatus, FullUnitStatus, SitesStatus
 import asyncio
 from django.http import JsonResponse, FileResponse
 from django.views.decorators.http import require_http_methods
@@ -17,7 +17,7 @@ import json
 import logging
 
 from .config_utils import extract_field_metadata
-from common.config.focuser import FocuserConfig
+from MAST_common.config.focuser import FocuserConfig
 
 # Set default log level to DEBUG for this module
 logging.basicConfig(level=logging.DEBUG)
@@ -563,7 +563,7 @@ def save_component_config(request, unit_name, component):
         
         if component == 'focuser' and hasattr(unit_config, 'focuser'):
             # Validate with Pydantic
-            from common.config.focuser import FocuserConfig
+            from MAST_common.config.focuser import FocuserConfig
             updated_focuser = FocuserConfig(**config_data)
             unit_config.focuser = updated_focuser
         else:

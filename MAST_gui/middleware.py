@@ -3,7 +3,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import resolve_url
 from urllib.parse import parse_qs, urlencode, urlparse
 
-from common.proxy import ProxyContext
+from MAST_common.proxy import ProxyContext
 
 # URL prefixes that unauthenticated users may access freely
 _PUBLIC_PREFIXES = (

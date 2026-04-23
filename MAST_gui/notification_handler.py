@@ -2,8 +2,8 @@ import logging
 import time
 from pydantic import BaseModel
 from .context_processors import MastCache
-from common.models.statuses import BasicStatus
-from common.notifications import UiUpdateNotifications, NotificationInitiator, NotificationCardType
+from MAST_common.models.statuses import BasicStatus
+from MAST_common.notifications import UiUpdateNotifications, NotificationInitiator, NotificationCardType
 
 logger = logging.getLogger(__name__)
 

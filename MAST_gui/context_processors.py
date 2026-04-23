@@ -11,12 +11,12 @@ from typing import ClassVar
 from pydantic import BaseModel, Field
 
 import time
-from common.config import Config
-from common.api import ControllerApi
+from MAST_common.config import Config
+from MAST_common.api import ControllerApi
 from datetime import datetime
 import asyncio
-from common.models.statuses import SitesStatus
-from common.config.site import Site
+from MAST_common.models.statuses import SitesStatus
+from MAST_common.config.site import Site
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ def controller_status(request):
     site = request.session.get('selected_site', 'wis')
     
     # Get controller_host from site configuration
-    from common.config import Config
+    from MAST_common.config import Config
     config = Config()
     sites = config.get_sites()
     site_obj = next((s for s in sites if s.name == site), None)

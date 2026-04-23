@@ -1,4 +1,4 @@
-from common.proxy import ProxyContext
+from MAST_common.proxy import ProxyContext
 
 
 def get_dynamic_url(request, viewname, *args, **kwargs):
