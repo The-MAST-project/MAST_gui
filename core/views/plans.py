@@ -1,6 +1,5 @@
 import json
 import logging
-import sys
 import os
 
 from django.shortcuts import render
@@ -25,9 +24,6 @@ def plans_new(request):
 
 	# Build field metadata for the new-plan form from the Plan model's json_schema_extra.
 	try:
-		common_path = os.environ.get('MAST_COMMON_PATH', os.path.join(os.path.dirname(__file__), '../../common'))
-		if common_path not in sys.path:
-			sys.path.insert(0, common_path)
 		from MAST_common.models.plans import Plan
 		from units.config_utils import extract_field_metadata_recursive
 		field_meta = extract_field_metadata_recursive(Plan)
@@ -71,9 +67,6 @@ def plans_edit(request, ulid):
 		return HttpResponseForbidden()
 
 	try:
-		common_path = os.environ.get('MAST_COMMON_PATH', os.path.join(os.path.dirname(__file__), '../../common'))
-		if common_path not in sys.path:
-			sys.path.insert(0, common_path)
 		from MAST_common.models.plans import Plan
 		from units.config_utils import extract_field_metadata_recursive
 		field_meta_json = json.dumps(extract_field_metadata_recursive(Plan))
@@ -126,9 +119,6 @@ def plans_index(request):
 	script_prefix = request.META.get("SCRIPT_NAME", "")
 
 	try:
-		common_path = os.environ.get('MAST_COMMON_PATH', os.path.join(os.path.dirname(__file__), '../../common'))
-		if common_path not in sys.path:
-			sys.path.insert(0, common_path)
 		from MAST_common.models.plans import Plan
 		from units.config_utils import extract_field_metadata_recursive
 		field_meta_json = json.dumps(extract_field_metadata_recursive(Plan))

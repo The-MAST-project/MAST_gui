@@ -2,16 +2,11 @@
 Django settings for MAST_gui project with HTMX.
 """
 import os
-import sys
 from pathlib import Path
 from decouple import config
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Add MAST_common to Python path
-MAST_COMMON_PATH = config('MAST_COMMON_PATH', default=str(BASE_DIR.parent / 'MAST_common'))
-sys.path.insert(0, MAST_COMMON_PATH)
 
 # Security
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')

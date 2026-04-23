@@ -17,6 +17,10 @@
 
 ## Quick Start
 
+## Requirements
+
+- Python 3.12+
+
 ### 1. Create virtual environment
 ```bash
 python -m venv venv
