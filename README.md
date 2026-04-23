@@ -53,12 +53,27 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-### 7. Run development server
+### 7. Bypass email verification for superuser (dev only)
+
+django-allauth requires email verification before login. Skip it for your superuser via the shell:
+
+```bash
+python manage.py shell -c "
+from allauth.account.models import EmailAddress
+from accounts.models import User
+u = User.objects.get(username='your_username')
+EmailAddress.objects.get_or_create(user=u, email=u.email, defaults={'primary': True, 'verified': True})
+EmailAddress.objects.filter(user=u, email=u.email).update(verified=True, primary=True)
+print('done')
+"
+```
+
+### 8. Run development server
 ```bash
 python manage.py runserver
 ```
 
-### 8. Access the application
+### 9. Access the application
 Open browser to: http://localhost:8000
 
 ## Technology Stack
