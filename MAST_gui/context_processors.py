@@ -53,9 +53,9 @@ def site_data(request):
     # Find the current site object by name
     current_site_obj = next((s for s in sites if s.name == current_site), None)
     
-    # If not found, use first local site as fallback
+    # If not found, fall back to the local site (per the config file)
     if not current_site_obj and sites:
-        current_site_obj = next((s for s in sites if s.local), sites[0] if sites else None)
+        current_site_obj = Config().local_site or (sites[0] if sites else None)
     
     return {
         'all_sites': sites,
