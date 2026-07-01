@@ -20,3 +20,7 @@ Use a Bootstrap horizontal layout: per field, a `row mb-2 align-items-center` wi
 
 ### Sidebar submenus
 Collapsible submenus (Safety, Manage) use Bootstrap Collapse (`data-bs-toggle="collapse"` + `data-bs-target="#…-submenu"`), **not** a custom `style.display` toggle (which flipped the arrow but never revealed the content). A small script listens to `show.bs.collapse` / `hide.bs.collapse` to swap the chevron icon and auto-opens any submenu containing the active item.
+
+## Project-wide LLM guidance
+
+Cross-repo LLM guidance for MAST lives in the **`mast-claude-config`** repo (`github.com/The-MAST-project/mast-claude-config`) — the overarching home for project-wide instructions (shared coding standards, team working-style, global environment facts), deployed into `~/.claude/` by its `setup.sh`. Keep repo-specific guidance in this file; put genuinely cross-repo guidance there. See `mast-claude-config/CLAUDE.md` for what belongs where.
