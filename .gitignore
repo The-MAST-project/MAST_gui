@@ -55,3 +55,7 @@ docs/social_auth_google.md
 docs/social_signup_flow.md
 MAST_gui/# Code Citations.md
 templates/units/# Code Citations.md
+
+# Claude Code settings (machine/identity-scoped — never commit)
+.claude/settings.json
+.claude/settings.local.json
