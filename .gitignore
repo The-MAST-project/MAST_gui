@@ -36,7 +36,8 @@ db.sqlite3-journal
 .venv
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo
