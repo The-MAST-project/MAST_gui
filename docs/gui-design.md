@@ -73,7 +73,8 @@ Django converts path to HTML element ID by joining with hyphens:
 ```python
 def path_to_html_id(path: list) -> str:
     """Convert notification path to HTML element ID"""
-    return '-'.join(str(p) for p in path)
+    return "-".join(str(p) for p in path)
+
 
 # Examples:
 # ["wis", "unit", "mastw", "focuser", "position"] → "wis-unit-mastw-focuser-position"
@@ -105,48 +106,45 @@ def handle_notification(notification):
     3. If match, generate component-relative html_id and send SSE
     """
     # Update cache with full path
-    target = _MAST_CACHE['status']
-    for key in notification['path'][:-1]:
+    target = _MAST_CACHE["status"]
+    for key in notification["path"][:-1]:
         target = getattr(target, key, None)
         if target is None:
             return  # Path not found, ignore
-    setattr(target, notification['path'][-1], notification['value'])
-    
+    setattr(target, notification["path"][-1], notification["value"])
+
     # Extract site and machine from notification path
     # Path format: [site, machine_type, machine_name?, component, ..., field]
-    notif_site = notification['path'][0]
-    notif_machine_type = notification['path'][1]
-    
-    if notif_machine_type == 'unit':
-        notif_unit = notification['path'][2]
-        component_path = notification['path'][3:]  # Everything after unit name
-    elif notif_machine_type == 'spec':
+    notif_site = notification["path"][0]
+    notif_machine_type = notification["path"][1]
+
+    if notif_machine_type == "unit":
+        notif_unit = notification["path"][2]
+        component_path = notification["path"][3:]  # Everything after unit name
+    elif notif_machine_type == "spec":
         notif_unit = None  # Spec doesn't have unit
-        notif_spec = notification['path'][2]
-        component_path = notification['path'][3:]
-    elif notif_machine_type == 'controller':
+        notif_spec = notification["path"][2]
+        component_path = notification["path"][3:]
+    elif notif_machine_type == "controller":
         notif_unit = None
-        component_path = notification['path'][2:]  # Everything after 'controller'
-    
+        component_path = notification["path"][2:]  # Everything after 'controller'
+
     # Send to each connected user if their selection matches
     for user_session in get_active_sse_connections():
-        selected_site = user_session.get('selected_site')
-        selected_unit = user_session.get('selected_unit')
-        
+        selected_site = user_session.get("selected_site")
+        selected_unit = user_session.get("selected_unit")
+
         # Check if notification matches user's selection
         if notif_site != selected_site:
             continue
-        
-        if notif_machine_type == 'unit' and notif_unit != selected_unit:
+
+        if notif_machine_type == "unit" and notif_unit != selected_unit:
             continue
-        
+
         # Generate component-relative HTML ID (no site/unit prefix)
-        html_id = '-'.join(str(p) for p in component_path)
-        
-        send_sse_to_user(user_session, 'status_update', {
-            'html_id': html_id,
-            'value': notification['value']
-        })
+        html_id = "-".join(str(p) for p in component_path)
+
+        send_sse_to_user(user_session, "status_update", {"html_id": html_id, "value": notification["value"]})
 ```
 
 ### Example Flow

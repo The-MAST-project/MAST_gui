@@ -7,18 +7,18 @@ from common.proxy import ProxyContext
 
 # URL prefixes that unauthenticated users may access freely
 _PUBLIC_PREFIXES = (
-    '/login/',
-    '/logout/',
-    '/signup/',
-    '/accounts/',   # allauth OAuth callbacks
-    '/social/',     # social_force_select
-    '/admin/',
-    '/api/',
-    '/sse/',
-    '/controller-status/',
-    '/__debug__/',
-    '/static/',
-    '/media/',
+    "/login/",
+    "/logout/",
+    "/signup/",
+    "/accounts/",  # allauth OAuth callbacks
+    "/social/",  # social_force_select
+    "/admin/",
+    "/api/",
+    "/sse/",
+    "/controller-status/",
+    "/__debug__/",
+    "/static/",
+    "/media/",
 )
 
 
@@ -34,14 +34,14 @@ class RequireLoginMiddleware:
 
     def __call__(self, request):
         proxy = ProxyContext.from_request(request)
-        dashboard_path = (proxy.base or '') + '/'
+        dashboard_path = (proxy.base or "") + "/"
         if (
-            request.method == 'GET'
+            request.method == "GET"
             and not request.user.is_authenticated
-            and request.path.rstrip('/') + '/' != dashboard_path
+            and request.path.rstrip("/") + "/" != dashboard_path
             and not request.path.startswith(_PUBLIC_PREFIXES)
-            and not any(request.path.startswith((proxy.base or '') + p) for p in _PUBLIC_PREFIXES)
-            and not request.headers.get('HX-Request')
+            and not any(request.path.startswith((proxy.base or "") + p) for p in _PUBLIC_PREFIXES)
+            and not request.headers.get("HX-Request")
         ):
             return HttpResponseRedirect(dashboard_path)
         return self.get_response(request)

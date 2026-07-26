@@ -4,14 +4,21 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0001_initial'),
+        ("accounts", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='user',
-            options={'permissions': [('can_view', 'Can view MAST pages'), ('can_change_configuration', 'Can change configuration'), ('can_control', 'Can use controls'), ('can_manage_users', 'Can manage users'), ('can_manage_plans', 'Can manage plans')]},
+            name="user",
+            options={
+                "permissions": [
+                    ("can_view", "Can view MAST pages"),
+                    ("can_change_configuration", "Can change configuration"),
+                    ("can_control", "Can use controls"),
+                    ("can_manage_users", "Can manage users"),
+                    ("can_manage_plans", "Can manage plans"),
+                ]
+            },
         ),
     ]

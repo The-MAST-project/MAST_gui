@@ -15,7 +15,7 @@ class CustomAccountAdapter(DefaultAccountAdapter):
             # Auto-verify staff/superuser emails so the verification stage is skipped
             if not email_address.verified:
                 email_address.verified = True
-                email_address.save(update_fields=['verified'])
+                email_address.save(update_fields=["verified"])
             return False
         return True
 
@@ -25,21 +25,25 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         """Auto-connect social account to existing account with matching email.
         Also refresh avatar_url from Google on every login."""
         import logging
+
         log = logging.getLogger(__name__)
-        log.warning("pre_social_login: is_existing=%s emails=%s",
-                    sociallogin.is_existing,
-                    [e.email for e in sociallogin.email_addresses])
+        log.warning(
+            "pre_social_login: is_existing=%s emails=%s",
+            sociallogin.is_existing,
+            [e.email for e in sociallogin.email_addresses],
+        )
 
         # Refresh avatar for existing linked accounts
         if sociallogin.is_existing:
-            picture = sociallogin.account.extra_data.get('picture', '')
+            picture = sociallogin.account.extra_data.get("picture", "")
             if picture and sociallogin.user.avatar_url != picture:
                 sociallogin.user.avatar_url = picture
-                sociallogin.user.save(update_fields=['avatar_url'])
+                sociallogin.user.save(update_fields=["avatar_url"])
             return
 
         from allauth.account.models import EmailAddress
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         for email_address in sociallogin.email_addresses:
             email = email_address.email
@@ -63,10 +67,11 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
 
     def save_user(self, request, sociallogin, form=None):
         from accounts.models import unique_username, unique_display
+
         user = super().save_user(request, sociallogin, form)
-        user.username = unique_username(user.first_name, '', user.last_name)
+        user.username = unique_username(user.first_name, "", user.last_name)
         user.display = unique_display(user.first_name, user.last_name)
         user.is_active = False
-        user.avatar_url = sociallogin.account.extra_data.get('picture', '')
+        user.avatar_url = sociallogin.account.extra_data.get("picture", "")
         user.save()
         return user
