@@ -36,8 +36,9 @@ db.sqlite3-journal
 .venv
 
 # IDE
-.vscode/*
-!.vscode/settings.json
+# .vscode/ contents are ignored (incl. nested dirs), but .vscode/settings.json
+# is committed for shared ruff config — a tracked file stays tracked despite this.
+.vscode/
 .idea/
 *.swp
 *.swo
