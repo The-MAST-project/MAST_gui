@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from common.config import Config
 from common.api import ControllerApi
 from common.dlipowerswitch import PowerSwitchStatus
-from common.models.statuses import UnitStatus, BasicStatus, FullUnitStatus, SitesStatus
+from common.models.statuses import UnitStatus, BasicUnitStatus, FullUnitStatus, SitesStatus, StatusType
 import asyncio
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -53,12 +53,12 @@ def units_list(request):
     # Get site status from cache
     from MAST_gui.context_processors import MastCache
 
-    sites_status: SitesStatus = MastCache().sites_status
+    sites_status: SitesStatus | None = MastCache().sites_status
 
     error = None
     if sites_status is None:
         error = 'No current sites status (yet?)'
-    if not hasattr(sites_status, 'sites') or current_site not in sites_status.sites:
+    if not hasattr(sites_status, 'sites') or sites_status is None or current_site not in sites_status.sites:
         error = f"No status for site '{current_site}' from '{site_config.controller_host}'"
     if error:
         return render(request, 'units/list.html', {
@@ -79,7 +79,7 @@ def units_list(request):
         }
         
         # building.units is a list[str] (unit IDs)
-        for unit_id in building.units:
+        for unit_id in building.units or []:
             
             unit_data = {
                 'deployed': unit_id in site_config.deployed_units,
@@ -95,12 +95,17 @@ def units_list(request):
             }
 
             if unit_id in site_config.deployed_units:
-                if sites_status.sites and current_site in sites_status.sites and unit_id in sites_status.sites[current_site].units:
+                if sites_status is not None \
+                    and sites_status.sites \
+                    and current_site in sites_status.sites \
+                    and sites_status.sites[current_site].units is not None \
+                    and isinstance(sites_status.sites[current_site].units, dict) \
+                    and unit_id in sites_status.sites[current_site].units:
                 
                     unit_status: UnitStatus = sites_status.sites[current_site].units[unit_id]
                     unit_data['detected'] = unit_status.detected if hasattr(unit_status, 'detected') else False
 
-                    if unit_status.type == 'basic':
+                    if unit_status.type == StatusType.BASIC:
                         # Controller couldn't reach unit
                         unit_data['detected'] = unit_status.detected if hasattr(unit_status, 'detected') else False
                         unit_data['operational'] = False
@@ -110,7 +115,7 @@ def units_list(request):
                         else:
                             unit_data['severity'] = 'danger'
                             unit_data['status'] = ['Not detected']
-                    elif unit_status.type == 'full':
+                    elif unit_status.type == StatusType.FULL:
                         # Full status from unit
                         unit_data['operational'] = unit_status.operational
                         unit_data['severity'] = 'success' if unit_status.operational else 'warning'
@@ -146,8 +151,8 @@ def units_list(request):
     
     # Prepare instrument room components
     instrument_room = {
-        'spec': None,
-        'controller': None,
+        # 'spec': None,
+        # 'controller': None,
     }
     
     if sites_status and hasattr(sites_status, 'sites') and current_site in sites_status.sites:
@@ -164,18 +169,22 @@ def units_list(request):
                     component_display_name = 'Controller'
                 case _:
                     comp_status = getattr(site_status, comp_name, None)
+                    component_display_name = 'Unknown'
             
             detected = False if comp_status is None else getattr(comp_status, 'detected', False)
             powered = False if comp_status is None else getattr(comp_status, 'powered', False)
+            severity = 'error'
             if powered:
                 if detected:
-                    if comp_status.operational:
+                    if isinstance(comp_status, FullUnitStatus) and comp_status.operational:
                         severity = 'success'
                     else:
                         severity = 'warning'
                 else:
                     severity = 'warning'
-                    
+                    operational = False
+            operational = False
+            why_not_operational = []
             match comp_name:
                 case 'controller':
                     severity = 'success'
@@ -243,36 +252,39 @@ def unit_detail(request, unit_name):
     if status_response.succeeded and status_response.value:
         # response.value is discriminated union UnitStatus
         # logger.info(f"Unit {unit_name} status response: {status_response.value}")
-        unit_status = BasicStatus(**status_response.value) if status_response.value['type'] == 'basic' else FullUnitStatus(**status_response.value)
+        status = BasicUnitStatus(**status_response.value) if status_response.value['type'] == StatusType.BASIC else FullUnitStatus(**status_response.value)
+        unit_status = status
         
-        if unit_status.type == 'basic':
+        if unit_status.type == StatusType.BASIC:
             # Controller couldn't reach unit - show limited info
             unit_operational = unit_status.operational
             unit_info = {
-                'type': 'basic',
+                'type': StatusType.BASIC,
                 'powered': unit_status.powered,
                 'detected': unit_status.detected,
                 'operational': unit_status.operational
             }
         
-        elif unit_status.type == 'full':
+        elif isinstance(unit_status, FullUnitStatus):
             # Full status from unit - use all available data
             unit_operational = unit_status.operational
             
             # Convert activities_verbal to list if it's a string
-            activities_list = unit_status.activities_verbal or []
-            if isinstance(activities_list, str):
-                # If it's a single string, wrap it in a list
-                activities_list = [activities_list]
+            activities_list = []
+            if unit_status is not None:
+                activities_list = unit_status.activities_verbal or []
+                if isinstance(activities_list, str):
+                    # If it's a single string, wrap it in a list
+                    activities_list = [activities_list]
             
             unit_info = {
-                'type': 'full',
+                'type': StatusType.FULL,
                 'powered': unit_status.powered,
                 'detected': unit_status.detected,
                 'operational': unit_status.operational,
                 'guiding': unit_status.guiding,
                 'autofocusing': unit_status.autofocusing,
-                'activities_verbal': activities_list,  # Now guaranteed to be a list
+                'activities_verbal': activities_list or [],  # Now guaranteed to be a list
                 'status': unit_status.why_not_operational or []
             }
             
@@ -380,7 +392,7 @@ def unit_detail(request, unit_name):
             outlet_id = getattr(outlet, 'id', outlet.name)
             
             # Computer outlet cannot be toggled - must use Unit controls
-            is_computer = outlet.name.lower() == 'computer'
+            is_computer = outlet.name is not None and outlet.name.lower() == 'computer'
             
             outlets.append({
                 'id': outlet_id,  # Keep original ID from backend
@@ -506,7 +518,7 @@ def toggle_outlet(request, unit_name, outlet_id):
                 break
         
         if outlet:
-            is_computer = outlet.name.lower() == 'computer'
+            is_computer = outlet.name is not None and outlet.name.lower() == 'computer'
             user_can_control = request.user.has_perm('auth.canUseControls')
             
             # Return the complete outlet HTML for swap
@@ -558,7 +570,7 @@ def save_component_config(request, unit_name, component):
         # Update the specific component config
         unit_config = get_response.value
         
-        if component == 'focuser' and hasattr(unit_config, 'focuser'):
+        if component == 'focuser' and unit_config is not None and hasattr(unit_config, 'focuser') and unit_config.focuser is not None:
             # Validate with Pydantic
             from common.config.focuser import FocuserConfig
             updated_focuser = FocuserConfig(**config_data)
@@ -568,7 +580,7 @@ def save_component_config(request, unit_name, component):
         
         # Save via ControllerApi
         save_response = asyncio.run(
-            controller_api.post(f"config/set_unit/{current_site}/{unit_name}", json=unit_config.model_dump())
+            controller_api.put(f"config/set_unit/{current_site}/{unit_name}", json=unit_config.model_dump())
         )
         
         if save_response.succeeded:

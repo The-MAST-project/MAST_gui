@@ -20,7 +20,9 @@ from .sse_manager import sse_manager
 
 from accounts.models import User
 from .notification_handler import update_sse_message_from_update_request, update_cache_from_update_request
-from .context_processors import MastCache, refresh_cache
+from .context_processors import MastCache
+
+from common.models.statuses import StatusType
 
 # from .context_processors import refresh_cache, _MAST_CACHE
 
@@ -367,10 +369,15 @@ def _scheduling_resources(scheduling_site, site_config):
             continue
         unit_info = {'name': unit_id, 'operational': False, 'why_not_operational': []}
         if unit_id in site_status.units:
+            if site_status.units is None:
+                unit_info['operational'] = False
+                unit_info['why_not_operational'] = ['No status available for unit']
+                allocatable_units.append(unit_info)
+                continue
             unit_status: UnitStatus = site_status.units[unit_id]
             unit_info['operational'] = bool(unit_status.operational)
             unit_info['why_not_operational'] = unit_status.why_not_operational or []
-            if unit_status.type == 'full' and unit_status.operational:
+            if unit_status.type == StatusType.FULL and unit_status.operational:
                 operational_units.append(unit_id)
         allocatable_units.append(unit_info)
 

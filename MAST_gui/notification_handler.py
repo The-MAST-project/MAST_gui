@@ -2,7 +2,7 @@ import logging
 import time
 from pydantic import BaseModel
 from .context_processors import MastCache
-from common.models.statuses import BasicStatus
+from common.models.statuses import BaseStatus
 from common.notifications import UiUpdateNotifications, NotificationInitiator, NotificationCardType
 
 logger = logging.getLogger(__name__)
@@ -51,8 +51,8 @@ def update_cache_from_update_request(update_notifications: UiUpdateNotifications
         target = type_value[host_key]
     else:
         target = type_value
-    if isinstance(target, BasicStatus):
-        logger.warning(f"Target for {type_key} {host_key} is BasicStatus, cannot update attributes")
+    if isinstance(target, BaseStatus):
+        logger.warning(f"Target for {type_key} {host_key} is BaseStatus, cannot update attributes")
         return False
     
     for update_message in update_notifications.notifications:
@@ -83,7 +83,7 @@ def update_cache_from_update_request(update_notifications: UiUpdateNotifications
                     logger.warning(f"Final attribute {final_key} not found on {type(target).__name__}")
                     return False
                 
-                with MastCache._lock:
+                with MastCache.lock:
                     setattr(target, final_key, value)        
                     # Update cache timestamp
                     MastCache().last_refresh = time.time()
