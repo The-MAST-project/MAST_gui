@@ -10,6 +10,7 @@ Defaults:
   port: 8008
   origins: '*' (allow all)
 """
+
 import argparse
 import http.server
 import socketserver

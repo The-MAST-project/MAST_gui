@@ -3,13 +3,14 @@ from django.contrib.auth.backends import BaseBackend, ModelBackend
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 
-logger = logging.getLogger('mast.accounts')
+logger = logging.getLogger("mast.accounts")
 
 
 class LocalUserBackend(BaseBackend):
     """
     Custom backend kept for future local override use.
     """
+
     def authenticate(self, request, username=None, password=None, **kwargs):
         return None
 
@@ -26,6 +27,7 @@ class RegisteredUserBackend(ModelBackend):
     Users must be explicitly approved before they can log in.
     Admin group members are granted all permissions (replaces is_superuser).
     """
+
     def authenticate(self, request, username=None, password=None, **kwargs):
         User = get_user_model()
         try:
@@ -37,8 +39,7 @@ class RegisteredUserBackend(ModelBackend):
         return None
 
     def _is_admin(self, user_obj):
-        return user_obj.is_active and \
-               user_obj.groups.filter(name='Admin').exists()
+        return user_obj.is_active and user_obj.groups.filter(name="Admin").exists()
 
     def has_perm(self, user_obj, perm, obj=None):
         if self._is_admin(user_obj):
