@@ -1,44 +1,39 @@
-# Django Core
-Django>=4.2,<5.0
-python-decouple>=3.8
+# MAST_gui runtime dependencies.
+#
+# Pinned from the live environment: mast-ns-control (this machine), MAST_gui/.venv.
+#
+# UTF-8, no BOM. When editing from PowerShell pass -Encoding utf8 to
+# Out-File / Set-Content (see MAST_unit DECISIONS.md [2026-05-14]).
+#
+# Declared here but NOT installed in the live venv, so left unpinned
+# -- verify whether these are still needed:
+#   python-dotenv, daphne
+#
 
-# Database
-pymongo>=4.6.0
-
-# Authentication
-django-allauth>=0.57.0
-
-# HTMX Integration
-django-htmx>=1.17.0
-
-# Forms and UI
-django-crispy-forms>=2.1
-crispy-bootstrap5>=0.7
-
-# Utilities
-Pillow>=10.0.0
-python-dateutil>=2.8.2
-cachetools>=5.3.0
-
-# API/HTTP
-requests>=2.31.0
-
-# WebSocket
-channels>=4.0.0
-channels-redis>=4.1.0
-
-# Development
-django-debug-toolbar>=4.2.0
-django-extensions>=3.2.0
-jwt
-humanfriendly
-httpx
-matplotlib
-rich
-astropy
-pydantic>=2.5.0
+Django==5.2.9
+python-decouple==3.8
+pymongo==4.15.4
+django-allauth==65.13.1
+django-htmx==1.27.0
+django-crispy-forms==2.5
+crispy-bootstrap5==2025.6
+Pillow==12.0.0
+python-dateutil==2.9.0.post0
+cachetools==6.2.2
+requests==2.32.5
+channels==4.3.2
+channels-redis==4.3.0
+django-debug-toolbar==6.1.0
+django-extensions==4.1
+jwt==1.4.0
+humanfriendly==10.0
+httpx==0.28.1
+matplotlib==3.10.7
+rich==14.2.0
+astropy==7.2.0
+pydantic==2.12.5
 python-dotenv>=1.0.0
 daphne>=4.0.0
-python-ulid
-django-bootstrap-datepicker-plus
-django-q2
+python-ulid==3.1.0
+django-bootstrap-datepicker-plus==5.0.6
+django-q2==1.9.0
