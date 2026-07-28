@@ -1,39 +1,42 @@
 # MAST_gui runtime dependencies.
 #
-# Pinned from the live environment: mast-ns-control (this machine), MAST_gui/.venv.
+# Pinned to the versions currently available on PyPI, resolved for
+# MAST_control and MAST_gui TOGETHER. Both run on mast-ns-control and
+# share one venv (<top>/.venv), so any package they both declare must
+# carry the same version -- resolving them jointly is what guarantees it.
+# Previously the two files were pinned from their own venvs, built 11
+# months apart, and disagreed on astropy, httpx, pydantic, pymongo and
+# rich; provisioning the compound 'control' role now fails loudly on any
+# such contradiction rather than letting the last file win.
 #
 # UTF-8, no BOM. When editing from PowerShell pass -Encoding utf8 to
 # Out-File / Set-Content (see MAST_unit DECISIONS.md [2026-05-14]).
 #
-# Declared here but NOT installed in the live venv, so left unpinned
-# -- verify whether these are still needed:
-#   python-dotenv, daphne
-#
 
-Django==5.2.9
+Django==6.0.7
 python-decouple==3.8
-pymongo==4.15.4
-django-allauth==65.13.1
-django-htmx==1.27.0
-django-crispy-forms==2.5
-crispy-bootstrap5==2025.6
-Pillow==12.0.0
+pymongo==4.17.0
+django-allauth==65.18.0
+django-htmx==1.28.0
+django-crispy-forms==2.6
+crispy-bootstrap5==2026.3
+Pillow==12.3.0
 python-dateutil==2.9.0.post0
-cachetools==6.2.2
-requests==2.32.5
+cachetools==7.1.6
+requests==2.34.2
 channels==4.3.2
 channels-redis==4.3.0
-django-debug-toolbar==6.1.0
+django-debug-toolbar==7.0.0
 django-extensions==4.1
 jwt==1.4.0
 humanfriendly==10.0
 httpx==0.28.1
-matplotlib==3.10.7
-rich==14.2.0
-astropy==7.2.0
-pydantic==2.12.5
-python-dotenv>=1.0.0
-daphne>=4.0.0
-python-ulid==3.1.0
-django-bootstrap-datepicker-plus==5.0.6
-django-q2==1.9.0
+matplotlib==3.11.1
+rich==15.0.0
+astropy==8.0.1
+pydantic==2.13.4
+python-dotenv==1.2.2
+daphne==4.2.3
+python-ulid==4.0.1
+django-bootstrap-datepicker-plus==6.0.0
+django-q2==1.10.0
