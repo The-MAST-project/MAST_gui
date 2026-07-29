@@ -224,11 +224,15 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
+        # UtcFormatter renders {asctime} in UTC with a trailing 'Z', matching the
+        # other MAST services and the UTC directory the file handler rolls on.
         "verbose": {
+            "()": "common.mast_logging.UtcFormatter",
             "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
             "style": "{",
         },
         "simple": {
+            "()": "common.mast_logging.UtcFormatter",
             "format": "{levelname} {asctime} {message}",
             "style": "{",
         },
@@ -239,7 +243,7 @@ LOGGING = {
             "formatter": "simple",
         },
         "file": {
-            "class": "MAST_gui.logging_handlers.DailyDirectoryHandler",
+            "class": "common.mast_logging.DailyFileHandler",
             "base_dir": "/var/log/mast",
             "filename": "ui.log",
             "formatter": "verbose",
