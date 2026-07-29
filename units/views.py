@@ -16,10 +16,11 @@ import logging
 
 from .config_utils import extract_field_metadata
 from common.config.focuser import FocuserConfig
+from common.mast_logging import get_logger
 
 # Set default log level to DEBUG for this module
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @login_required

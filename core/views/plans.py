@@ -1,13 +1,13 @@
 import json
-import logging
 import sys
 import os
 
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
+from common.mast_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @login_required

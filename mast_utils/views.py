@@ -2,13 +2,13 @@
 Utility views for HTMX endpoints and common functionality.
 """
 
-import logging
 from datetime import datetime
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
+from common.mast_logging import get_logger
 
-logger = logging.getLogger("mast.mast_utils")
+logger = get_logger(__name__)
 
 
 @login_required

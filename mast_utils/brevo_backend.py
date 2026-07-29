@@ -3,12 +3,12 @@ Custom Django email backend that sends via Brevo's HTTP API (port 443),
 bypassing the SMTP relay which is blocked by the firewall.
 """
 
-import logging
 import requests
 from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
+from common.mast_logging import get_logger
 
-logger = logging.getLogger("mast.email")
+logger = get_logger(__name__)
 
 
 class BrevoEmailBackend(BaseEmailBackend):

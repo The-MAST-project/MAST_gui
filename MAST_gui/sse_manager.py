@@ -2,13 +2,13 @@
 Server-Sent Events (SSE) manager for broadcasting notifications to connected clients
 """
 
-import logging
 import queue
 import time
 from threading import Lock
 from typing import Dict
+from common.mast_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class SSEConnectionManager:

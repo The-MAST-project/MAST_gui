@@ -1,10 +1,10 @@
 from django.apps import AppConfig
 import threading
-import logging
 
 from .context_processors import MastCache
+from common.mast_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MastGuiConfig(AppConfig):

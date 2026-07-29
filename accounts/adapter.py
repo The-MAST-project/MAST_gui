@@ -1,5 +1,6 @@
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from common.mast_logging import get_logger
 
 
 class CustomAccountAdapter(DefaultAccountAdapter):
@@ -26,7 +27,7 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         Also refresh avatar_url from Google on every login."""
         import logging
 
-        log = logging.getLogger(__name__)
+        log = get_logger(__name__)
         log.warning(
             "pre_social_login: is_existing=%s emails=%s",
             sociallogin.is_existing,

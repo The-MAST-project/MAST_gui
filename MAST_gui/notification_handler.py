@@ -1,11 +1,11 @@
-import logging
 import time
 from pydantic import BaseModel
 from .context_processors import MastCache
 from common.models.statuses import BaseStatus
 from common.notifications import UiUpdateNotifications, NotificationInitiator, NotificationCardType
+from common.mast_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def update_cache_from_update_request(update_notifications: UiUpdateNotifications):
