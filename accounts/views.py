@@ -1,4 +1,3 @@
-import logging
 import re
 import secrets
 import threading
@@ -23,8 +22,9 @@ from django.views.decorators.http import require_http_methods
 
 from accounts.forms import RegistrationForm, LocalSignupForm, ProfileForm
 from accounts.models import User, MASTPermissions, unique_display
+from common.mast_logging import get_logger
 
-logger = logging.getLogger("mast.accounts")
+logger = get_logger(__name__)
 
 
 _CAPABILITIES = [

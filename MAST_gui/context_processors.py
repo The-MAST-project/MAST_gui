@@ -4,7 +4,6 @@ Context processors to make data available to all templates
 
 from __future__ import annotations
 
-import logging
 import sys
 from pathlib import Path
 from threading import Lock
@@ -18,8 +17,9 @@ from datetime import datetime
 import asyncio
 from common.models.statuses import SitesStatus
 from common.config.site import Site
+from common.mast_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Add common submodule to Python path
 common_path = Path(__file__).parent.parent / "common"
@@ -68,7 +68,7 @@ def site_data(request):
 Context processors for adding global template variables.
 """
 
-logger = logging.getLogger("mast.context_processors")
+logger = get_logger(__name__)
 
 
 # _MAST_CACHE_LOCK: Lock = Lock()

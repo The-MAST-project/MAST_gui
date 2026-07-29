@@ -3,9 +3,9 @@ Context processors for MAST_gui.
 Adds site information and user capabilities to all templates.
 """
 
-import logging
+from common.mast_logging import get_logger
 
-logger = logging.getLogger("mast.dashboard")
+logger = get_logger(__name__)
 
 
 def site_context(request):

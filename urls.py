@@ -12,10 +12,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib import messages
 from django.db import IntegrityError
-import logging
 from views.urls import get_dynamic_url
+from common.mast_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def dashboard(request):
