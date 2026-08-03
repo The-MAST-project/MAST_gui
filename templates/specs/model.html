@@ -24,6 +24,7 @@
     min-height: 0;
     position: relative;
     background: #1a1a2e;
+    margin-right: 0.5cm;
   }
   #spec-canvas {
     width: 100% !important;
@@ -479,6 +480,16 @@ class ModelUpdater {
         this._applyLightPaths();
       } else if (card.type === 'end') {
         this.lightPathVisible.highspec = false;
+        this._applyLightPaths();
+      }
+    }
+
+    // --- Spec exposing → highspec/deepspec light path on/off ---
+    for (const card of (update.cards || [])) {
+      if (card.component !== 'spec') continue;
+      const instrument = card.data?.instrument;
+      if (instrument === 'highspec' || instrument === 'deepspec') {
+        this.lightPathVisible[instrument] = (card.type === 'start');
         this._applyLightPaths();
       }
     }

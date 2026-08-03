@@ -335,11 +335,17 @@
             </ul>
           </div>
         </h2>
-        <div :id="'{{ tab }}-'+p.ulid" class="accordion-collapse collapse">
-          <div class="accordion-body" style="padding: 0.75cm;"
-               x-data="planViewCards(p, (window.__PLANS_INIT || {}).fieldMeta || {})">
-            {% include "plans/_plan_cards.html" %}
-          </div>
+        <div :id="'{{ tab }}-'+p.ulid" class="accordion-collapse collapse"
+             x-init="$el.addEventListener('shown.bs.collapse', () => { expanded[p.ulid] = true })">
+          <template x-if="expanded[p.ulid]">
+            <div class="accordion-body" style="padding: 0.75cm; padding-left: calc(2rem + 28px);padding-right: calc(3.5rem + 28px);"
+                 x-data="planViewCards(p, (window.__PLANS_INIT || {}).fieldMeta || {})">
+              {% include "plans/_plan_cards.html" %}
+            </div>
+          </template>
+          <template x-if="!expanded[p.ulid]">
+            <div class="accordion-body py-3"></div>
+          </template>
         </div>
       </div>
     </template>

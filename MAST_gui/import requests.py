@@ -4,27 +4,20 @@ import time
 
 BASE_URL = "http://mast-wis-control:8000"
 
+
 def send_notification(path, value):
     """Send a test notification"""
     notification = {
-        "initiator": {
-            "site": "wis",
-            "machine_type": "unit",
-            "machine_name": "mastw",
-            "project": "mast"
-        },
+        "initiator": {"site": "wis", "machine_type": "unit", "machine_name": "mastw", "project": "mast"},
         "type": "status_update",
         "value": value,
-        "cache": {"path": path}
+        "cache": {"path": path},
     }
-    
-    resp = requests.post(
-        f"{BASE_URL}/api/notifications",
-        json=notification,
-        timeout=5
-    )
+
+    resp = requests.post(f"{BASE_URL}/api/notifications", json=notification, timeout=5)
     print(f"Sent: {'.'.join(path)} = {value} → {resp.status_code}")
     return resp.ok
+
 
 def check_cache():
     """Check cache contents"""
@@ -34,6 +27,7 @@ def check_cache():
         print(f"\nCache timestamp: {data.get('last_refresh')}")
         return data
     return None
+
 
 # Run tests
 print("=== Testing Notification System ===\n")

@@ -209,13 +209,6 @@
 
     <!-- SSE Toast Card Handler - Global -->
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('SSE Handler: DOM loaded, initializing...');
-        
-        // Initialize Bootstrap tooltips
-        initTooltips();
-    });
-
     function initTooltips(root) {
         (root || document).querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
             if (!bootstrap.Tooltip.getInstance(el)) {
@@ -236,72 +229,93 @@
     }).observe(document.body, {childList: true, subtree: true});
 
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('SSE Handler: DOM loaded, initializing...');
-        
-        // SSE Toast Card Listener
-        const eventSource = new EventSource('/sse/stream/');
-        window.__sseSource = eventSource;  // expose for page-specific listeners
-        console.log('SSE Handler: EventSource created');
-        
+        initTooltips();
+
+        // SSE connection state
         let reconnectCount = 0;
         let connectionStartTime = Date.now();
-        
-        eventSource.onopen = function(e) {
-            const duration = ((Date.now() - connectionStartTime) / 1000).toFixed(1);
-            if (reconnectCount > 0) {
-                console.log(`SSE Handler: Reconnected after ${duration}s (connection #${reconnectCount + 1})`, e);
-            } else {
-                console.log('SSE Handler: Initial connection opened', e);
+        let lastSSEActivity = Date.now();
+        const SSE_TIMEOUT_MS = 20_000;  // 2.5× the 8s server keep-alive interval
+
+        function connectSSE() {
+            if (window.__sseSource) {
+                window.__sseSource.close();
             }
-            reconnectCount++;
+
+            const eventSource = new EventSource('{% url "sse_stream" %}');
+            window.__sseSource = eventSource;
             connectionStartTime = Date.now();
-        };
-        
-        eventSource.addEventListener('notification', function(e) {
-            console.log('SSE Handler: Notification received', e.data);
-            const event = JSON.parse(e.data);
-            console.log('SSE Handler: Parsed event data', event);
-            
-            update = JSON.parse(event);
-            showEventDoms(update);
-            if (shoulShowEventCards(update)) {
-                showEventCards(update);
-            }
-        });
-        
-        eventSource.addEventListener('activity_refresh', function(e) {
-            const data = JSON.parse(e.data);
-            console.log('SSE Handler: UiNotification received', data);
-            
-            // Check if we're on units page and site matches
-            const currentPage = window.location.pathname;
-            const selectedSite = '{{ request.session.selected_site }}';
-            
-            if (!currentPage.match(/\/units\/?$/) && !currentPage.match(/\/units\/([^\/]+)\/?$/)) {
-                console.log('SSE Handler: UiNotification rejected - not on units page');
-                return; // Not on units page
-            }
-            
-            if (data.site !== selectedSite) {
-                console.log('SSE Handler: UiNotification rejected - site mismatch');
-                return; // Different site
-            }
-            
-            // Update all component indicators
-            Object.keys(data.components).forEach(componentId => {
-                const activities = data.components[componentId] || [];
-                setActivityIndicator(`activity-${componentId}-indicator`, activities);
+
+            function trackActivity() { lastSSEActivity = Date.now(); }
+
+            eventSource.onopen = function(e) {
+                trackActivity();
+                const duration = ((Date.now() - connectionStartTime) / 1000).toFixed(1);
+                if (reconnectCount > 0) {
+                    console.log(`SSE Handler: Reconnected after ${duration}s (connection #${reconnectCount + 1})`, e);
+                } else {
+                    console.log('SSE Handler: Initial connection opened', e);
+                }
+                reconnectCount++;
+            };
+
+            eventSource.addEventListener('notification', function(e) {
+                trackActivity();
+                console.log('SSE Handler: Notification received', e.data);
+                update = JSON.parse(e.data);
+                console.log('SSE Handler: Parsed event data', update);
+                showEventDoms(update);
+                if (shoulShowEventCards(update)) {
+                    showEventCards(update);
+                }
             });
-            
-            console.log(`SSE Handler: Updated ${Object.keys(data.components).length} activity indicators`);
-        });
-        
-        eventSource.onerror = function(e) {
-            const duration = ((Date.now() - connectionStartTime) / 1000).toFixed(1);
-            console.warn(`SSE Handler: Connection error after ${duration}s, will auto-reconnect...`, e);
-            console.warn('SSE Handler: ReadyState:', eventSource.readyState);
-        };
-        
+
+            eventSource.addEventListener('activity_refresh', function(e) {
+                trackActivity();
+                const data = JSON.parse(e.data);
+                console.log('SSE Handler: UiNotification received', data);
+
+                const currentPage = window.location.pathname;
+                const selectedSite = '{{ request.session.selected_site }}';
+
+                if (!currentPage.match(/\/units\/?$/) && !currentPage.match(/\/units\/([^\/]+)\/?$/)) {
+                    console.log('SSE Handler: UiNotification rejected - not on units page');
+                    return;
+                }
+
+                if (data.site !== selectedSite) {
+                    console.log('SSE Handler: UiNotification rejected - site mismatch');
+                    return;
+                }
+
+                Object.keys(data.components).forEach(componentId => {
+                    const activities = data.components[componentId] || [];
+                    setActivityIndicator(`activity-${componentId}-indicator`, activities);
+                });
+
+                console.log(`SSE Handler: Updated ${Object.keys(data.components).length} activity indicators`);
+            });
+
+            eventSource.onerror = function(e) {
+                const duration = ((Date.now() - connectionStartTime) / 1000).toFixed(1);
+                console.warn(`SSE Handler: Connection error after ${duration}s, will auto-reconnect...`, e);
+                console.warn('SSE Handler: ReadyState:', eventSource.readyState);
+            };
+        }
+
+        // Watchdog: reconnect if server keep-alives stop arriving (handles zombie
+        // connections through reverse proxies that survive a server restart).
+        setInterval(() => {
+            const src = window.__sseSource;
+            const stale = Date.now() - lastSSEActivity > SSE_TIMEOUT_MS;
+            if (!src || src.readyState === EventSource.CLOSED || stale) {
+                console.warn(`SSE Handler: watchdog triggered (stale=${stale}, readyState=${src?.readyState}), reconnecting...`);
+                connectSSE();
+            }
+        }, 10_000);
+
+        connectSSE();
+
         function shoulShowEventCards(update) {
             // Determine if the event cards should be displayed based on current page and selected site
 

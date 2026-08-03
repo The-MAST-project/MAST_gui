@@ -19,10 +19,11 @@ def get_dynamic_url(context, viewname, *args, **kwargs):
     """
     Usage: {% get_dynamic_url 'viewname' arg1 arg2 kwarg1='val' %}
     """
-    request = context.get('request')
+    request = context.get("request")
     if not request:
-        return ''
+        return ""
     return get_dynamic_url_util(request, viewname, *args, **kwargs)
+
 
 # Dynamic static URL support
 try:
@@ -30,12 +31,13 @@ try:
 except ImportError:
     raise ImproperlyConfigured("Could not import get_dynamic_static_url from views.urls")
 
+
 @register.simple_tag(takes_context=True)
 def get_dynamic_static_url(context, static_path):
     """
     Usage: {% get_dynamic_static_url 'css/style.css' %}
     """
-    request = context.get('request')
+    request = context.get("request")
     if not request:
-        return ''
+        return ""
     return get_dynamic_static_url_util(request, static_path)

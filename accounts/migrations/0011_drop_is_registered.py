@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0010_email_verification'),
+        ("accounts", "0010_email_verification"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='user',
-            name='is_registered',
+            model_name="user",
+            name="is_registered",
         ),
     ]

@@ -411,16 +411,16 @@ from common.notifications import Notifier
 
 # Send status update notification
 Notifier().send_update(
-    path=['focuser', 'position'],           # Component-relative path
-    value=12345,                             # New value
-    update_cache=True,                       # Update cached status
-    update_dom_as='text',                    # 'text' or 'badge'
-    update_card={                            # Optional toast card
-        'type': 'info',                      # 'info'|'warning'|'error'|'start'|'end'
-        'message': 'Focuser moved',
-        'details': ['From 10000 to 12345'],
-        'duration': '2.3s'                   # For 'end' type
-    }
+    path=["focuser", "position"],  # Component-relative path
+    value=12345,  # New value
+    update_cache=True,  # Update cached status
+    update_dom_as="text",  # 'text' or 'badge'
+    update_card={  # Optional toast card
+        "type": "info",  # 'info'|'warning'|'error'|'start'|'end'
+        "message": "Focuser moved",
+        "details": ["From 10000 to 12345"],
+        "duration": "2.3s",  # For 'end' type
+    },
 )
 ```
 
@@ -429,31 +429,23 @@ Notifier().send_update(
 ```python
 class NotificationUpdateData(BaseModel):
     """Complete notification sent from backend to Django"""
+
     initiator: NotificationInitiator  # Site, machine_type, machine_name
     type: Literal["status_update"]
     value: list[str] | str | int | float | bool | None
-    cache: dict = {}   # Cache update info
-    dom: dict = {}     # DOM update info
-    card: dict = {}    # Toast card info
+    cache: dict = {}  # Cache update info
+    dom: dict = {}  # DOM update info
+    card: dict = {}  # Toast card info
+
 
 # Example: Focuser position update from unit 'mastw' at site 'wis'
 {
-    "initiator": {
-        "site": "wis",
-        "machine_type": "unit",
-        "machine_name": "mastw",
-        "project": "mast"
-    },
+    "initiator": {"site": "wis", "machine_type": "unit", "machine_name": "mastw", "project": "mast"},
     "type": "status_update",
     "value": 12345,
-    "cache": {
-        "path": ["wis", "unit", "mastw", "focuser", "position"]
-    },
-    "dom": {
-        "id": "id-focuser-position",
-        "render_as": "text"
-    },
-    "card": {}  # Empty = no toast
+    "cache": {"path": ["wis", "unit", "mastw", "focuser", "position"]},
+    "dom": {"id": "id-focuser-position", "render_as": "text"},
+    "card": {},  # Empty = no toast
 }
 ```
 
@@ -467,45 +459,45 @@ def update_cache(notification):
     Navigate cache structure and update leaf value
     Path format: [site, machine_type, machine_name?, component, ..., field]
     """
-    path = notification['cache']['path']
-    
+    path = notification["cache"]["path"]
+
     # Parse path components
-    site = path[0]              # 'wis'
-    machine_type = path[1]      # 'unit', 'spec', 'controller'
-    
-    if machine_type == 'unit':
-        machine = path[2]       # 'mastw'
-        dict_path = path[3:]    # ['focuser', 'position']
+    site = path[0]  # 'wis'
+    machine_type = path[1]  # 'unit', 'spec', 'controller'
+
+    if machine_type == "unit":
+        machine = path[2]  # 'mastw'
+        dict_path = path[3:]  # ['focuser', 'position']
     else:
         machine = None
-        dict_path = path[2:]    # remaining path
-    
+        dict_path = path[2:]  # remaining path
+
     # Navigate to target in cache
-    target = _MAST_CACHE['status'][site]
-    
-    if machine_type == 'unit':
-        target = target['units'][machine]
-    elif machine_type == 'spec':
-        target = target['spec']
-    elif machine_type == 'controller':
-        target = target['controller']
-    
+    target = _MAST_CACHE["status"][site]
+
+    if machine_type == "unit":
+        target = target["units"][machine]
+    elif machine_type == "spec":
+        target = target["spec"]
+    elif machine_type == "controller":
+        target = target["controller"]
+
     # Walk dict_path to leaf
     for key in dict_path[:-1]:
         if hasattr(target, key):
             target = getattr(target, key)
         else:
             target = target[key]
-    
+
     # Set final value
     final_key = dict_path[-1]
     if hasattr(target, final_key):
-        setattr(target, final_key, notification['value'])
+        setattr(target, final_key, notification["value"])
     else:
-        target[final_key] = notification['value']
-    
+        target[final_key] = notification["value"]
+
     # Update cache timestamp
-    _MAST_CACHE['last_refresh'] = time.time()
+    _MAST_CACHE["last_refresh"] = time.time()
 ```
 
 ### DOM Update Logic
@@ -517,49 +509,47 @@ def send_dom_update(notification, user_sessions):
     """
     Pre-render content and send to matching user sessions
     """
-    if not notification['dom']:
+    if not notification["dom"]:
         return
-    
+
     # Extract initiator info
-    initiator = notification['initiator']
-    notif_site = initiator['site']
-    notif_machine_type = initiator['machine_type']
-    notif_machine_name = initiator.get('machine_name')
-    
+    initiator = notification["initiator"]
+    notif_site = initiator["site"]
+    notif_machine_type = initiator["machine_type"]
+    notif_machine_name = initiator.get("machine_name")
+
     # Pre-render content based on render_as
-    value = notification['value']
-    render_as = notification['dom']['render_as']
-    
-    if render_as == 'text':
+    value = notification["value"]
+    render_as = notification["dom"]["render_as"]
+
+    if render_as == "text":
         rendered = str(value)
-    elif render_as == 'badge':
+    elif render_as == "badge":
         # Create badge HTML for each value
         badges = []
         values = value if isinstance(value, list) else [value]
         for v in values:
             badge_class = get_activity_badge_class(v)
             badges.append(f'<span class="badge {badge_class}">{v}</span>')
-        rendered = ' '.join(badges)
-    
+        rendered = " ".join(badges)
+
     # Send to each matching user session
     for session in user_sessions:
-        selected_site = session.get('selected_site')
-        selected_unit = session.get('selected_unit')
-        
+        selected_site = session.get("selected_site")
+        selected_unit = session.get("selected_unit")
+
         # Filter by site
         if notif_site != selected_site:
             continue
-        
+
         # Filter by machine (units only)
-        if notif_machine_type == 'unit' and notif_machine_name != selected_unit:
+        if notif_machine_type == "unit" and notif_machine_name != selected_unit:
             continue
-        
+
         # Send SSE event
-        send_sse_to_user(session, 'dom_update', {
-            'html_id': notification['dom']['id'],
-            'rendered': rendered,
-            'initiator': initiator
-        })
+        send_sse_to_user(
+            session, "dom_update", {"html_id": notification["dom"]["id"], "rendered": rendered, "initiator": initiator}
+        )
 ```
 
 ### Toast Card Logic
@@ -569,31 +559,31 @@ def send_toast_card(notification, user_sessions):
     """
     Send toast card notification to all users viewing the site
     """
-    if not notification['card']:
+    if not notification["card"]:
         return
-    
-    card = notification['card']
-    initiator = notification['initiator']
-    notif_site = initiator['site']
-    
+
+    card = notification["card"]
+    initiator = notification["initiator"]
+    notif_site = initiator["site"]
+
     # Send to users viewing this site
     for session in user_sessions:
-        selected_site = session.get('selected_site')
-        
+        selected_site = session.get("selected_site")
+
         if notif_site != selected_site:
             continue
-        
+
         # Build card data
         card_data = {
-            'type': card.get('type', 'info'),
-            'message': card.get('message'),
-            'details': card.get('details', []),
-            'component': card.get('component'),
-            'duration': card.get('duration'),
-            'initiator': initiator
+            "type": card.get("type", "info"),
+            "message": card.get("message"),
+            "details": card.get("details", []),
+            "component": card.get("component"),
+            "duration": card.get("duration"),
+            "initiator": initiator,
         }
-        
-        send_sse_to_user(session, 'toast_card', card_data)
+
+        send_sse_to_user(session, "toast_card", card_data)
 ```
 
 ### SSE Event Types
@@ -773,8 +763,8 @@ function showToast(data) {
 # MAST_gui/urls.py
 urlpatterns = [
     # ...existing patterns...
-    path('api/notifications', views.handle_notification, name='api_notifications'),
-    path('api/sse', views.sse_stream, name='api_sse'),
+    path("api/notifications", views.handle_notification, name="api_notifications"),
+    path("api/sse", views.sse_stream, name="api_sse"),
 ]
 
 # MAST_gui/views.py
@@ -783,6 +773,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import json
 import time
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -793,57 +784,56 @@ def handle_notification(request):
     """
     try:
         notification = json.loads(request.body)
-        
+
         # 1. Update cache if requested
-        if notification.get('cache'):
+        if notification.get("cache"):
             update_cache(notification)
-        
+
         # 2. Send DOM update if requested
-        if notification.get('dom'):
+        if notification.get("dom"):
             send_dom_update(notification, get_active_sse_sessions())
-        
+
         # 3. Send toast card if requested
-        if notification.get('card'):
+        if notification.get("card"):
             send_toast_card(notification, get_active_sse_sessions())
-        
-        return JsonResponse({'success': True})
-    
+
+        return JsonResponse({"success": True})
+
     except Exception as e:
         logger.error(f"Notification handling error: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({"error": str(e)}, status=500)
+
 
 def sse_stream(request):
     """
     Server-Sent Events stream for real-time updates
     """
+
     def event_stream():
         # Register this connection
         session_id = request.session.session_key
         register_sse_connection(session_id, request.session)
-        
+
         try:
             while True:
                 # Check for events in queue for this session
                 events = get_pending_events(session_id)
-                
+
                 for event in events:
                     yield f"event: {event['type']}\n"
                     yield f"data: {json.dumps(event['data'])}\n\n"
-                
+
                 # Send keepalive every 30 seconds
                 yield ": keepalive\n\n"
                 time.sleep(30)
-        
+
         finally:
             # Unregister on disconnect
             unregister_sse_connection(session_id)
-    
-    response = StreamingHttpResponse(
-        event_stream(),
-        content_type='text/event-stream'
-    )
-    response['Cache-Control'] = 'no-cache'
-    response['X-Accel-Buffering'] = 'no'
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
     return response
 ```
 
@@ -855,13 +845,9 @@ def sse_stream(request):
 # In unit focuser code
 from common.notifications import Notifier
 
+
 def on_position_changed(new_position):
-    Notifier().send_update(
-        path=['focuser', 'position'],
-        value=new_position,
-        update_cache=True,
-        update_dom_as='text'
-    )
+    Notifier().send_update(path=["focuser", "position"], value=new_position, update_cache=True, update_dom_as="text")
 ```
 
 **Example 2: Activity Start (with toast)**
@@ -869,15 +855,15 @@ def on_position_changed(new_position):
 ```python
 def start_slewing(target_ra, target_dec):
     Notifier().send_update(
-        path=['mount', 'activities_verbal'],
-        value=['Slewing'],
+        path=["mount", "activities_verbal"],
+        value=["Slewing"],
         update_cache=True,
-        update_dom_as='badge',
+        update_dom_as="badge",
         update_card={
-            'type': 'start',
-            'message': 'Mount slewing started',
-            'details': [f'RA: {target_ra}', f'Dec: {target_dec}']
-        }
+            "type": "start",
+            "message": "Mount slewing started",
+            "details": [f"RA: {target_ra}", f"Dec: {target_dec}"],
+        },
     )
 ```
 
@@ -886,15 +872,11 @@ def start_slewing(target_ra, target_dec):
 ```python
 def slewing_complete(duration_seconds):
     Notifier().send_update(
-        path=['mount', 'activities_verbal'],
-        value=['Idle'],
+        path=["mount", "activities_verbal"],
+        value=["Idle"],
         update_cache=True,
-        update_dom_as='badge',
-        update_card={
-            'type': 'end',
-            'message': 'Mount slewing completed',
-            'duration': f'{duration_seconds:.1f}s'
-        }
+        update_dom_as="badge",
+        update_card={"type": "end", "message": "Mount slewing completed", "duration": f"{duration_seconds:.1f}s"},
     )
 ```
 
@@ -903,19 +885,15 @@ def slewing_complete(duration_seconds):
 ```python
 def on_focuser_timeout(target, current):
     Notifier().send_update(
-        path=['focuser', 'activities_verbal'],
-        value=['Error: Timeout'],
+        path=["focuser", "activities_verbal"],
+        value=["Error: Timeout"],
         update_cache=True,
-        update_dom_as='badge',
+        update_dom_as="badge",
         update_card={
-            'type': 'error',
-            'message': 'Focuser movement timeout',
-            'details': [
-                f'Target: {target}',
-                f'Current: {current}',
-                'Manual intervention required'
-            ]
-        }
+            "type": "error",
+            "message": "Focuser movement timeout",
+            "details": [f"Target: {target}", f"Current: {current}", "Manual intervention required"],
+        },
     )
 ```
 
@@ -925,19 +903,19 @@ All paths follow the format: `[site, machine_type, machine_name?, component, ...
 
 ```python
 # Unit paths (include machine_name)
-["wis", "unit", "mastw", "focuser", "position"]          # Unit focuser position
-["wis", "unit", "mastw", "mount", "ra_j2000_hours"]      # Mount RA coordinate
-["wis", "unit", "mastw", "camera", "U", "temperature"]   # Camera U-band temp
-["wis", "unit", "mastw", "stage", "position"]            # Stage position
-["wis", "unit", "mastw", "covers", "state"]              # Covers state
+["wis", "unit", "mastw", "focuser", "position"]  # Unit focuser position
+["wis", "unit", "mastw", "mount", "ra_j2000_hours"]  # Mount RA coordinate
+["wis", "unit", "mastw", "camera", "U", "temperature"]  # Camera U-band temp
+["wis", "unit", "mastw", "stage", "position"]  # Stage position
+["wis", "unit", "mastw", "covers", "state"]  # Covers state
 
 # Spec paths (no machine_name for single spec per site)
-["wis", "spec", "highspec", "calibration", "lamp_on"]    # Calibration lamp state
-["wis", "spec", "deepspec", "grating", "position"]       # Grating position
+["wis", "spec", "highspec", "calibration", "lamp_on"]  # Calibration lamp state
+["wis", "spec", "deepspec", "grating", "position"]  # Grating position
 
 # Controller paths (no machine_name)
-["wis", "controller", "operational"]                      # Controller status
-["wis", "controller", "scheduler", "running"]             # Scheduler state
+["wis", "controller", "operational"]  # Controller status
+["wis", "controller", "scheduler", "running"]  # Scheduler state
 ```
 
 ### Performance Considerations
@@ -984,15 +962,11 @@ from common.notifications import Notifier
 
 # Test focuser position update
 Notifier().send_update(
-    path=['focuser', 'position'],
+    path=["focuser", "position"],
     value=99999,
     update_cache=True,
-    update_dom_as='text',
-    update_card={
-        'type': 'info',
-        'message': 'Test notification',
-        'details': ['Position updated to 99999']
-    }
+    update_dom_as="text",
+    update_card={"type": "info", "message": "Test notification", "details": ["Position updated to 99999"]},
 )
 ```
 
