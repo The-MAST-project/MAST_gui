@@ -19,7 +19,7 @@ def site_context(request):
     }
 
     try:
-        from config import Config
+        from common.config import Config
 
         config = Config()
 
