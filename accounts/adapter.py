@@ -1,6 +1,8 @@
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 
+from common.mast_logging import get_logger
+
 
 class CustomAccountAdapter(DefaultAccountAdapter):
     def save_user(self, request, user, form, commit=True):
@@ -26,7 +28,7 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         Also refresh avatar_url from Google on every login."""
         import logging
 
-        log = logging.getLogger(__name__)
+        log = get_logger(__name__)
         log.warning(
             "pre_social_login: is_existing=%s emails=%s",
             sociallogin.is_existing,
@@ -66,7 +68,7 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         log.warning("pre_social_login: no existing user found")
 
     def save_user(self, request, sociallogin, form=None):
-        from accounts.models import unique_username, unique_display
+        from accounts.models import unique_display, unique_username
 
         user = super().save_user(request, sociallogin, form)
         user.username = unique_username(user.first_name, "", user.last_name)

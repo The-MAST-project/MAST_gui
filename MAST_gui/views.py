@@ -13,7 +13,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import Group
 from django.contrib import messages
 from django.db import IntegrityError
-import logging
 from pydantic import ValidationError
 from views.urls import get_dynamic_url
 import json
@@ -24,10 +23,11 @@ from .notification_handler import update_sse_message_from_update_request, update
 from .context_processors import MastCache
 
 from common.models.statuses import StatusType
+from common.mast_logging import get_logger
 
 # from .context_processors import refresh_cache, _MAST_CACHE
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @require_http_methods(["POST"])

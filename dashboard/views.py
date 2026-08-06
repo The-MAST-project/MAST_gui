@@ -2,15 +2,15 @@
 Dashboard views - Main landing page and site overview.
 """
 
-import logging
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from common.config import Config
 from common.api import ControllerApi
 from common.models.statuses import UnitStatus, ShortUnitStatus, FullUnitStatus
 import asyncio
+from common.mast_logging import get_logger
 
-logger = logging.getLogger("mast.dashboard")
+logger = get_logger(__name__)
 
 
 @login_required

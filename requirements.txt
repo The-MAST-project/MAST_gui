@@ -12,6 +12,15 @@
 # UTF-8, no BOM. When editing from PowerShell pass -Encoding utf8 to
 # Out-File / Set-Content (see MAST_unit DECISIONS.md [2026-05-14]).
 #
+# Removed deliberately:
+#   jwt          - the PyPI package literally named `jwt`, which is a different
+#                  and far less-used library than the near-ubiquitous `PyJWT`
+#                  (whose import name is also `jwt`) -- almost certainly picked
+#                  up by mistake. Nothing here uses it: no `import jwt` in any
+#                  .py, no jwt.encode/decode call, no SIMPLE_JWT setting. Auth
+#                  is django-allauth (session-based). If JWTs are ever wanted,
+#                  add `PyJWT`, not this.
+#
 
 Django==6.0.7
 python-decouple==3.8
@@ -28,7 +37,6 @@ channels==4.3.2
 channels-redis==4.3.0
 django-debug-toolbar==7.0.0
 django-extensions==4.1
-jwt==1.4.0
 humanfriendly==10.0
 httpx==0.28.1
 matplotlib==3.11.1

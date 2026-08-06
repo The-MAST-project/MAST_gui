@@ -2,10 +2,10 @@
 Utilities for generating Django forms from Pydantic models with metadata.
 """
 
-import logging
 from typing import Any
+from common.mast_logging import get_logger
 
-logger = logging.getLogger("mast.utils")
+logger = get_logger(__name__)
 
 
 def get_field_metadata(pydantic_model, field_name: str) -> dict:

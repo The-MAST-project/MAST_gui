@@ -2,6 +2,7 @@
 Django settings for MAST_gui project with HTMX.
 """
 
+import logging
 import os
 from pathlib import Path
 from decouple import config
@@ -210,15 +211,23 @@ MAST_CONFIG_SOURCE = config("MAST_CONFIG_SOURCE", default=None)
 MAST_API_PREFIX = "mast/api/v1"
 
 # Logging
+from common.mast_logging import NOISY_LIBRARIES, resolve_log_level  # noqa: E402
+
+MAST_LOG_LEVEL = logging.getLevelName(resolve_log_level())
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
+        # UtcFormatter renders {asctime} in UTC with a trailing 'Z', matching the
+        # other MAST services and the UTC directory the file handler rolls on.
         "verbose": {
+            "()": "common.mast_logging.UtcFormatter",
             "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
             "style": "{",
         },
         "simple": {
+            "()": "common.mast_logging.UtcFormatter",
             "format": "{levelname} {asctime} {message}",
             "style": "{",
         },
@@ -229,7 +238,7 @@ LOGGING = {
             "formatter": "simple",
         },
         "file": {
-            "class": "MAST_gui.logging_handlers.DailyDirectoryHandler",
+            "class": "common.mast_logging.DailyFileHandler",
             "base_dir": "/var/log/mast",
             "filename": "ui.log",
             "formatter": "verbose",
@@ -240,10 +249,20 @@ LOGGING = {
         "level": "INFO",
     },
     "loggers": {
+        # Application level comes from MAST_LOG_LEVEL (see resolve_log_level),
+        # so the gui is tuned the same way as the other MAST services. Django
+        # has no --log-level equivalent, and under daphne there is no hook for
+        # one, so the environment variable is the only lever here.
         "mast": {
             "handlers": ["console", "file"],
-            "level": "DEBUG",
+            "level": MAST_LOG_LEVEL,
             "propagate": False,
+        },
+        # Third-party loggers, held down using the same list the other services
+        # use rather than a second copy of it.
+        **{
+            name: {"handlers": ["console"], "level": "WARNING", "propagate": False}
+            for name in NOISY_LIBRARIES
         },
         "django": {
             "handlers": ["console", "file"],

@@ -4,7 +4,6 @@ Context processors to make data available to all templates
 
 from __future__ import annotations
 
-import logging
 from threading import Lock
 from typing import ClassVar
 from pydantic import BaseModel, Field
@@ -16,8 +15,9 @@ from datetime import datetime
 import asyncio
 from common.models.statuses import SitesStatus
 from common.config.site import Site
+from common.mast_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def site_data(request):
@@ -53,7 +53,7 @@ def site_data(request):
 Context processors for adding global template variables.
 """
 
-logger = logging.getLogger("mast.context_processors")
+logger = get_logger(__name__)
 
 
 # _MAST_CACHE_LOCK: Lock = Lock()
