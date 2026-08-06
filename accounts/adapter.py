@@ -1,5 +1,6 @@
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+
 from common.mast_logging import get_logger
 
 
@@ -67,7 +68,7 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         log.warning("pre_social_login: no existing user found")
 
     def save_user(self, request, sociallogin, form=None):
-        from accounts.models import unique_username, unique_display
+        from accounts.models import unique_display, unique_username
 
         user = super().save_user(request, sociallogin, form)
         user.username = unique_username(user.first_name, "", user.last_name)
