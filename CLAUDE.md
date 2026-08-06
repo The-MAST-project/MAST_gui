@@ -1,8 +1,8 @@
-@common/CLAUDE.md
+@../common/CLAUDE.md
 
 # MAST_gui — Claude Guidance
 
-Django web frontend. Runs on `mast-wis-control`. Submodules `MAST_common` as `./common/`.
+Django web frontend. Runs on `mast-wis-control`. Imports `MAST_common` as `common`, which is cloned as a **sibling** of this repo in the flat layout (`<top>/common/`, `<top>/gui/`) and put on `sys.path` by the `mast.pth` the provisioning writes into the venv. It is no longer a submodule.
 
 ## Running
 

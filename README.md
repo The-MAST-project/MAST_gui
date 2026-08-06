@@ -31,7 +31,11 @@ pip install -r requirements.txt
 ### 3. Configure environment
 ```bash
 cp .env.example .env
-# Edit .env with your settings, especially MAST_COMMON_PATH
+# Edit .env with your settings
+
+# MAST_common is NOT configured here. It is a sibling clone (<top>/common/,
+# beside <top>/gui/) put on sys.path by the mast.pth that MAST_provisioning
+# writes into the venv.
 ```
 
 ### 4. Create log directory

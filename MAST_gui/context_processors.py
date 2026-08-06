@@ -5,8 +5,6 @@ Context processors to make data available to all templates
 from __future__ import annotations
 
 import logging
-import sys
-from pathlib import Path
 from threading import Lock
 from typing import ClassVar
 from pydantic import BaseModel, Field
@@ -20,19 +18,6 @@ from common.models.statuses import SitesStatus
 from common.config.site import Site
 
 logger = logging.getLogger(__name__)
-
-# Add common submodule to Python path
-common_path = Path(__file__).parent.parent / "common"
-if str(common_path) not in sys.path:
-    sys.path.insert(0, str(common_path))
-
-# try:
-#     from config import Config
-#     HAS_CONFIG = True
-# except ImportError as e:
-#     logger.error(f"Error importing Config: {e}")
-#     Config = None
-#     HAS_CONFIG = False
 
 
 def site_data(request):
