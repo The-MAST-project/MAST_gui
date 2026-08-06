@@ -19,7 +19,7 @@ def spec_model(request):
     import json
 
     try:
-        from config import Config
+        from common.config import Config
 
         config = Config()
         thar_filters = config.get_thar_filters() or []
@@ -66,7 +66,7 @@ def spec_model_status(request):
 def spec_list(request):
     """List spectrographs."""
     try:
-        from config import Config
+        from common.config import Config
 
         config = Config()
 
