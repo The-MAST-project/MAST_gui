@@ -7,15 +7,45 @@ import os
 from pathlib import Path
 from decouple import config
 
+from common.config.local import ConfigError, load_local_config
+
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# The controller host is not a constant, so don't write one here. It comes from the
+# per-machine bootstrap TOML, which is cached and MongoDB-free -- cheap enough for
+# settings, and the single source of truth for `controller_host` and `domain`.
+#
+# These lists used to name `mast-wis-control` and 10.23.3.73 as literals. They stayed
+# that way long after the active site moved to `ns`, which made CSRF_TRUSTED_ORIGINS
+# reject every POST from a browser addressing the box by its real name.
+try:
+    _local = load_local_config()
+    CONTROLLER_HOSTS = [_local.controller_host, f"{_local.controller_host}.{_local.domain}"]
+except ConfigError as _config_error:
+    # Not fatal here: a checkout without a bootstrap file should still be able to run
+    # `manage.py check` / collectstatic. Anything that actually serves needs the file,
+    # and every view that touches Config() will fail loudly without it.
+    logging.getLogger(__name__).warning(
+        f"no bootstrap config, so ALLOWED_HOSTS/CSRF_TRUSTED_ORIGINS cover localhost only: {_config_error}"
+    )
+    CONTROLLER_HOSTS = []
+
+
+def _csrf_origins(hosts: list[str]) -> list[str]:
+    """Trusted origins for each host: bare http/https plus the ports nginx listens on."""
+    origins = []
+    for host in hosts:
+        origins += [f"http://{host}", f"https://{host}", f"http://{host}:8000", f"https://{host}:443"]
+    return origins
+
 
 # Security
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-this-in-production")
 DEBUG = True
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS",
-    default="localhost,127.0.0.1,mast-wis-control,10.23.3.73",
+    default=",".join(["localhost", "127.0.0.1", *CONTROLLER_HOSTS]),
     cast=lambda v: [s.strip() for s in v.split(",")],
 )
 USE_X_FORWARDED_HOST = True
@@ -67,17 +97,15 @@ MIDDLEWARE = [
     "debug_toolbar.middleware.DebugToolbarMiddleware",  # Optional: Django Debug Toolbar
 ]
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://10.23.3.73:8000",
-    "https://10.23.3.73",
-    "https://10.23.3.73:443",
-    "http://mast-wis-control",
-    "https://mast-wis-control",
-    "http://mast-wis-control.weizmann.ac.il",
-    "https://mast-wis-control.weizmann.ac.il",
-    "http://mast-wis-control.weizmann.ac.il:8000",
-    "https://mast-wis-control.weizmann.ac.il:443",
-]
+# Overridable, unlike before: this list is what refuses a POST when it is wrong, so it
+# must be fixable from deployment config rather than only by editing this file.
+# Add an IP origin here if the box is browsed by address -- nginx redirects anything
+# that is not the FQDN, so normally the hostnames below are all Django ever sees.
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS",
+    default=",".join(_csrf_origins(CONTROLLER_HOSTS)),
+    cast=lambda v: [s.strip() for s in v.split(",") if s.strip()],
+)
 
 ROOT_URLCONF = "MAST_gui.urls"
 

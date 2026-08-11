@@ -19,7 +19,7 @@
   - Each unit controls a telescope
   - Gathers light onto optical fiber leading to spectrographs
 - **1 MAST-spec**: Windows machine controlling spectrographs
-- **1 MAST-controller**: Linux machine (hostname: `mast-wis-control`)
+- **1 MAST-controller**: Linux machine (hostname: `mast-ns-control`)
   - Main control system
   - Primary user interaction point
   - Runs scheduler
@@ -32,8 +32,8 @@
 - Development site
 - **Deployed units**: `mastw`
 - **Buildings**: Butke (building #1)
-- **Controller**: `mast-wis-control`
-- **Spec**: `mast-wis-spec`
+- **Controller**: `mast-ns-control`
+- **Spec**: `mast-ns-spec`
 
 #### NS (Neot Smadar, Southern Desert)
 
@@ -64,7 +64,7 @@
 
 ### Configuration Database
 
-- **Location**: MongoDB on `mast-wis-control`
+- **Location**: MongoDB on `mast-ns-control`
 - **Code**: MAST_common/config module
 - **Collections**: groups, services, sites, specs, units, users
 - **Special Logic**:
