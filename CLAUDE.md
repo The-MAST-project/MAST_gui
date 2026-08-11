@@ -2,7 +2,7 @@
 
 # MAST_gui — Claude Guidance
 
-Django web frontend. Runs on `mast-wis-control`. Imports `MAST_common` as `common`, which is cloned as a **sibling** of this repo in the flat layout (`<top>/common/`, `<top>/gui/`) and put on `sys.path` by the `mast.pth` the provisioning writes into the venv. It is no longer a submodule.
+Django web frontend. Runs on `mast-ns-control` (the active site is `ns`). Imports `MAST_common` as `common`, which is cloned as a **sibling** of this repo in the flat layout (`<top>/common/`, `<top>/gui/`) and put on `sys.path` by the `mast.pth` the provisioning writes into the venv. It is no longer a submodule.
 
 ## Running
 
