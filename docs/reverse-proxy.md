@@ -1,5 +1,5 @@
 an nginx reverse-proxy is configured as follows:
-# /etc/nginx/conf.d/mast-wis-control.conf
+# /etc/nginx/conf.d/mast-ns-control.conf
 
 ```nginx
 server {
