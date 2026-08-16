@@ -23,7 +23,7 @@ from .notification_handler import update_sse_message_from_update_request, update
 from .context_processors import MastCache
 
 from common.models.statuses import StatusType
-from common.mast_logging import get_logger
+from common.mast_logging import get_logger, observing_night_date
 
 # from .context_processors import refresh_cache, _MAST_CACHE
 
@@ -431,11 +431,16 @@ def _scheduling_resources(scheduling_site, site_config):
                     "active": True,
                 }
             else:
-                # Tonight's session is over; get tomorrow's
-                from datetime import date
-
-                tomorrow = (now + timedelta(days=1)).date()
-                window2 = site_config.observing_window(day=tomorrow)
+                # Tonight's session is over; get the next one.
+                #
+                # The next night is one on from THIS night, which past 00:00 UTC is no
+                # longer today's calendar date -- `(now + 1 day).date()` named the night
+                # AFTER next, for every morning between dawn and 12:00 UTC.
+                #
+                # `observing_window` takes an observing night (12:00 UTC anchor), so the
+                # step has to be a night, not a date. MAST_common#28.
+                next_night = observing_night_date(now) + timedelta(days=1)
+                window2 = site_config.observing_window(day=next_night)
                 if window2:
                     delta = window2.start - now
                     hours, rem = divmod(int(delta.total_seconds()), 3600)
