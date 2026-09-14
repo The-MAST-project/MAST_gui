@@ -45,7 +45,7 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         from allauth.account.models import EmailAddress
         from django.contrib.auth import get_user_model
 
-        User = get_user_model()
+        User = get_user_model()  # noqa: N806 -- Django's own idiom; it's a class reference
         for email_address in sociallogin.email_addresses:
             email = email_address.email
             # Check allauth EmailAddress table first

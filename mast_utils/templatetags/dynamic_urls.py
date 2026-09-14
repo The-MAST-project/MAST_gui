@@ -1,12 +1,11 @@
 from django import template
 from django.core.exceptions import ImproperlyConfigured
-from django.template.defaulttags import register
 
 # Import get_dynamic_url from the correct location, but alias to avoid recursion
 try:
     from views.urls import get_dynamic_url as get_dynamic_url_util
-except ImportError:
-    raise ImproperlyConfigured("Could not import get_dynamic_url from views.urls")
+except ImportError as e:
+    raise ImproperlyConfigured("Could not import get_dynamic_url from views.urls") from e
 
 register = template.Library()
 
@@ -25,8 +24,8 @@ def get_dynamic_url(context, viewname, *args, **kwargs):
 # Dynamic static URL support
 try:
     from views.urls import get_dynamic_static_url as get_dynamic_static_url_util
-except ImportError:
-    raise ImproperlyConfigured("Could not import get_dynamic_static_url from views.urls")
+except ImportError as e:
+    raise ImproperlyConfigured("Could not import get_dynamic_static_url from views.urls") from e
 
 
 @register.simple_tag(takes_context=True)

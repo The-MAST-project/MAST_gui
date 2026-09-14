@@ -214,7 +214,6 @@ def units_list(request):
                 "severity": severity,
                 "operational": operational,
                 "why_not_operational": why_not_operational,
-                # 'activities_verbal': ['Unknown'] if comp_status is None else getattr(comp_status, 'activities_verbal', []) or [],
             }
             logger.debug(f"Instrument room component {comp_name}: {instrument_room[comp_name]}")
 
@@ -518,10 +517,7 @@ def toggle_outlet(request, unit_name, outlet_id):
         return JsonResponse({"error": "Failed to toggle outlet"}, status=500)
 
     # response.value contains the new state (bool or None)
-    if response.value is None:
-        new_state = "unknown"
-    else:
-        new_state = "on" if response.value else "off"
+    new_state = "unknown" if response.value is None else "on" if response.value else "off"
 
     # Get power switch status to get outlet name
     power_response = asyncio.run(controller_api.get(f"unit/{current_site}/{unit_name}/power_switch/status"))

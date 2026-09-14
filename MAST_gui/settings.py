@@ -341,11 +341,8 @@ INTERNAL_IPS = [
     "10.23.3.73",  # Add your client IP
 ]
 
-if no_proxy:
-    # Append MAST networks to existing NO_PROXY
-    no_proxy = no_proxy + "," + ",".join(mast_networks)
-else:
-    no_proxy = ",".join(mast_networks)
+# Append MAST networks to any existing NO_PROXY.
+no_proxy = no_proxy + "," + ",".join(mast_networks) if no_proxy else ",".join(mast_networks)
 
 os.environ["NO_PROXY"] = no_proxy
 os.environ["no_proxy"] = no_proxy  # Some libraries check lowercase

@@ -92,12 +92,8 @@ def controller_status(request):
     sites = config.get_sites()
     site_obj = next((s for s in sites if s.name == site), None)
 
-    if not site_obj:
-        # Fallback if site not found
-        controller_host = f"mast-{site}-control"
-    else:
-        # Use controller_host from site configuration
-        controller_host = site_obj.controller_host
+    # Falls back to the conventional hostname if the site isn't in config yet.
+    controller_host = f"mast-{site}-control" if not site_obj else site_obj.controller_host
 
     # Return cached status instead of checking every time
     return {
@@ -117,87 +113,6 @@ def refresh_cache():
     Call this on Django startup or when cache is empty.
     """
     return MastCache().refresh()
-
-
-# def refresh_cache():
-#     """
-#     Force refresh the cache from backend.
-#     Call this on Django startup or when cache is empty.
-#     """
-#     # logger.info("Force refreshing cache from backend...")
-
-#     try:
-#         config = Config()
-#         sites = config.get_sites()
-#         _MAST_CACHE['sites_config'] = sites
-
-#         # Query status from controller
-#         if sites:
-#             controller = ControllerApi()
-
-#             # Get status endpoint - returns SitesStatus
-#             resp = controller.get("status")
-
-#             # Handle async response
-#             if hasattr(resp, '__await__'):
-#                 resp = asyncio.run(resp)
-
-#             # Update controller connection status in cache
-#             check_time = datetime.now()
-
-#             # Check if response succeeded and parse as SitesStatus
-#             if resp and getattr(resp, 'succeeded', False) and resp.value:
-#                 # resp.value should be dict that can be parsed as SitesStatus
-
-#                 with _MAST_CACHE_LOCK:
-#                     _MAST_CACHE['sites_status'] = SitesStatus(**resp.value) if isinstance(resp.value, dict) else resp.value
-
-#                     # Update controller connection status
-#                     _MAST_CACHE['controller_connected'] = True
-#                     _MAST_CACHE['controller_last_check'] = check_time
-#                     _MAST_CACHE['controller_error'] = None
-
-#                 for site in _MAST_CACHE['sites_status'].sites.keys():
-#                     msg = f"Status cache: [{site}]: "
-#                     site_status = _MAST_CACHE['sites_status'].sites[site]
-#                     controller_status = site_status.controller
-#                     deepspec_status = site_status.spec.deepspec
-#                     highspec_status = site_status.spec.highspec
-#                     unit_statuses = site_status.units
-#                     for comp_name, st in {'controller': controller_status, 'deepspec': deepspec_status, 'highspec': highspec_status}.items():
-#                         msg += f"{comp_name}({type(st).__name__}), "
-#                     for unit_name, unit_status in unit_statuses.items():
-#                         msg += f"{unit_name}({type(unit_status).__name__}), "
-#                     logger.info(msg)
-#             else:
-#                 error_msg = getattr(resp, 'errors', 'Unknown error')
-#                 logger.warning(f"Failed to fetch status from backend: {error_msg}")
-#                 with _MAST_CACHE_LOCK:
-#                     _MAST_CACHE['sites_status'] = None
-#                     _MAST_CACHE['controller_connected'] = False
-#                     _MAST_CACHE['controller_last_check'] = check_time
-#                     _MAST_CACHE['controller_error'] = str(error_msg)
-#         else:
-#             logger.warning("No sites configured")
-#             with _MAST_CACHE_LOCK:
-#                 _MAST_CACHE['sites_status'] = None
-#                 _MAST_CACHE['controller_connected'] = False
-#                 _MAST_CACHE['controller_last_check'] = datetime.now()
-#                 _MAST_CACHE['controller_error'] = "No sites configured"
-
-#         _MAST_CACHE['last_refresh'] = time.time()
-#         return True
-
-#     except Exception as e:
-#         logger.error(f"Error refreshing cache: {e}", exc_info=True)
-#         with _MAST_CACHE_LOCK:
-#             _MAST_CACHE['sites_status'] = None
-#             _MAST_CACHE['sites_config'] = []
-#             _MAST_CACHE['controller_connected'] = False
-#             _MAST_CACHE['controller_last_check'] = datetime.now()
-#             _MAST_CACHE['controller_error'] = str(e)
-#             _MAST_CACHE['last_refresh'] = time.time()
-#         return False
 
 
 class MastCache(BaseModel):
@@ -270,7 +185,7 @@ class MastCache(BaseModel):
                         self.controller_last_check = check_time
                         self.controller_error = None
 
-                    for site in self.sites_status.sites.keys():
+                    for site in self.sites_status.sites:
                         msg = f"Status cache: [{site}]: "
                         site_status = self.sites_status.sites[site]
                         controller_status = site_status.controller

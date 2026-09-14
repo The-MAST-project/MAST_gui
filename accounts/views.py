@@ -428,7 +428,7 @@ class SocialSignupAutoConnectView(SocialSignupView):
 
         email = form.data.get("email", "").strip()
         if email:
-            User = get_user_model()
+            User = get_user_model()  # noqa: N806 -- Django's own idiom; it's a class reference
             try:
                 user = User.objects.get(email__iexact=email)
                 self.sociallogin.user = user

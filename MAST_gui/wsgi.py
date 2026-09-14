@@ -2,6 +2,8 @@
 
 import os
 
+from django.core.handlers.wsgi import WSGIHandler
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "MAST_gui.settings")
 
 
@@ -26,9 +28,6 @@ def detect_script_name(environ):
             env_script_name = "/" + env_script_name
         return env_script_name.rstrip("/")
     return ""
-
-
-from django.core.handlers.wsgi import WSGIHandler
 
 
 class ScriptNameDetectingWSGIHandler(WSGIHandler):
