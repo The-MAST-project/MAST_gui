@@ -2,7 +2,6 @@
 Utilities for generating Django forms from Pydantic models with metadata.
 """
 
-from typing import Any
 from common.mast_logging import get_logger
 
 logger = get_logger(__name__)

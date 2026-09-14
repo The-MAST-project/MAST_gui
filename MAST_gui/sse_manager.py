@@ -5,7 +5,7 @@ Server-Sent Events (SSE) manager for broadcasting notifications to connected cli
 import queue
 import time
 from threading import Lock
-from typing import Dict
+
 from common.mast_logging import get_logger
 
 logger = get_logger(__name__)
@@ -15,7 +15,7 @@ class SSEConnectionManager:
     """Manages SSE connections and broadcasts messages to all connected clients"""
 
     def __init__(self):
-        self._clients: Dict[str, queue.Queue] = {}
+        self._clients: dict[str, queue.Queue] = {}
         self._lock = Lock()
 
     def add_client(self, client_id: str) -> queue.Queue:

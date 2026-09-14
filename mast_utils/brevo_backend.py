@@ -6,6 +6,7 @@ bypassing the SMTP relay which is blocked by the firewall.
 import requests
 from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
+
 from common.mast_logging import get_logger
 
 logger = get_logger(__name__)

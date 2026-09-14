@@ -3,6 +3,7 @@ URL patterns for utility endpoints.
 """
 
 from django.urls import path
+
 from . import views
 
 urlpatterns = [

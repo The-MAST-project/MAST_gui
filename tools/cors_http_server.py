@@ -12,11 +12,8 @@ Defaults:
 """
 
 import argparse
-import http.server
 import socketserver
 from http.server import SimpleHTTPRequestHandler
-import sys
-from urllib.parse import urlparse
 
 
 class CORSRequestHandler(SimpleHTTPRequestHandler):

@@ -1,9 +1,6 @@
 from django import template
-from django.template.defaulttags import register
-from django.utils.safestring import mark_safe
 from django.core.exceptions import ImproperlyConfigured
-from django.apps import apps
-
+from django.template.defaulttags import register
 
 # Import get_dynamic_url from the correct location, but alias to avoid recursion
 try:

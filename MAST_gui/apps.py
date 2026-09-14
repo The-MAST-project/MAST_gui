@@ -1,9 +1,11 @@
-from django.apps import AppConfig
 import threading
 
-from .context_processors import MastCache
+from django.apps import AppConfig
+
 from common.config import Config
 from common.mast_logging import get_logger
+
+from .context_processors import MastCache
 
 logger = get_logger(__name__)
 
@@ -14,10 +16,10 @@ class MastGuiConfig(AppConfig):
 
     def ready(self):
         """Called when Django starts"""
-        from .context_processors import MastCache
-
         # Avoid running twice in development (Django reloader spawns 2 processes)
         import os
+
+        from .context_processors import MastCache
 
         if os.environ.get("RUN_MAIN") != "true":
             return

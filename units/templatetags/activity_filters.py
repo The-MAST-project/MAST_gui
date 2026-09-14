@@ -3,7 +3,6 @@ Template filters for displaying activity flags as badges.
 """
 
 from django import template
-from common.activities import MountActivities, FocuserActivities, StageActivities, CoverActivities, ImagerActivities
 
 register = template.Library()
 

@@ -2,8 +2,9 @@
 Template filters for time display.
 """
 
-from django import template
 from datetime import datetime
+
+from django import template
 
 register = template.Library()
 

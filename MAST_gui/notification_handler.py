@@ -1,9 +1,12 @@
 import time
+
 from pydantic import BaseModel
-from .context_processors import MastCache
-from common.models.statuses import BaseStatus
-from common.notifications import UiUpdateNotifications, NotificationInitiator, NotificationCardType
+
 from common.mast_logging import get_logger
+from common.models.statuses import BaseStatus
+from common.notifications import NotificationCardType, NotificationInitiator, UiUpdateNotifications
+
+from .context_processors import MastCache
 
 logger = get_logger(__name__)
 
@@ -172,7 +175,7 @@ def dom_sses_from_update_request(update_request: UiUpdateNotifications) -> list[
                     if notification.cache is not None and isinstance(notification.cache.value, list):
                         values = notification.cache.value
                         for value in values:
-                            html += f'<span class="badge bg-primary me-1">{str(value)}</span>'
+                            html += f'<span class="badge bg-primary me-1">{value!s}</span>'
 
                     dom_sse_message = DomSSEMessage(
                         id=id,

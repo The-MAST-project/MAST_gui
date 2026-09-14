@@ -2,12 +2,13 @@
 Specs views - Spectrograph management.
 """
 
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from mast_utils.permissions import capability_required
+
 from common.mast_logging import get_logger
+from mast_utils.permissions import capability_required
 
 logger = get_logger(__name__)
 

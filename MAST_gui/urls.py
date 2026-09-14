@@ -1,18 +1,19 @@
 """MAST_gui URL Configuration"""
 
-from django.contrib import admin
-from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.contrib.auth.views import LogoutView
 from django.http import HttpResponseRedirect
+from django.urls import include, path
 
-from . import views
+from accounts import views as accounts_views
+from core.views import plans as plans_views  # new: plans view for /plans/ page
 
 # Fix import: use the full Python path if 'utils' is inside the project root
 from mast_utils.views import django_controller_status_check
-from core.views import plans as plans_views  # new: plans view for /plans/ page
-from accounts import views as accounts_views
-from django.contrib.auth.views import LogoutView
+
+from . import views
 
 
 def mast_dash_redirect(request, *args, **kwargs):

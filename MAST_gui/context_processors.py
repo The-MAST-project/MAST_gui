@@ -4,18 +4,19 @@ Context processors to make data available to all templates
 
 from __future__ import annotations
 
+import asyncio
+import time
+from datetime import datetime
 from threading import Lock
 from typing import ClassVar
+
 from pydantic import BaseModel, Field
 
-import time
-from common.config import Config
 from common.api import ControllerApi
-from datetime import datetime
-import asyncio
-from common.models.statuses import SitesStatus
+from common.config import Config
 from common.config.site import Site
 from common.mast_logging import get_logger
+from common.models.statuses import SitesStatus
 
 logger = get_logger(__name__)
 
@@ -200,7 +201,7 @@ def refresh_cache():
 
 
 class MastCache(BaseModel):
-    _instance: ClassVar["MastCache" | None] = None
+    _instance: ClassVar[MastCache | None] = None
     _initialized: ClassVar[bool] = False
 
     TTL: ClassVar[int] = 120  # Default TTL for cache in seconds
@@ -222,7 +223,7 @@ class MastCache(BaseModel):
 
     def __new__(cls, **kwargs):
         if cls._instance is None:
-            cls._instance = super(MastCache, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self, **kwargs):

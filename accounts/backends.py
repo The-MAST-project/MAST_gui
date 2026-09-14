@@ -1,6 +1,7 @@
+from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import BaseBackend, ModelBackend
 from django.contrib.auth.models import User
-from django.contrib.auth import get_user_model
+
 from common.mast_logging import get_logger
 
 logger = get_logger(__name__)

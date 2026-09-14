@@ -2,21 +2,23 @@
 Views for unit management and monitoring
 """
 
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from common.config import Config
-from common.api import ControllerApi
-from common.dlipowerswitch import PowerSwitchStatus
-from common.models.statuses import UnitStatus, BasicUnitStatus, FullUnitStatus, SitesStatus, StatusType
 import asyncio
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
 import json
 import logging
 
-from .config_utils import extract_field_metadata
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import render
+from django.views.decorators.http import require_http_methods
+
+from common.api import ControllerApi
+from common.config import Config
 from common.config.focuser import FocuserConfig
+from common.dlipowerswitch import PowerSwitchStatus
 from common.mast_logging import get_logger
+from common.models.statuses import BasicUnitStatus, FullUnitStatus, SitesStatus, StatusType, UnitStatus
+
+from .config_utils import extract_field_metadata
 
 # Set default log level to DEBUG for this module
 logging.basicConfig(level=logging.DEBUG)
@@ -539,8 +541,8 @@ def toggle_outlet(request, unit_name, outlet_id):
             user_can_control = request.user.has_perm("auth.canUseControls")
 
             # Return the complete outlet HTML for swap
-            from django.template.loader import render_to_string
             from django.http import HttpResponse
+            from django.template.loader import render_to_string
 
             html = render_to_string(
                 "units/components/outlet_button.html",

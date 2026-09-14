@@ -2,26 +2,28 @@
 Core views for site selection and basic pages
 """
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
-import queue
-import uuid
-import time
-from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required, permission_required
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.models import Group
-from pydantic import ValidationError
-from views.urls import get_dynamic_url
 import json
-from .sse_manager import sse_manager
+import queue
+import time
+import uuid
+from datetime import UTC
+
+from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.models import Group
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from pydantic import ValidationError
 
 from accounts.models import User
-from .notification_handler import update_sse_message_from_update_request, update_cache_from_update_request
-from .context_processors import MastCache
-
-from common.models.statuses import StatusType
 from common.mast_logging import get_logger, observing_night_date
+from common.models.statuses import StatusType
+from views.urls import get_dynamic_url
+
+from .context_processors import MastCache
+from .notification_handler import update_cache_from_update_request, update_sse_message_from_update_request
+from .sse_manager import sse_manager
 
 # from .context_processors import refresh_cache, _MAST_CACHE
 
@@ -83,6 +85,7 @@ def admin_groups(request):
 
 def _mast_permissions():
     from django.contrib.auth.models import Permission
+
     from accounts.models import MASTPermissions
 
     codenames = [
@@ -262,7 +265,8 @@ _GRAFANA_DASHBOARD_URLS = {
 
 def _scheduling_resources(scheduling_site, site_config):
     """Return (allocatable_units, operational_units, spec, next_session, error) for a site."""
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta
+
     from common.models.statuses import SitesStatus, UnitStatus
 
     sites_status: SitesStatus = MastCache().sites_status
@@ -305,7 +309,7 @@ def _scheduling_resources(scheduling_site, site_config):
     # Next observing session
     next_session = None
     try:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         window = site_config.observing_window()
         if window:
             if now < window.start:
@@ -424,13 +428,13 @@ def scheduling_single_resources(request):
 @login_required
 def scheduling_sun_position(request):
     """Return current subsolar point (lat, lon) for the day/night terminator map."""
-    from datetime import datetime, timezone
-    from astropy.coordinates import get_body, AltAz, EarthLocation, ICRS
+    from datetime import datetime
+
+    from astropy.coordinates import get_body
     from astropy.time import Time
-    import astropy.units as u
     from django.http import JsonResponse
 
-    now = Time(datetime.now(tz=timezone.utc))
+    now = Time(datetime.now(tz=UTC))
     # Subsolar point: convert sun's ICRS coords to geographic (geocentric)
     sun = get_body("sun", now)
     # Sun's geocentric RA/Dec → subsolar lat = dec, subsolar lon = RA - GMST
@@ -447,13 +451,13 @@ def scheduling_sun_position(request):
 @login_required
 def scheduling_sun_curve(request):
     """Return JSON sun-altitude curve for the current night at the given site."""
-    import json
+    from datetime import date, datetime
+
+    import astropy.units as u
     import numpy as np
-    from datetime import datetime, timezone, date
     from astroplan import Observer
     from astropy.coordinates import EarthLocation, get_body
     from astropy.time import Time
-    import astropy.units as u
 
     cache = MastCache()
     all_sites = cache.sites_config or []
@@ -475,7 +479,7 @@ def scheduling_sun_curve(request):
         )
     )
 
-    noon = Time(datetime(date.today().year, date.today().month, date.today().day, 12, 0, 0, tzinfo=timezone.utc))
+    noon = Time(datetime(date.today().year, date.today().month, date.today().day, 12, 0, 0, tzinfo=UTC))
     dusk_horizon = (loc.sun_limits.dusk - 3) * u.deg  # 3° buffer for curve start
     dawn_horizon = (loc.sun_limits.dawn - 3) * u.deg
 
@@ -492,7 +496,7 @@ def scheduling_sun_curve(request):
     times = t_start + np.linspace(0, (t_end - t_start).to(u.hour).value, n_steps) * u.hour
 
     sun_alts = observer.altaz(times, get_body("sun", times)).alt.deg.tolist()
-    time_strs = [t.to_datetime(timezone=timezone.utc).strftime("%H:%M") for t in times]
+    time_strs = [t.to_datetime(timezone=UTC).strftime("%H:%M") for t in times]
 
     from django.http import JsonResponse
 
@@ -503,8 +507,8 @@ def scheduling_sun_curve(request):
             "twilight_astro": loc.sun_limits.dusk,  # e.g. -18
             "twilight_nautical": -12,
             "twilight_civil": -6,
-            "t_start": t_start.to_datetime(timezone=timezone.utc).strftime("%H:%M"),
-            "t_end": t_end.to_datetime(timezone=timezone.utc).strftime("%H:%M"),
+            "t_start": t_start.to_datetime(timezone=UTC).strftime("%H:%M"),
+            "t_end": t_end.to_datetime(timezone=UTC).strftime("%H:%M"),
         }
     )
 
@@ -531,6 +535,7 @@ def manage_ownerships(request):
 def _list_user_assets(user):
     """Return list of asset dicts for all plans owned by user."""
     from pathlib import Path
+
     import tomlkit
 
     plans_root = Path("/Storage/mast-share/MAST/plans")
@@ -583,8 +588,9 @@ def ownerships_assets(request):
 @require_http_methods(["POST"])
 def ownerships_transfer(request):
     import json as _json
-    import tomlkit
     from pathlib import Path
+
+    import tomlkit
 
     try:
         body = _json.loads(request.body)
@@ -623,6 +629,7 @@ def ownerships_transfer(request):
 def api_users(request):
     """Return [{uuid, display}] for all active users."""
     from django.http import JsonResponse
+
     from accounts.models import User
 
     users = User.objects.filter(is_active=True).exclude(display="").values("uid", "display")

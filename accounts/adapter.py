@@ -26,7 +26,6 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     def pre_social_login(self, request, sociallogin):
         """Auto-connect social account to existing account with matching email.
         Also refresh avatar_url from Google on every login."""
-        import logging
 
         log = get_logger(__name__)
         log.warning(
