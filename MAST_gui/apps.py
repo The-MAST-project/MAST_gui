@@ -2,6 +2,7 @@ from django.apps import AppConfig
 import threading
 
 from .context_processors import MastCache
+from common.config import Config
 from common.mast_logging import get_logger
 
 logger = get_logger(__name__)
@@ -20,6 +21,15 @@ class MastGuiConfig(AppConfig):
 
         if os.environ.get("RUN_MAIN") != "true":
             return
+
+        # Opt-in by design (MAST_common#96): it starts a thread holding a change-stream
+        # cursor, so it wants an owner with a lifetime, and Config() is also constructed
+        # by manage.py one-shots and tests. Without this, get_sites()/get_thar_filters()/
+        # local_site() all stay pinned to whatever was loaded at process start, forever --
+        # the periodic MastCache refresh below only re-fetches live controller status, not
+        # the configuration snapshot. Never fatal, and idempotent (safe under the dev
+        # reloader's second process, though RUN_MAIN already filters that out above).
+        Config().start_watching()
 
         logger.info("Django startup: initializing periodic cache refresh...")
 
