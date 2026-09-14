@@ -7,11 +7,12 @@
 # job either; MAST_common and MAST_unit both have real test suites, which is why
 # their workflows also run pytest.
 #
-# Lint is BLOCKING and, as of 2026-09-14, failing: `ruff check` reports 233 findings
-# and one file needs `ruff format`, all pre-existing. That is deliberate, per the
-# fleet convention (see MAST_common's ci.yml) -- the debt is meant to show as red
-# until it is cleared, rather than sit in an advisory step nobody reads. ruff.toml
-# already mirrors the fleet standard; nothing had been enforcing it before this.
+# Lint is BLOCKING and, as of 2026-09-14, green: both `ruff format --check` and
+# `ruff check` pass. It started at 233 findings; most of that turned out to be
+# ruff.toml using `extend-select` rather than the fleet's `select` list (RUF012
+# alone was 30 findings, nearly all Django's auto-generated migrations), fixed
+# alongside dead-code removal and the rest of the findings across three commits.
+# A red run from here means a real regression, not debt showing through.
 #
 # Runs on Linux because ruff is platform-independent and that is also this app's
 # actual deployment platform (mast-ns-control).
