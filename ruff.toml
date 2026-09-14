@@ -12,8 +12,15 @@ target-version = "py312"
 # to exclude. Keep this file scoped to this repo's own sources.
 
 [lint]
-# Enable rules from common linters.
-extend-select = [
+# The fleet's rule set, stated as `select` rather than `extend-select`: ruff's own
+# defaults have grown over time (0.16 enables ASYNC, TRY, S, PYI, RUF, LOG, PLR, C4
+# and TC on top of the historical E4/E7/E9/F), so `extend-select` meant the effective
+# rule set changed with the pinned version rather than with a decision -- and here it
+# was mostly noise, since RUF012 alone accounted for 30 of ~230 findings, almost all
+# of them Django's auto-generated migrations (`dependencies`/`operations` lists ruff
+# reads as a mutable class default, which Django never mutates at runtime). Mirrors
+# MAST_common's and MAST_unit's ruff.toml, which made the same switch already.
+select = [
     "F",   # Pyflakes (runtime errors)
     "E",   # pycodestyle (formatting)
     "W",   # pycodestyle warnings
@@ -25,8 +32,11 @@ extend-select = [
     "SIM", # flake8-simplify
     "TID", # tidy imports
 ]
-# Optionally ignore some rules:
-# ignore = ["E501"]  # example: disable line-length enforcement
+# N999 (invalid module name) is not actionable here: this app's own root package is
+# named MAST_gui (matching MAST_common/MAST_control's naming), and the uppercase
+# makes it an invalid module name by this rule's standard -- same reason MAST_common
+# ignores it for itself.
+ignore = ["N999"]
 
 [lint.isort]
 # `common` is MAST_common, our own shared library -- first-party, grouped with
