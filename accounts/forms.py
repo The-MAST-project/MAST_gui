@@ -1,10 +1,11 @@
 from django import forms
-from django.core.validators import EmailValidator
-from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
-from accounts.models import User
 from django.contrib.auth.models import Group
+from django.core.validators import EmailValidator
+from django.utils.translation import gettext_lazy as _
+
+from accounts.models import User
 
 
 class RegistrationForm(forms.ModelForm):

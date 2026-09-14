@@ -3,25 +3,23 @@ import secrets
 import threading
 from pathlib import Path
 
-from allauth.socialaccount.views import SignupView as SocialSignupView
-
 import tomlkit
-
+from allauth.socialaccount.views import SignupView as SocialSignupView
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import Group
 from django.contrib.auth.views import LoginView
-from django.core.mail import send_mail, EmailMultiAlternatives
-from django.template.loader import render_to_string
-from django.conf import settings
+from django.core.mail import EmailMultiAlternatives, send_mail
 from django.http import HttpResponse
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from accounts.forms import RegistrationForm, LocalSignupForm, ProfileForm
-from accounts.models import User, MASTPermissions, unique_display
+from accounts.forms import LocalSignupForm, ProfileForm, RegistrationForm
+from accounts.models import MASTPermissions, User, unique_display
 from common.mast_logging import get_logger
 
 logger = get_logger(__name__)
@@ -425,12 +423,12 @@ class SocialSignupAutoConnectView(SocialSignupView):
     """
 
     def form_invalid(self, form):
-        from django.contrib.auth import get_user_model
         from allauth.account.utils import perform_login
+        from django.contrib.auth import get_user_model
 
         email = form.data.get("email", "").strip()
         if email:
-            User = get_user_model()
+            User = get_user_model()  # noqa: N806 -- Django's own idiom; it's a class reference
             try:
                 user = User.objects.get(email__iexact=email)
                 self.sociallogin.user = user

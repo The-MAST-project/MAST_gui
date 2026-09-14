@@ -31,8 +31,8 @@ class Command(BaseCommand):
 
         try:
             admin_group = Group.objects.get(name="Admin")
-        except Group.DoesNotExist:
-            raise CommandError("Admin group not found — run init_mast_groups first")
+        except Group.DoesNotExist as e:
+            raise CommandError("Admin group not found — run init_mast_groups first") from e
 
         password = options["password"]
         if not password:

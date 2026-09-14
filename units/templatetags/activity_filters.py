@@ -3,7 +3,6 @@ Template filters for displaying activity flags as badges.
 """
 
 from django import template
-from common.activities import MountActivities, FocuserActivities, StageActivities, CoverActivities, ImagerActivities
 
 register = template.Library()
 
@@ -36,10 +35,8 @@ def activity_badge_class(activity_name: str) -> str:
         "StartingUp": "primary",
         "ShuttingDown": "secondary",
         "FindingHome": "info",
-        "Moving": "warning",
+        "Moving": "warning",  # shared by Mount and Focuser activities
         "Dancing": "warning",
-        # Focuser activities
-        "Moving": "warning",
         # Cover activities
         "Opening": "primary",
         "Closing": "secondary",

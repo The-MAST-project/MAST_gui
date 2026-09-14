@@ -1,4 +1,5 @@
 from django import template
+
 from views.urls import get_dynamic_static_url as _get_dynamic_static_url
 from views.urls import get_dynamic_url as _get_dynamic_url
 

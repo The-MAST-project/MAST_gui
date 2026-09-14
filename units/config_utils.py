@@ -3,8 +3,9 @@ Utilities for extracting and processing Pydantic configuration schemas
 """
 
 import typing
+from typing import Any
+
 from pydantic import BaseModel
-from typing import Dict, Any
 
 try:
     from pydantic_core import PydanticUndefinedType as _PydanticUndefinedType
@@ -12,7 +13,7 @@ except ImportError:
     _PydanticUndefinedType = type(None)  # fallback: never matches
 
 
-def extract_field_metadata(model_class: type[BaseModel]) -> Dict[str, Any]:
+def extract_field_metadata(model_class: type[BaseModel]) -> dict[str, Any]:
     """
     Extract flat field metadata from a Pydantic model (no recursion into nested models).
     Returns dict with field name as key and metadata dict as value.
@@ -61,7 +62,7 @@ def _safe_default(field_info):
     return ""
 
 
-def _field_meta(field_name, field_info) -> Dict[str, Any]:
+def _field_meta(field_name, field_info) -> dict[str, Any]:
     """Extract metadata for a single scalar field."""
     meta = {
         "label": field_name,
@@ -88,7 +89,7 @@ def _field_meta(field_name, field_info) -> Dict[str, Any]:
     return meta
 
 
-def extract_field_metadata_recursive(model_class: type[BaseModel]) -> Dict[str, Any]:
+def extract_field_metadata_recursive(model_class: type[BaseModel]) -> dict[str, Any]:
     """
     Recursively extract field metadata from a Pydantic model.
 
@@ -97,7 +98,7 @@ def extract_field_metadata_recursive(model_class: type[BaseModel]) -> Dict[str, 
     card categories in the plan form.  All other fields are extracted as flat
     scalar metadata dicts.
     """
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
 
     for field_name, field_info in model_class.model_fields.items():
         nested = _unwrap_base_model(field_info.annotation)

@@ -2,10 +2,13 @@
 Safety views - Safety monitoring.
 """
 
-from django.shortcuts import render
+from datetime import UTC
+
 from django.contrib.auth.decorators import login_required
-from mast_utils.permissions import capability_required
+from django.shortcuts import render
+
 from common.mast_logging import get_logger
+from mast_utils.permissions import capability_required
 
 logger = get_logger(__name__)
 
@@ -26,8 +29,9 @@ def graphs(request):
 @capability_required("can_view")
 def data(request):
     """Show safety data — MAST project sensor summary."""
-    import httpx
     import traceback
+
+    import httpx
 
     def _fetch_is_safe(client, url):
         try:
@@ -71,7 +75,7 @@ def data(request):
         logger.warning(f"safety data: {e}\n{traceback.format_exc()}")
         fetch_error = str(e)
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     context = {
         "page_title": "Safety - Data",
@@ -79,7 +83,7 @@ def data(request):
         "fetch_error": fetch_error,
         "global_safety": global_safety,
         "mast_safety": mast_safety,
-        "updated_at": datetime.now(tz=timezone.utc).strftime("%H:%M:%S UTC"),
+        "updated_at": datetime.now(tz=UTC).strftime("%H:%M:%S UTC"),
     }
     template = "safety/_data_content.html" if request.headers.get("HX-Request") else "safety/data.html"
     return render(request, template, context)

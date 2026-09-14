@@ -12,11 +12,9 @@ Defaults:
 """
 
 import argparse
-import http.server
+import contextlib
 import socketserver
 from http.server import SimpleHTTPRequestHandler
-import sys
-from urllib.parse import urlparse
 
 
 class CORSRequestHandler(SimpleHTTPRequestHandler):
@@ -54,10 +52,8 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
 
     def end_headers(self):
         # Inject CORS headers for all responses
-        try:
+        with contextlib.suppress(Exception):
             self.send_cors_headers()
-        except Exception:
-            pass
         super().end_headers()
 
     def do_OPTIONS(self):
@@ -70,7 +66,9 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
 
 
 def run(port=8008, bind="0.0.0.0", directory=None, origins="*"):
-    handler_class = lambda *args, **kwargs: CORSRequestHandler(*args, directory=directory, allowed_origins=origins, **kwargs)
+    def handler_class(*args, **kwargs):
+        return CORSRequestHandler(*args, directory=directory, allowed_origins=origins, **kwargs)
+
     with socketserver.ThreadingTCPServer((bind, port), handler_class) as httpd:
         sa = httpd.socket.getsockname()
         print(f"Serving HTTP on {sa[0]} port {sa[1]} (directory: {directory or '.'}) -> CORS origins: {origins}")

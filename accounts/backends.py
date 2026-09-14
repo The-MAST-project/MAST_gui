@@ -1,6 +1,7 @@
+from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import BaseBackend, ModelBackend
 from django.contrib.auth.models import User
-from django.contrib.auth import get_user_model
+
 from common.mast_logging import get_logger
 
 logger = get_logger(__name__)
@@ -29,7 +30,7 @@ class RegisteredUserBackend(ModelBackend):
     """
 
     def authenticate(self, request, username=None, password=None, **kwargs):
-        User = get_user_model()
+        User = get_user_model()  # noqa: N806 -- Django's own idiom; it's a class reference
         try:
             user = User.objects.get(username=username)
             if user.check_password(password) and user.is_active:

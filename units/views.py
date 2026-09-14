@@ -2,21 +2,23 @@
 Views for unit management and monitoring
 """
 
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from common.config import Config
-from common.api import ControllerApi
-from common.dlipowerswitch import PowerSwitchStatus
-from common.models.statuses import UnitStatus, BasicUnitStatus, FullUnitStatus, SitesStatus, StatusType
 import asyncio
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
 import json
 import logging
 
-from .config_utils import extract_field_metadata
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import render
+from django.views.decorators.http import require_http_methods
+
+from common.api import ControllerApi
+from common.config import Config
 from common.config.focuser import FocuserConfig
+from common.dlipowerswitch import PowerSwitchStatus
 from common.mast_logging import get_logger
+from common.models.statuses import BasicUnitStatus, FullUnitStatus, SitesStatus, StatusType, UnitStatus
+
+from .config_utils import extract_field_metadata
 
 # Set default log level to DEBUG for this module
 logging.basicConfig(level=logging.DEBUG)
@@ -212,7 +214,6 @@ def units_list(request):
                 "severity": severity,
                 "operational": operational,
                 "why_not_operational": why_not_operational,
-                # 'activities_verbal': ['Unknown'] if comp_status is None else getattr(comp_status, 'activities_verbal', []) or [],
             }
             logger.debug(f"Instrument room component {comp_name}: {instrument_room[comp_name]}")
 
@@ -516,10 +517,7 @@ def toggle_outlet(request, unit_name, outlet_id):
         return JsonResponse({"error": "Failed to toggle outlet"}, status=500)
 
     # response.value contains the new state (bool or None)
-    if response.value is None:
-        new_state = "unknown"
-    else:
-        new_state = "on" if response.value else "off"
+    new_state = "unknown" if response.value is None else "on" if response.value else "off"
 
     # Get power switch status to get outlet name
     power_response = asyncio.run(controller_api.get(f"unit/{current_site}/{unit_name}/power_switch/status"))
@@ -539,8 +537,8 @@ def toggle_outlet(request, unit_name, outlet_id):
             user_can_control = request.user.has_perm("auth.canUseControls")
 
             # Return the complete outlet HTML for swap
-            from django.template.loader import render_to_string
             from django.http import HttpResponse
+            from django.template.loader import render_to_string
 
             html = render_to_string(
                 "units/components/outlet_button.html",

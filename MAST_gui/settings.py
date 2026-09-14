@@ -5,6 +5,7 @@ Django settings for MAST_gui project with HTMX.
 import logging
 import os
 from pathlib import Path
+
 from decouple import config
 
 from common.config.local import ConfigError, load_local_config
@@ -288,10 +289,7 @@ LOGGING = {
         },
         # Third-party loggers, held down using the same list the other services
         # use rather than a second copy of it.
-        **{
-            name: {"handlers": ["console"], "level": "WARNING", "propagate": False}
-            for name in NOISY_LIBRARIES
-        },
+        **{name: {"handlers": ["console"], "level": "WARNING", "propagate": False} for name in NOISY_LIBRARIES},
         "django": {
             "handlers": ["console", "file"],
             "level": "INFO",
@@ -343,11 +341,8 @@ INTERNAL_IPS = [
     "10.23.3.73",  # Add your client IP
 ]
 
-if no_proxy:
-    # Append MAST networks to existing NO_PROXY
-    no_proxy = no_proxy + "," + ",".join(mast_networks)
-else:
-    no_proxy = ",".join(mast_networks)
+# Append MAST networks to any existing NO_PROXY.
+no_proxy = no_proxy + "," + ",".join(mast_networks) if no_proxy else ",".join(mast_networks)
 
 os.environ["NO_PROXY"] = no_proxy
 os.environ["no_proxy"] = no_proxy  # Some libraries check lowercase

@@ -1,9 +1,10 @@
 import json
 import os
 
-from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
 from django.urls import reverse
+
 from common.mast_logging import get_logger
 
 logger = get_logger(__name__)
@@ -42,8 +43,9 @@ def plans_new(request):
         logger.warning(f"plans_new: could not fetch ThAr filter options: {e}")
         filter_options = []
 
-    from accounts.models import User as MASTUser
     from django.urls import reverse
+
+    from accounts.models import User as MASTUser
 
     owners = {
         str(u.uid): {
@@ -92,8 +94,9 @@ def plans_edit(request, ulid):
         logger.warning(f"plans_edit: could not fetch ThAr filter options: {e}")
         filter_options = []
 
-    from accounts.models import User as MASTUser
     from django.urls import reverse
+
+    from accounts.models import User as MASTUser
 
     owners = {
         str(u.uid): {

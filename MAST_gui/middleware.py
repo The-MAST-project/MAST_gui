@@ -1,7 +1,8 @@
+from urllib.parse import parse_qs, urlencode, urlparse
+
 from django.conf import settings
 from django.http import HttpResponseRedirect
 from django.shortcuts import resolve_url
-from urllib.parse import parse_qs, urlencode, urlparse
 
 from common.proxy import ProxyContext
 
