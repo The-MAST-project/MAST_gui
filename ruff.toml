@@ -38,6 +38,16 @@ select = [
 # ignores it for itself.
 ignore = ["N999"]
 
+[lint.mccabe]
+# A ratchet, not a preference. The default is 10; this is the complexity of the worst
+# function in the tree (units/views.py: unit_detail, 32), so anything more tangled
+# than what is already here fails. The other three over the default are
+# units/views.py: units_list (24), MAST_gui/notification_handler.py:
+# update_cache_from_update_request (18) and MAST_gui/views.py: _scheduling_resources
+# (14); each one fixed lowers this number in the same commit. Mirrors the convention
+# in MAST_common's and MAST_unit's ruff.toml.
+max-complexity = 32
+
 [lint.isort]
 # `common` is MAST_common, our own shared library -- first-party, grouped with
 # the Django apps (core, units, specs, dashboard, ...). Without this, ruff's
