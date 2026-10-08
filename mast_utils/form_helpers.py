@@ -18,25 +18,14 @@ def get_field_metadata(pydantic_model, field_name: str) -> dict:
 
 
 def is_field_editable(pydantic_model, field_name: str, user) -> bool:
-    """Check if user can edit this field based on metadata and permissions."""
+    """Check if this field is editable based on its metadata."""
     metadata = get_field_metadata(pydantic_model, field_name)
 
     # Check if field is hidden
     if metadata.get("ui.hidden"):
         return False
 
-    # Check if field is explicitly marked as not editable
-    if not metadata.get("editable", True):
-        return False
-
-    # Check if user has required capability
-    required_cap = metadata.get("required_capability")
-    if required_cap:
-        mongo_user = getattr(user, "mongo_user", None)
-        if not mongo_user or required_cap not in mongo_user.capabilities:
-            return False
-
-    return True
+    return bool(metadata.get("editable", True))
 
 
 def generate_form_fields(pydantic_model, instance, user) -> dict:
