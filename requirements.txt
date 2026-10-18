@@ -24,6 +24,7 @@
 
 Django==6.0.7
 python-decouple==3.8
+PyJWT==2.10.1
 pymongo==4.17.0
 django-allauth==65.18.0
 django-htmx==1.28.0
