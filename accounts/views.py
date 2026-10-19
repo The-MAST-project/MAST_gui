@@ -161,6 +161,7 @@ def user_profile(request, uid):
     )
 
 
+# How-to: https://github.com/The-MAST-project/MAST/wiki/Access-and-remote-work
 def signup(request):
     return render(request, "registration/signup.html")
 
