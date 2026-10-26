@@ -314,9 +314,12 @@
                 await this.fetchPlans();
             },
 
-            async cancelPlan(ulid) {
-                if (!confirm('Cancel plan ' + ulid + '?')) return;
-                try { await this._planPost('cancel', [ulid]); } catch (e) { console.warn(e); }
+            // Control runs one workload at a time and stops it with one verb, PUT /abort, which
+            // reaches every unit and the spectrograph through their own abort. There is no
+            // per-plan cancel any more (control acquisition design 6.6).
+            async abortWorkload() {
+                if (!confirm('Abort the plan in progress? Every unit and the spectrograph working on it stop.')) return;
+                try { await ControlApi('/abort', { method: 'PUT' }); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
@@ -538,13 +541,6 @@
                 await this.fetchPlans();
             },
 
-            async bulkCancel(tab) {
-                const ulids = this._targetUlids(tab);
-                if (!ulids.length) return;
-                if (!confirm(`Cancel ${ulids.length} plan(s)?`)) return;
-                try { await this._planPost('cancel', ulids); } catch (e) { console.warn(e); }
-                await this.fetchPlans();
-            },
         };
     };
     // If Alpine is not used, expose a global helper for manual calls
