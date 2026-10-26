@@ -24,7 +24,7 @@ function planCardsMixin() {
         openCards: {},
 
         _buildCards(meta) {
-            const CARD_ORDER = ['target', '_details', 'spec_assignment', 'constraints'];
+            const CARD_ORDER = ['target', '_details', 'spec', 'constraints'];
             const cardMap = {};
 
             for (const [key, entry] of Object.entries(meta)) {
@@ -144,8 +144,8 @@ function planCardsMixin() {
                 }));
             }
 
-            if (key === 'spec_assignment') {
-                const instr = this.getFieldValue('spec_assignment', 'instrument');
+            if (key === 'spec') {
+                const instr = this.getFieldValue('spec', 'instrument');
                 if (!instr) return [{ message: 'Not selected' }];
                 return card.summaryFields.map(sf => ({
                     label: sf.label,

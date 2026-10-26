@@ -134,30 +134,32 @@
                         return [{ message: 'Not set' }];
 
                     const name = this.getFieldValue('target', 'name');
-                    const duration = this.getFieldValue('target', 'requested_exposure_duration');
-                    const nExp = this.getFieldValue('target', 'requested_number_of_exposures');
 
                     const items = [];
                     items.push({ message: name || `(${ra}, ${dec})`, bold: true });
-                    if (duration != null)
-                        items.push({ message: `${duration} seconds`, plain: true });
-                    if (nExp != null && nExp > 1)
-                        items.push({ message: `${nExp} exposures`, plain: true });
                     return items.map((item, i) =>
                         i < items.length - 1 && item.message ? { ...item, message: item.message + ',' } : item
                     );
                 }
 
-                if (key === 'spec_assignment') {
-                    const instr = this.getFieldValue('spec_assignment', 'instrument');
+                if (key === 'spec') {
+                    const instr = this.getFieldValue('spec', 'instrument');
                     if (!instr) return [{ message: 'Not selected' }];
 
                     const items = [];
                     items.push({ message: instr, bold: true });
 
-                    const lampOn = this.getFieldValue('spec_assignment', 'lamp_on', 'calibration');
+                    // The exposure series is the spectrograph's (control acquisition design 3.2).
+                    const duration = this.getFieldValue('spec', 'requested_exposure_duration');
+                    const nExp = this.getFieldValue('spec', 'requested_number_of_exposures');
+                    if (duration != null)
+                        items.push({ message: `${duration} seconds`, plain: true });
+                    if (nExp != null && nExp > 1)
+                        items.push({ message: `${nExp} exposures`, plain: true });
+
+                    const lampOn = this.getFieldValue('spec', 'lamp_on', 'calibration');
                     if (lampOn) {
-                        const filter = this.getFieldValue('spec_assignment', 'filter', 'calibration');
+                        const filter = this.getFieldValue('spec', 'filter', 'calibration');
                         items.push({ message: filter ? `ThAr ${filter}` : 'ThAr', plain: true });
                     }
 
@@ -179,7 +181,7 @@
                     const autofocus = this.getFieldValue('_details', 'autofocus');
                     if (autofocus) items.push({ message: 'Autofocus', plain: true });
 
-                    const units = this.getFieldValue('_details', 'required_units');
+                    const units = this.getFieldValue('_details', 'requested_units');
                     const unitsList = Array.isArray(units) ? units.join(', ') : units;
                     if (unitsList) items.push({ message: unitsList, plain: true });
 

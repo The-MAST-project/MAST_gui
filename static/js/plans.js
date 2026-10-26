@@ -77,7 +77,7 @@
                 const sr = (window.__PLANS_INIT || {}).scrapingResults || {};
                 this.availableOwners          = sr.owners               || [];
                 this.availableClassifications = sr.known_classifications || sr.classifications || [];
-                this.availableUnits           = sr.allocated_units        || [];
+                this.availableUnits           = sr.known_units            || [];
 
                 const TABS = ['submitted','pending','completed','postponed','expired','failed','canceled','deleted'];
                 TABS.forEach(t => {
@@ -114,7 +114,7 @@
                     const sr = data.scraping_results || {};
                     if (sr.owners)                                        this.availableOwners          = sr.owners;
                     if (sr.known_classifications || sr.classifications)   this.availableClassifications = sr.known_classifications || sr.classifications;
-                    if (sr.allocated_units)                               this.availableUnits           = sr.allocated_units;
+                    if (sr.known_units)                                   this.availableUnits           = sr.known_units;
 
                     // reset selection on every load
                     Object.keys(this.selected).forEach(t => this.selected[t] = []);
@@ -314,9 +314,12 @@
                 await this.fetchPlans();
             },
 
-            async cancelPlan(ulid) {
-                if (!confirm('Cancel plan ' + ulid + '?')) return;
-                try { await this._planPost('cancel', [ulid]); } catch (e) { console.warn(e); }
+            // Control runs one workload at a time and stops it with one verb, PUT /abort, which
+            // reaches every unit and the spectrograph through their own abort. There is no
+            // per-plan cancel any more (control acquisition design 6.6).
+            async abortWorkload() {
+                if (!confirm('Abort the plan in progress? Every unit and the spectrograph working on it stop.')) return;
+                try { await ControlApi('/abort', { method: 'PUT' }); } catch (e) { console.warn(e); }
                 await this.fetchPlans();
             },
 
@@ -428,10 +431,10 @@
                     const cls = p.target?.science?.classification || null;
                     if (!f.classifications.values.includes(cls)) return false;
                 }
-                // Requested units (any match)
+                // Requested units (any match). A plan for "any" units matches every unit.
                 if (f.units.enabled && f.units.values.length) {
-                    const ru = p.allocated_units || [];
-                    if (!f.units.values.some(u => ru.includes(u))) return false;
+                    const ru = p.requested_units ?? [];
+                    if (ru !== 'any' && !f.units.values.some(u => [].concat(ru).includes(u))) return false;
                 }
                 // Merit
                 if (f.merit.enabled) {
@@ -538,13 +541,6 @@
                 await this.fetchPlans();
             },
 
-            async bulkCancel(tab) {
-                const ulids = this._targetUlids(tab);
-                if (!ulids.length) return;
-                if (!confirm(`Cancel ${ulids.length} plan(s)?`)) return;
-                try { await this._planPost('cancel', ulids); } catch (e) { console.warn(e); }
-                await this.fetchPlans();
-            },
         };
     };
     // If Alpine is not used, expose a global helper for manual calls
