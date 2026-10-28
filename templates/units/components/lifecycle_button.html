@@ -1,0 +1,34 @@
+{# A unit card's start / stop control. `mode` is "start" or "stop". Needs the canUseControls permission. #}
+{% if perms.auth.canUseControls %}
+  {% if in_transition %}
+    <span class="spinner-border spinner-border-sm text-secondary" role="status" aria-label="In progress"></span>
+  {% elif mode == "start" and can_start %}
+    <button type="button"
+            class="btn btn-link btn-sm p-0 lh-1 unit-lifecycle"
+            data-action="startup"
+            data-unit="{{ full_name }}"
+            data-url="{% url 'units:startup' full_name %}"
+            data-bs-toggle="tooltip"
+            data-bs-title="Start it up"
+            aria-label="Start it up"><i class="bi bi-play-fill"></i></button>
+  {% elif mode == "stop" and can_stop %}
+    {% if stop_disabled_reason %}
+      <span class="d-inline-block" data-bs-toggle="tooltip" data-bs-title="{{ stop_disabled_reason|escape }}">
+        <button type="button"
+                class="btn btn-link btn-sm p-0 lh-1"
+                style="pointer-events: none;"
+                disabled
+                aria-label="Busy"><i class="bi bi-stop-fill"></i></button>
+      </span>
+    {% else %}
+      <button type="button"
+              class="btn btn-link btn-sm p-0 lh-1 unit-lifecycle"
+              data-action="shutdown"
+              data-unit="{{ full_name }}"
+              data-url="{% url 'units:shutdown' full_name %}"
+              data-bs-toggle="tooltip"
+              data-bs-title="Shut it down"
+              aria-label="Shut it down"><i class="bi bi-stop-fill"></i></button>
+    {% endif %}
+  {% endif %}
+{% endif %}
