@@ -9,8 +9,8 @@
             data-unit="{{ full_name }}"
             data-url="{% url 'units:startup' full_name %}"
             data-bs-toggle="tooltip"
-            data-bs-title="Start it up"
-            aria-label="Start it up"><i class="bi bi-play-fill"></i></button>
+            data-bs-title="Start {{ full_name }} up"
+            aria-label="Start {{ full_name }} up"><i class="bi bi-play-fill"></i></button>
   {% elif mode == "stop" and can_stop %}
     {% if stop_disabled_reason %}
       <span class="d-inline-block" data-bs-toggle="tooltip" data-bs-title="{{ stop_disabled_reason|escape }}">
@@ -27,8 +27,8 @@
               data-unit="{{ full_name }}"
               data-url="{% url 'units:shutdown' full_name %}"
               data-bs-toggle="tooltip"
-              data-bs-title="Shut it down"
-              aria-label="Shut it down"><i class="bi bi-stop-fill"></i></button>
+              data-bs-title="Shut {{ full_name }} down"
+              aria-label="Shut {{ full_name }} down"><i class="bi bi-stop-fill"></i></button>
     {% endif %}
   {% endif %}
 {% endif %}
