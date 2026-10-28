@@ -10,6 +10,7 @@
                     <h6 class="mb-1 {% if severity %}text-severity-{{ severity }}{% endif %}">
                         {% include 'components/activity_indicator.html' with activities=activities component_id=component_id %}
                         {{ full_name }}
+                        {% if in_development %}<i class="bi bi-cone-striped ms-1" style="color: #e69500;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="Development mode:<br>the unit starts itself up" role="img" aria-label="Development mode"></i>{% endif %}
                         {% if host %}<br><small>({{ host }})</small>{% endif %}
                     </h6>
                     <script>console.log('status_card: full_name: {{ full_name }}, planned: {{ planned }}, maintenance: {{ maintenance }}, detected: {{ detected }}, operational: {{ operational }}, why_not_operational: {{ why_not_operational }}');</script>
@@ -19,6 +20,11 @@
                         <span class="badge bg-{{ severity|default:'warning' }}">{{ "In Maintenance" }}</span>
                     {% elif not detected %}
                         <span class="badge bg-{{ severity|default:'error' }}">{{ "Not Detected" }}</span>
+                    {% elif shut_down or awaiting_startup %}
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span class="badge bg-{{ severity|default:'warning' }}">{% if awaiting_startup %}Awaiting startup{% else %}Shut Down{% endif %}</span>
+                            {% include 'units/components/lifecycle_button.html' with mode="start" %}
+                        </span>
                     {% elif not operational %}
                         <span class="d-inline-flex align-items-center gap-1">
                             <span class="badge bg-{{ severity|default:'error' }}">Not Operational</span>
@@ -31,9 +37,13 @@
                                data-bs-title="{% for reason in why_not_operational %}{{ reason|escape }}{% if not forloop.last %}<br>{% endif %}{% endfor %}"
                                style="cursor: help;"></i>
                             {% endif %}
+                            {% include 'units/components/lifecycle_button.html' with mode="stop" %}
                         </span>
                     {% else %}
-                        <span class="badge bg-success">Operational</span>
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span class="badge bg-success">Operational</span>
+                            {% include 'units/components/lifecycle_button.html' with mode="stop" %}
+                        </span>
                     {% endif %}
                 </div>
             </div>

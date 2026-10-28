@@ -45,7 +45,7 @@
                                 {% if unit.deployed %}
                                     {% url 'units:detail' unit.name as detail_url %}
                                 {% endif %}
-                                {% include 'units/components/status_card.html' with full_name=unit.full_name planned=unit.planned detected=unit.detected maintenance=unit.maintenance activities=unit.activities_verbal component_id=unit.full_name operational=unit.operational why_not_operational=unit.why_not_operational card_url=detail_url severity=unit.severity|default:"success" limit_width=True %}
+                                {% include 'units/components/status_card.html' with full_name=unit.full_name planned=unit.planned detected=unit.detected maintenance=unit.maintenance shut_down=unit.shut_down in_development=unit.in_development awaiting_startup=unit.awaiting_startup can_start=unit.can_start can_stop=unit.can_stop in_transition=unit.in_transition stop_disabled_reason=unit.stop_disabled_reason activities=unit.activities_verbal component_id=unit.full_name operational=unit.operational why_not_operational=unit.why_not_operational card_url=detail_url severity=unit.severity|default:"success" limit_width=True %}
                             {% endfor %}
                         </div>
                     {% else %}
@@ -56,7 +56,7 @@
                                 {% if unit.deployed %}
                                     {% url 'units:detail' unit.name as detail_url %}
                                 {% endif %}
-                                {% include 'units/components/status_card.html' with full_name=unit.full_name planned=unit.planned detected=unit.detected maintenance=unit.maintenance activities=unit.activities_verbal component_id=unit.full_name operational=unit.operational why_not_operational=unit.why_not_operational card_url=detail_url severity=unit.severity|default:"success" limit_width=True %}
+                                {% include 'units/components/status_card.html' with full_name=unit.full_name planned=unit.planned detected=unit.detected maintenance=unit.maintenance shut_down=unit.shut_down in_development=unit.in_development awaiting_startup=unit.awaiting_startup can_start=unit.can_start can_stop=unit.can_stop in_transition=unit.in_transition stop_disabled_reason=unit.stop_disabled_reason activities=unit.activities_verbal component_id=unit.full_name operational=unit.operational why_not_operational=unit.why_not_operational card_url=detail_url severity=unit.severity|default:"success" limit_width=True %}
                             {% endfor %}
                         </div>
                         
@@ -66,7 +66,7 @@
                                 {% if unit.deployed %}
                                     {% url 'units:detail' unit.name as detail_url %}
                                 {% endif %}
-                                {% include 'units/components/status_card.html' with full_name=unit.full_name planned=unit.planned detected=unit.detected maintenance=unit.maintenance activities=unit.activities_verbal component_id=unit.full_name operational=unit.operational why_not_operational=unit.why_not_operational card_url=detail_url severity=unit.severity|default:"success" limit_width=True %}
+                                {% include 'units/components/status_card.html' with full_name=unit.full_name planned=unit.planned detected=unit.detected maintenance=unit.maintenance shut_down=unit.shut_down in_development=unit.in_development awaiting_startup=unit.awaiting_startup can_start=unit.can_start can_stop=unit.can_stop in_transition=unit.in_transition stop_disabled_reason=unit.stop_disabled_reason activities=unit.activities_verbal component_id=unit.full_name operational=unit.operational why_not_operational=unit.why_not_operational card_url=detail_url severity=unit.severity|default:"success" limit_width=True %}
                             {% endfor %}
                         </div>
                     {% endif %}
@@ -88,6 +88,27 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Unit start up / shut down confirmation -->
+<div class="modal fade" id="unitLifecycleModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unitLifecycleTitle"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0" id="unitLifecycleText"></p>
+        <p class="text-danger mt-2 mb-0 d-none" id="unitLifecycleError"></p>
+      </div>
+      <div class="modal-footer">
+        {% csrf_token %}
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="unitLifecycleConfirm"></button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Instrument Modal (Work in Progress) -->
@@ -137,6 +158,67 @@
             modal.hide();
         }, 5000);
     }
+
+    // The card's play / stop buttons: confirm, then ask control (never the unit) to do it.
+    const LIFECYCLE_TEXT = {
+        startup: {
+            title: (unit) => 'Start up ' + unit + '?',
+            text: 'The unit will run its startup sequence (connect and start its components).',
+            button: 'Start up',
+        },
+        shutdown: {
+            title: (unit) => 'Shut down ' + unit + '?',
+            text: 'The unit will run its shutdown sequence: park the mount, close the covers and disconnect its components.',
+            button: 'Shut down',
+        },
+    };
+
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('.unit-lifecycle');
+        if (!trigger) return;
+        // The card is a link to the unit's page: this click is not a navigation.
+        event.preventDefault();
+        event.stopPropagation();
+
+        const action = trigger.dataset.action;
+        const unit = trigger.dataset.unit;
+        const words = LIFECYCLE_TEXT[action];
+        document.getElementById('unitLifecycleTitle').textContent = words.title(unit);
+        document.getElementById('unitLifecycleText').textContent = words.text;
+        const error = document.getElementById('unitLifecycleError');
+        error.classList.add('d-none');
+        const confirm = document.getElementById('unitLifecycleConfirm');
+        confirm.textContent = words.button;
+        confirm.disabled = false;
+        confirm.dataset.url = trigger.dataset.url;
+        confirm.dataset.action = action;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('unitLifecycleModal')).show();
+    }, true);
+
+    document.getElementById('unitLifecycleConfirm').addEventListener('click', async (event) => {
+        const confirm = event.currentTarget;
+        const error = document.getElementById('unitLifecycleError');
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('unitLifecycleModal'));
+        confirm.disabled = true;
+        try {
+            const response = await fetch(confirm.dataset.url, {
+                method: 'POST',
+                headers: {'X-CSRFToken': document.querySelector('#unitLifecycleModal [name=csrfmiddlewaretoken]').value},
+            });
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                error.textContent = body.error || ('Failed (' + response.status + ')');
+                error.classList.remove('d-none');
+                confirm.disabled = false;
+                return;
+            }
+            modal.hide();
+        } catch (e) {
+            error.textContent = 'Request failed: ' + e;
+            error.classList.remove('d-none');
+            confirm.disabled = false;
+        }
+    });
 
     function showInstrumentModal(instrumentName) {
         console.log('showInstrumentModal called:', instrumentName);

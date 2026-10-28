@@ -17,12 +17,39 @@ from common.config.focuser import FocuserConfig
 from common.dlipowerswitch import PowerSwitchStatus
 from common.mast_logging import get_logger
 from common.models.statuses import BasicUnitStatus, FullUnitStatus, SitesStatus, StatusType, UnitStatus
+from common.opmode import OpMode, OpState
 
 from .config_utils import extract_field_metadata
 
 # Set default log level to DEBUG for this module
 logging.basicConfig(level=logging.DEBUG)
 logger = get_logger(__name__)
+
+
+def _lifecycle_buttons(unit_status: FullUnitStatus) -> dict:
+    """What the unit's card offers: start it up, shut it down, or neither.
+
+    Only a unit that reports an opstate is offered anything (not one on older code, which
+    has nothing to read). While a startup or shutdown runs the opstate is still the old one
+    (it changes only when the sequence completes), so the activity decides "in transition".
+    `why_busy` of None is UNKNOWN, not idle: the stop button stays disabled.
+    """
+    opstate = unit_status.opstate
+    in_transition = any(a in ("StartingUp", "ShuttingDown") for a in unit_status.activities_verbal or [])
+    why_busy = unit_status.why_busy
+
+    stop_disabled_reason = None
+    if why_busy is None:
+        stop_disabled_reason = "Busy (state unknown)"
+    elif why_busy:
+        stop_disabled_reason = "Busy: " + "; ".join(f"{owner}: {', '.join(why)}" for owner, why in why_busy.items())
+
+    return {
+        "in_transition": in_transition,
+        "can_start": opstate in (OpState.SHUT_DOWN, OpState.INITIALIZED) and not in_transition,
+        "can_stop": opstate == OpState.STARTED_UP and not in_transition,
+        "stop_disabled_reason": stop_disabled_reason,
+    }
 
 
 @login_required
@@ -123,6 +150,13 @@ def units_list(request):
                         # Full status from unit
                         unit_data["operational"] = unit_status.operational
                         unit_data["severity"] = "success" if unit_status.operational else "warning"
+                        # A shut-down unit is not operational by construction; say so, rather than
+                        # listing every component that is down.
+                        unit_data["shut_down"] = unit_status.opstate == OpState.SHUT_DOWN
+                        unit_data["awaiting_startup"] = unit_status.opstate == OpState.INITIALIZED
+                        # None from a unit that does not report it: unknown is not "production".
+                        unit_data["in_development"] = unit_status.opmode == OpMode.DEVELOPMENT
+                        unit_data.update(_lifecycle_buttons(unit_status))
                         unit_data["why_not_operational"] = unit_status.why_not_operational or []
                         unit_data["detected"] = unit_status.detected if hasattr(unit_status, "detected") else False
             else:
@@ -492,6 +526,35 @@ def unit_detail(request, unit_name):
             "unit_config_dump": unit_config_dump,
         },
     )
+
+
+def _unit_lifecycle(request, unit_name: str, action: str):
+    """Ask control to start up / shut down a unit. The GUI never talks to the unit itself;
+    control decides whether it may (deployed, not in maintenance, idle for a shutdown)."""
+    if not request.user.has_perm("auth.canUseControls"):
+        return JsonResponse({"error": "Not authorized"}, status=403)
+
+    current_site = request.session.get("selected_site", "wis")
+    logger.info(f"{request.user} requests {action} of {current_site}:{unit_name}")
+
+    response = asyncio.run(ControllerApi(site_name=current_site).put(f"unit/{current_site}/{unit_name}/{action}"))
+    if not response.succeeded:
+        errors = response.errors or [f"{action} failed"]
+        logger.error(f"{action} of {current_site}:{unit_name} failed: {errors}")
+        return JsonResponse({"error": "; ".join(errors)}, status=400)
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_http_methods(["POST"])
+def startup_unit(request, unit_name):
+    return _unit_lifecycle(request, unit_name, "startup")
+
+
+@login_required
+@require_http_methods(["POST"])
+def shutdown_unit(request, unit_name):
+    return _unit_lifecycle(request, unit_name, "shutdown")
 
 
 @login_required
