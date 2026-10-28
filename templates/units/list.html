@@ -249,6 +249,12 @@
                 const newSection = doc.querySelector('#units-buildings-section');
                 const oldSection = document.querySelector('#units-buildings-section');
                 if (newSection && oldSection) {
+                    // A tooltip that is open when its element is replaced is never hidden:
+                    // its <div> would stay in <body>. Dispose them before the swap.
+                    oldSection.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+                        const tooltip = bootstrap.Tooltip.getInstance(el);
+                        if (tooltip) tooltip.dispose();
+                    });
                     oldSection.innerHTML = newSection.innerHTML;
                 } else {
                     window.location.reload();

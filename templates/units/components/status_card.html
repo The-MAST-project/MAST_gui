@@ -10,7 +10,7 @@
                     <h6 class="mb-1 {% if severity %}text-severity-{{ severity }}{% endif %}">
                         {% include 'components/activity_indicator.html' with activities=activities component_id=component_id %}
                         {{ full_name }}
-                        {% if in_development %}<i class="bi bi-cone-striped ms-1" style="color: #e69500;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="Development mode:<br>the unit starts itself up" role="img" aria-label="Development mode"></i>{% endif %}
+                        {% if in_development %}<i class="bi bi-cone-striped ms-1" style="color: #e69500;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="Development mode<br>The unit auto-starts" role="img" aria-label="Development mode"></i>{% endif %}
                         {% if host %}<br><small>({{ host }})</small>{% endif %}
                     </h6>
                     <script>console.log('status_card: full_name: {{ full_name }}, planned: {{ planned }}, maintenance: {{ maintenance }}, detected: {{ detected }}, operational: {{ operational }}, why_not_operational: {{ why_not_operational }}');</script>
