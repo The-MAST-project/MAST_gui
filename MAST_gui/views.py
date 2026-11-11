@@ -471,6 +471,11 @@ def scheduling_sun_curve(request):
         return JsonResponse({"error": "No location data for site"}, status=404)
 
     loc = site_config.location
+    if loc.sun_limits is None:
+        from django.http import JsonResponse
+
+        # The limits live in the 'safety' collection (sun_elevation.dusk / .dawn), not the site.
+        return JsonResponse({"error": "No sun limits for site (see the 'safety' collection)"}, status=404)
     observer = Observer(
         location=EarthLocation(
             lat=loc.latitude * u.deg,
