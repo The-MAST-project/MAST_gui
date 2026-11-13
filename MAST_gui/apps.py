@@ -2,12 +2,26 @@ import threading
 
 from django.apps import AppConfig
 
+from common import iers_policy
 from common.config import Config
 from common.mast_logging import get_logger
 
 from .context_processors import MastCache
 
 logger = get_logger(__name__)
+
+# The IERS policy, at module scope and so in every process that loads the app -- including
+# ones where `ready()` below returns early. Two views transform the Sun directly, without
+# going through `Site.observing_window()`: `scheduling_sun_position` (get_body, then GCRS to
+# ITRS) and `scheduling_sun_curve` (`Observer.altaz`). `common` only guards the
+# `observing_window()` call, so a process whose first request is one of those tiles ran with
+# astropy's default, which raises once the Earth-orientation table's predictions are more
+# than 30 days old -- what stopped a unit's mount on 2026-10-01 (MAST_common#139).
+#
+# The policy only, not the cache or refresher MAST_unit runs: those keep the table accurate,
+# which matters to a mount's pointing and not to a terminator map, where a UT1-UTC error of
+# under a second is invisible. Cheap and in-memory.
+iers_policy.configure_astropy()
 
 
 class MastGuiConfig(AppConfig):
